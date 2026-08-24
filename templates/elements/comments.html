@@ -1,0 +1,87 @@
+{# The comment thread and form.
+
+   The kernel resolves `elements/comments` for every item page, builds the whole
+   context for it, and ships no such template — so on a stock install the thread
+   renders as nothing and the log carries `failed to render the comment thread …
+   Template 'elements/comments.html' not found` on every item view. This is the
+   site's.
+
+   Context, all of it from `routes::comment::render_thread`:
+     comments         published comments, threaded, each with id, depth, created,
+                      author_name and body_html
+     total            how many
+     item_id          the item they belong to
+     can_comment      whether this viewer may post
+     user_logged_in   whether there is a viewer at all
+     current_path     where to come back to
+     comment_outcome  what happened to the last submission, if this is a redirect
+     csrf_token       only present when can_comment
+
+   The form posts `application/x-www-form-urlencoded` to the same route the JSON
+   API uses. The kernel accepts both encodings, takes the token from `_csrf` for a
+   form, and answers a form with a redirect rather than JSON. So this works with
+   JavaScript switched off, which is the point. #}
+<section class="comments" aria-labelledby="comments-heading">
+    <h2 class="comments__heading" id="comments-heading">
+        {% if total == 0 %}Comments{% elif total == 1 %}One comment{% else %}{{ total }} comments{% endif %}
+    </h2>
+
+    {% if comment_outcome == "published" %}
+    <p class="message" role="status">Your comment is published.</p>
+    {% elif comment_outcome == "pending" %}
+    <p class="message" role="status">Your comment has been received and is waiting to be read. It will appear once it is approved. <a href="/comment-policy">What happens to a comment</a>.</p>
+    {% elif comment_outcome == "error" %}
+    <p class="message" role="alert">Your comment could not be posted. Try again.</p>
+    {% endif %}
+
+    {% if total > 0 %}
+    <ol class="comments__list">
+        {% for comment in comments %}
+        {# The reply nesting is expressed as a class rather than as nested lists:
+           the kernel returns a flat list in thread order with a depth on each
+           one, and rebuilding a tree from that in Tera would be worse than
+           indenting. Capped at four so a long argument does not run off the side
+           of a phone. #}
+        <li class="comment comment--depth-{% if comment.depth > 4 %}4{% else %}{{ comment.depth }}{% endif %}" id="comment-{{ comment.id }}">
+            <article>
+                <h3 class="comment__meta">
+                    <span class="comment__author">{{ comment.author_name | default(value="Someone") }}</span>
+                    <a class="comment__permalink" href="#comment-{{ comment.id }}">
+                        <time datetime="{{ comment.created | format_date(format='%Y-%m-%d') }}">{{ comment.created | format_date }}</time>
+                    </a>
+                </h3>
+                <div class="comment__body">
+                    {# SAFE: `body_html` is built by the kernel's render_comment_body,
+                       which runs the comment through the filter pipeline for its
+                       stored format. A comment is stored as filtered_html. #}
+                    {{ comment.body_html | safe }}
+                </div>
+            </article>
+        </li>
+        {% endfor %}
+    </ol>
+    {% endif %}
+
+    {% if can_comment %}
+    <form class="comment-form" method="post" action="/api/item/{{ item_id }}/comments">
+        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+        <div class="form-group">
+            <label for="comment-body">Leave a comment</label>
+            <textarea id="comment-body" name="body" rows="6" required></textarea>
+            <p class="help">
+                Held until it is read, unless you have had three comments approved before.
+                <a href="/comment-policy">The comment policy</a> says what that means.
+            </p>
+        </div>
+        <button type="submit">Post comment</button>
+    </form>
+    {% elif user_logged_in %}
+    <p class="comments__closed">Your account cannot post comments.</p>
+    {% else %}
+    <p class="comments__closed">
+        <a href="/user/login?destination={{ current_path }}">Log in</a>
+        or <a href="/user/register">create an account</a> to comment.
+        <a href="/comment-policy">The comment policy</a> says what happens next.
+    </p>
+    {% endif %}
+</section>

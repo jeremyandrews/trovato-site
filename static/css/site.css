@@ -692,6 +692,61 @@ button.site-nav__logout {
     font-size: var(--text-lg);
 }
 
+/* ── Comments ────────────────────────────────────────────────────────────── */
+
+.comments {
+    max-width: var(--measure);
+    margin-top: var(--space-10);
+    padding-top: var(--space-6);
+    border-top: 1px solid var(--border);
+}
+
+.comments__list {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 var(--space-8);
+}
+
+.comment {
+    padding-block: var(--space-4);
+    border-bottom: 1px solid var(--border);
+}
+
+.comment--depth-1 { margin-inline-start: var(--space-5); }
+.comment--depth-2 { margin-inline-start: var(--space-8); }
+.comment--depth-3 { margin-inline-start: calc(var(--space-8) + var(--space-5)); }
+.comment--depth-4 { margin-inline-start: var(--space-12); }
+
+.comment__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    align-items: baseline;
+    margin: 0 0 var(--space-2);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-normal);
+}
+
+.comment__author {
+    font-weight: var(--weight-semibold);
+}
+
+.comment__permalink {
+    color: var(--text-muted);
+}
+
+.comment__body > :last-child {
+    margin-bottom: 0;
+}
+
+.comments__closed {
+    color: var(--text-muted);
+}
+
+.comment-form textarea {
+    font-family: inherit;
+}
+
 /* ── Forms ───────────────────────────────────────────────────────────────── */
 
 label {
