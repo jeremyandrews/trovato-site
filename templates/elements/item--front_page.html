@@ -1,0 +1,14 @@
+{# The front page item.
+
+   The kernel's elements/item.html renders a title and a meta line with the
+   content type and the creation date. On the front page that produces a second
+   heading under the site name and a stray "front_page 1 August 2026", so this
+   template renders the body and nothing else.
+
+   `children` is the item's rendered fields followed by every tap_item_view
+   output — here, the site plugin's calls to action and its listing of recent
+   posts. The kernel hands them over as one string, which is why the calls to
+   action are rendered by the plugin rather than placed here. #}
+<div class="front__body">
+    {{ children | safe }} {# SAFE: kernel field pipeline and tap output, both sanitized upstream #}
+</div>

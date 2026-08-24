@@ -120,16 +120,46 @@ pub fn tap_item_access(input: ItemAccessInput) -> AccessResult {
 
 // ─── The front page listing ──────────────────────────────────────────
 
-/// Append the recent-posts listing to the front page.
+/// Append the calls to action and the recent-posts listing to the front page.
 ///
 /// Returns an empty string for every other item, which is every item but one.
+///
+/// The two links are here rather than in the front page's body because
+/// `filtered_html` strips every attribute a link would need to be a button, and
+/// rather than in the template because the template cannot get between the body
+/// and this output — the kernel hands an item template one blob containing both.
+/// They are navigation, so a plugin is a defensible place for them; that they
+/// are also the only copy in this file is why they are named as constants.
 #[plugin_tap]
 pub fn tap_item_view(item: Item) -> String {
     if item.item_type != FRONT_PAGE_TYPE {
         return String::new();
     }
 
-    render_listing(&recent_posts(FRONT_LISTING_LIMIT))
+    let mut html = render_actions();
+    html.push_str(&render_listing(&recent_posts(FRONT_LISTING_LIMIT)));
+    html
+}
+
+/// The front page's two calls to action.
+const ACTIONS: [(&str, &str, &str); 2] = [
+    ("/get-started", "Get started", "button"),
+    ("/why", "Why Trovato", "button button--secondary"),
+];
+
+/// Render the calls to action.
+pub fn render_actions() -> String {
+    let mut html = String::from("<nav class=\"front-hero__actions\" aria-label=\"Get started\">\n");
+    for (href, label, class) in ACTIONS {
+        html.push_str(&format!(
+            "<a class=\"{}\" href=\"{}\">{}</a>\n",
+            escape_html(class),
+            escape_html(href),
+            escape_html(label)
+        ));
+    }
+    html.push_str("</nav>\n");
+    html
 }
 
 /// One entry in the front page's listing.
@@ -449,6 +479,24 @@ mod tests {
         let html = render_listing(&[post("Fine", "blog", "/blog/x\" onclick=\"evil()")]);
         assert!(!html.contains("onclick=\"evil()"));
         assert!(html.contains("&quot;"));
+    }
+
+    #[test]
+    fn the_front_page_gets_the_calls_to_action_before_the_listing() {
+        let html = __inner_tap_item_view(item_of_type("front_page"));
+        assert!(html.contains("front-hero__actions"));
+        assert!(html.contains("href=\"/get-started\""));
+        assert!(html.contains("href=\"/why\""));
+        // The listing itself needs a database, which a unit test has none of;
+        // what is pinned here is that the actions render without one.
+        assert!(html.starts_with("<nav class=\"front-hero__actions\""));
+    }
+
+    #[test]
+    fn the_calls_to_action_are_a_labelled_nav() {
+        // Two links in a row with no label is a nav a screen reader cannot tell
+        // apart from the main menu.
+        assert!(render_actions().contains("aria-label=\"Get started\""));
     }
 
     // ─── Row mapping ─────────────────────────────────────────────────

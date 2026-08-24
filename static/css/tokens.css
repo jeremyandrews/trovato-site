@@ -1,20 +1,171 @@
 /*
- * Trovato brand tokens.
+ * Trovato design tokens.
  *
- * Derived from assets/brand/BRAND.md in the kernel repository at v0.101.0. The
- * palette is fixed there; what this file adds is the mapping from those five
- * colors onto the roles a page actually needs, in both color schemes.
+ * The palette is fixed by assets/brand/BRAND.md in the kernel repository. What
+ * this file adds is the mapping from those five colors onto the roles a page
+ * needs, in both color schemes, with every pairing measured rather than assumed.
  *
- * Phase 1 carries the palette only. The full token layer — type scale, spacing,
- * the dark scheme, the contrast-checked pairings — lands in Phase 2.
+ * ── How the contrast annotations work ──────────────────────────────────────
+ *
+ * Every line marked `@contrast FG on BG LEVEL` is checked by `cargo test` in the
+ * `checks` crate: it resolves both tokens in the scheme it is declared under,
+ * computes the WCAG 2.1 ratio, and fails the build if the pairing is below its
+ * level. Levels are AA (4.5:1 body text), AA-LARGE (3:1 text at 24px, or 18.66px
+ * bold) and UI (3:1 for a control boundary or a focus ring, WCAG 1.4.11).
+ *
+ * A pairing that is not annotated is not checked, so a new pairing means a new
+ * annotation. That is the point: the /accessibility page claims these ratios,
+ * and a claim nothing verifies is a claim waiting to go stale.
+ *
+ * ── One measurement that contradicted the plan ─────────────────────────────
+ *
+ * Clay on Cream was expected to pass for large text and buttons only. Measured,
+ * it is 4.95:1, which clears AA for body text. It is still not what body text is
+ * set in — Ink on Cream at 15.67:1 is, because a page of terracotta prose is
+ * unpleasant regardless of what it passes. But link text does not need the
+ * darker clay on the page background, and saying otherwise would be repeating an
+ * assumption the numbers do not support.
+ *
+ * Link text uses `--link` (the darker clay) anyway, for a reason the ratio on
+ * Cream does not show: on `--surface-sunken` the lighter clay measures 4.42:1 and
+ * fails. One link color that passes everywhere beats two that each pass in one
+ * place.
  */
 
 :root {
-    /* The brand palette, verbatim. Never redefined per scheme: these are the
-       colors themselves, not the roles they play. */
+    /* ── The brand palette, verbatim ──────────────────────────────────────
+       These are the colors themselves, never redefined per scheme. Every role
+       below is expressed in terms of them or of a tint mixed from them. */
     --brand-ink: #221B16;
     --brand-clay: #B14B2E;
     --brand-clay-light: #E08963;
     --brand-peach: #FFD9A8;
     --brand-cream: #FAF5EF;
+
+    /* ── Surfaces (light) ────────────────────────────────────────────────── */
+    --surface: #FAF5EF;
+    --surface-sunken: #F1E8DC;
+
+    /* ── Text (light) ────────────────────────────────────────────────────── */
+    /* @contrast --text on --surface AA */
+    /* @contrast --text on --surface-sunken AA */
+    --text: #221B16;
+    /* @contrast --text-muted on --surface AA */
+    /* @contrast --text-muted on --surface-sunken AA */
+    --text-muted: #5C4A3D;
+
+    /* ── Accent (light) ──────────────────────────────────────────────────── */
+    /* The darker clay, so one link color passes on both surfaces. */
+    /* @contrast --link on --surface AA */
+    /* @contrast --link on --surface-sunken AA */
+    --link: #96421F;
+    /* Clay itself is the button fill and the dot in the mark. Sparingly: it is
+       the only saturated color on the page and it should still mean something
+       by the third screenful. */
+    --accent: #B14B2E;
+    /* @contrast --on-accent on --accent AA */
+    --on-accent: #FFFFFF;
+
+    /* ── Lines (light) ───────────────────────────────────────────────────── */
+    /* A decorative rule between items. Not a control boundary and not checked:
+       WCAG 1.4.11 is about components and state, not about separators. */
+    --border: #E0D2C0;
+    /* The boundary of a control a person has to find and aim at. Checked. */
+    /* @contrast --border-control on --surface UI */
+    /* @contrast --border-control on --surface-sunken UI */
+    --border-control: #8E7A66;
+    /* @contrast --focus on --surface UI */
+    /* @contrast --focus on --surface-sunken UI */
+    --focus: #96421F;
+
+    /* ── Type ────────────────────────────────────────────────────────────── */
+    /* Self-hosted, declared in fonts.css. The fallbacks are real stacks, not
+       decoration: a font file that fails to load must leave a readable page. */
+    --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+        "Helvetica Neue", Arial, sans-serif;
+    --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, "SF Mono",
+        Menlo, Consolas, "Liberation Mono", monospace;
+
+    /* A minor third (1.200) from a 1rem base. The two largest steps are fluid so
+       a hero does not have to be re-tuned per breakpoint. */
+    --text-xs: 0.75rem;
+    --text-sm: 0.875rem;
+    --text-base: 1rem;
+    --text-lg: 1.125rem;
+    --text-xl: 1.35rem;
+    --text-2xl: clamp(1.5rem, 1.25rem + 1.1vw, 1.95rem);
+    --text-3xl: clamp(1.9rem, 1.4rem + 2.2vw, 2.8rem);
+
+    --leading-tight: 1.2;
+    --leading-normal: 1.6;
+    --leading-loose: 1.75;
+
+    --weight-normal: 400;
+    --weight-semibold: 600;
+
+    /* Prose measure. Long lines are the most common readability failure on a
+       content site and the cheapest to prevent. */
+    --measure: 68ch;
+
+    /* ── Space ───────────────────────────────────────────────────────────── */
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    --space-5: 1.5rem;
+    --space-6: 2rem;
+    --space-8: 3rem;
+    --space-10: 4rem;
+    --space-12: 6rem;
+
+    --radius: 0.375rem;
+    --radius-lg: 0.75rem;
+
+    --container: 68rem;
+    --container-narrow: 44rem;
+
+    /* ── Motion ──────────────────────────────────────────────────────────── */
+    /* One duration, one easing, used for state changes only. Nothing on this
+       site moves because it arrived. */
+    --motion-fast: 120ms;
+    --motion-ease: cubic-bezier(0.2, 0, 0.2, 1);
+}
+
+/* ── Dark ────────────────────────────────────────────────────────────────────
+   Only the roles change. The palette above does not, and neither does anything
+   that is not a color: a scale that changes with the color scheme is a bug.
+
+   The surfaces are warm rather than neutral — #1A1512 is Ink taken further down,
+   not a gray. A terracotta identity on a slate-gray dark mode reads as two
+   different sites. */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --surface: #1A1512;
+        --surface-sunken: #221B16;
+
+        /* @contrast --text on --surface AA */
+        /* @contrast --text on --surface-sunken AA */
+        --text: #FAF5EF;
+        /* @contrast --text-muted on --surface AA */
+        /* @contrast --text-muted on --surface-sunken AA */
+        --text-muted: #C4B5A6;
+
+        /* Clay Light carries the accent on dark, as the brand sheet says: Clay
+           itself measures 3.38:1 here and fails for text. */
+        /* @contrast --link on --surface AA */
+        /* @contrast --link on --surface-sunken AA */
+        --link: #E08963;
+        --accent: #E08963;
+        /* A light-clay button takes dark text, not white. */
+        /* @contrast --on-accent on --accent AA */
+        --on-accent: #221B16;
+
+        --border: #3A2E26;
+        /* @contrast --border-control on --surface UI */
+        /* @contrast --border-control on --surface-sunken UI */
+        --border-control: #857463;
+        /* @contrast --focus on --surface UI */
+        /* @contrast --focus on --surface-sunken UI */
+        --focus: #E08963;
+    }
 }

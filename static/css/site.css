@@ -1,63 +1,669 @@
 /*
- * Site styles.
+ * The site's styles.
  *
- * Phase 1: enough layout to see the structure and read the pages. The design
- * system — scale, spacing, dark scheme, self-hosted faces — lands in Phase 2,
- * and this file is rewritten against the token layer there.
+ * Everything here is expressed in tokens from tokens.css. No literal color
+ * appears below this comment, which is what makes the contrast check in the
+ * `checks` crate cover the site rather than only the palette.
+ *
+ * Mobile first: the base rules are the narrow layout, and the two media queries
+ * add to them. The site is read on a phone more often than it is admired on a
+ * desktop.
  */
+
+/* ── Reset, minimal ──────────────────────────────────────────────────────── */
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    background: var(--surface);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: var(--text-base);
+    font-weight: var(--weight-normal);
+    line-height: var(--leading-normal);
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+}
+
+img,
+svg {
+    max-width: 100%;
+    height: auto;
+}
+
+/* ── Type ────────────────────────────────────────────────────────────────── */
+
+h1, h2, h3, h4 {
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-tight);
+    margin: 0 0 var(--space-4);
+    text-wrap: balance;
+}
+
+h1 { font-size: var(--text-3xl); }
+h2 { font-size: var(--text-2xl); margin-top: var(--space-8); }
+h3 { font-size: var(--text-xl); margin-top: var(--space-6); }
+h4 { font-size: var(--text-lg); margin-top: var(--space-5); }
+
+p, ul, ol, blockquote, table {
+    margin: 0 0 var(--space-4);
+}
+
+/* An explicit weight, so no browser synthesises one there is no file for. */
+strong, b {
+    font-weight: var(--weight-semibold);
+}
+
+a {
+    color: var(--link);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.15em;
+}
+
+a:hover {
+    text-decoration-thickness: 2px;
+}
+
+code, kbd, samp, pre {
+    font-family: var(--font-mono);
+    font-size: 0.9em;
+}
+
+code {
+    background: var(--surface-sunken);
+    border-radius: var(--radius);
+    padding: 0.1em 0.35em;
+}
+
+pre {
+    background: var(--surface-sunken);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: var(--space-4);
+    /* Wide content scrolls inside its own box. The page body never does. */
+    overflow-x: auto;
+}
+
+pre code {
+    background: none;
+    padding: 0;
+}
+
+blockquote {
+    border-inline-start: 3px solid var(--accent);
+    margin-inline-start: 0;
+    padding-inline-start: var(--space-4);
+    color: var(--text-muted);
+}
+
+hr {
+    border: 0;
+    border-top: 1px solid var(--border);
+    margin: var(--space-8) 0;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th, td {
+    text-align: start;
+    padding: var(--space-2) var(--space-3);
+    border-bottom: 1px solid var(--border);
+}
+
+th {
+    font-weight: var(--weight-semibold);
+}
+
+/* ── Focus ───────────────────────────────────────────────────────────────── */
+
+:focus-visible {
+    outline: 3px solid var(--focus);
+    outline-offset: 2px;
+    border-radius: var(--radius);
+}
+
+.skip-link {
+    position: absolute;
+    inset-inline-start: -9999px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+}
+
+.skip-link:focus {
+    position: fixed;
+    inset-block-start: var(--space-2);
+    inset-inline-start: var(--space-2);
+    width: auto;
+    height: auto;
+    z-index: 100;
+    padding: var(--space-3) var(--space-5);
+    background: var(--accent);
+    color: var(--on-accent);
+    border-radius: var(--radius);
+    text-decoration: none;
+}
+
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* ── Layout ──────────────────────────────────────────────────────────────── */
+
+.container {
+    width: 100%;
+    max-width: var(--container);
+    margin-inline: auto;
+    padding-inline: var(--space-4);
+}
+
+.main {
+    padding-block: var(--space-6) var(--space-10);
+}
+
+/* Prose gets a measure. Everything the CMS renders into a page body is prose. */
+.prose,
+.item__content,
+.field {
+    max-width: var(--measure);
+}
+
+/* ── Header ──────────────────────────────────────────────────────────────── */
+
+.site-header {
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+}
 
 .site-header__bar {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 1rem;
-    padding: 1rem 0;
+    gap: var(--space-4);
+    padding-block: var(--space-4);
+}
+
+.site-branding {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-3);
+}
+
+.site-branding__link {
+    display: block;
+    line-height: 0;
 }
 
 .site-branding__lockup {
-    display: block;
-    height: 2.5rem;
+    height: 2rem;
     width: auto;
 }
 
+/* The lockup ships in two files, one for each scheme: the wordmark is drawn as
+   paths with baked-in fills, so it cannot be recolored with a token. */
+.site-branding__lockup--dark { display: none; }
+
+.site-branding__slogan {
+    color: var(--text-muted);
+    font-size: var(--text-sm);
+    display: none;
+}
+
+/* ── Navigation ──────────────────────────────────────────────────────────── */
+
+/* Narrow: a disclosure. <details> rather than a script — it opens with a click
+   or the keyboard, announces its state, and works with JavaScript switched off. */
 .site-nav {
+    width: 100%;
+}
+
+.site-nav__toggle {
     display: flex;
-    flex-wrap: wrap;
-    gap: 1rem;
+    align-items: center;
+    gap: var(--space-2);
+    cursor: pointer;
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--border-control);
+    border-radius: var(--radius);
+    font-weight: var(--weight-semibold);
+    width: fit-content;
+    /* The default marker is a disclosure triangle in a font the site does not
+       control; the chevron below is drawn instead. */
+    list-style: none;
+}
+
+.site-nav__toggle::-webkit-details-marker {
+    display: none;
+}
+
+.site-nav__toggle::after {
+    content: "";
+    width: 0.5em;
+    height: 0.5em;
+    border-inline-end: 2px solid currentColor;
+    border-block-end: 2px solid currentColor;
+    transform: rotate(45deg) translate(-0.1em, -0.1em);
+    transition: transform var(--motion-fast) var(--motion-ease);
+}
+
+.site-nav[open] .site-nav__toggle::after {
+    transform: rotate(-135deg) translate(-0.2em, -0.2em);
+}
+
+.site-nav__list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    padding: var(--space-3) 0 0;
+    margin: 0;
+    list-style: none;
+}
+
+.site-nav__link {
+    display: block;
+    padding: var(--space-2) var(--space-1);
+    color: var(--text);
+    text-decoration: none;
+}
+
+.site-nav__link:hover {
+    color: var(--link);
+    text-decoration: underline;
+}
+
+.site-nav__link--active {
+    color: var(--link);
+    font-weight: var(--weight-semibold);
+    box-shadow: inset 0 -2px 0 var(--accent);
 }
 
 .site-account {
     display: flex;
     align-items: center;
-    gap: 1rem;
-    margin-inline-start: auto;
+    gap: var(--space-4);
+    font-size: var(--text-sm);
 }
+
+/* One `auto` margin in the bar, not two. Two competing autos — one after the
+   branding and one before the account links — split the row and pushed the
+   search box onto a second line on a desktop. */
+
+.site-nav__logout-form {
+    display: inline;
+    margin: 0;
+}
+
+.site-nav__logout {
+    background: none;
+    border: 0;
+    padding: 0;
+    font: inherit;
+    color: var(--link);
+    cursor: pointer;
+    text-decoration: underline;
+}
+
+/* ── Search ──────────────────────────────────────────────────────────────── */
 
 .site-search {
     display: flex;
-    gap: 0.25rem;
+    gap: var(--space-2);
+    width: 100%;
+}
+
+.site-search__input {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--border-control);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+}
+
+/* Every button, including the ones in kernel and plugin templates the site does
+   not own. A bare <button> left at browser default is a white box on a dark
+   page, and the contact form's submit was exactly that until this rule existed. */
+button,
+input[type="submit"],
+input[type="reset"],
+.site-search__button,
+.button {
+    display: inline-block;
+    padding: var(--space-2) var(--space-4);
+    border: 1px solid transparent;
+    border-radius: var(--radius);
+    background: var(--accent);
+    color: var(--on-accent);
+    font: inherit;
+    font-weight: var(--weight-semibold);
+    text-decoration: none;
+    cursor: pointer;
+    transition: filter var(--motion-fast) var(--motion-ease);
+}
+
+button:hover,
+input[type="submit"]:hover,
+.site-search__button:hover,
+.button:hover {
+    filter: brightness(0.92);
+    text-decoration: none;
+}
+
+.button--secondary,
+.button-link,
+button.site-nav__logout {
+    background: transparent;
+    color: var(--link);
+    border-color: var(--border-control);
+}
+
+/* A link that a template made a button element. It should read as a link. */
+.button-link,
+button.site-nav__logout {
+    border: 0;
+    padding: 0;
+    font-weight: var(--weight-normal);
+    text-decoration: underline;
+}
+
+/* Checkboxes, radios and progress bars take the accent rather than the
+   browser's blue. One line, and it covers every form the site does not own. */
+:root {
+    accent-color: var(--accent);
+}
+
+/* ── Front page ──────────────────────────────────────────────────────────── */
+
+.front__title {
+    margin-block: var(--space-6) var(--space-5);
+}
+
+.front__wordmark {
+    display: block;
+    width: min(16rem, 60vw);
+    height: auto;
+}
+
+.front__wordmark--dark { display: none; }
+
+.front__body {
+    max-width: var(--measure);
+}
+
+/* The lede is the body's first paragraph. It cannot be marked up as one:
+   `filtered_html` strips the class off anything written in an item body, so the
+   only handle a stylesheet has on it is its position. */
+.front__body .field-body > p:first-child {
+    font-size: var(--text-xl);
+    color: var(--text-muted);
+    margin-bottom: var(--space-5);
+}
+
+.front-hero__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    margin-block: var(--space-6);
+}
+
+.front-listing {
+    border-top: 1px solid var(--border);
+    padding-top: var(--space-6);
+    margin-top: var(--space-8);
 }
 
 .front-listing__items {
     list-style: none;
     padding: 0;
+    margin: 0;
 }
 
 .front-listing__item {
-    padding: 0.75rem 0;
-    border-bottom: 1px solid var(--brand-clay-light);
+    padding-block: var(--space-4);
+    border-bottom: 1px solid var(--border);
 }
 
 .front-listing__item:last-child {
-    border-bottom: none;
+    border-bottom: 0;
 }
 
+.front-listing__link {
+    font-size: var(--text-lg);
+    font-weight: var(--weight-semibold);
+}
+
+.front-listing__meta {
+    margin: var(--space-1) 0 0;
+    color: var(--text-muted);
+    font-size: var(--text-sm);
+}
+
+/* ── Listings and items ──────────────────────────────────────────────────── */
+
+.blog-teaser,
+.gather-row {
+    padding-block: var(--space-5);
+    border-bottom: 1px solid var(--border);
+    max-width: var(--measure);
+}
+
+.blog-teaser__meta,
+.gather-row__date,
+.item__meta {
+    color: var(--text-muted);
+    font-size: var(--text-sm);
+}
+
+.breadcrumb {
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+    margin-bottom: var(--space-5);
+}
+
+.breadcrumb__separator {
+    margin-inline: var(--space-2);
+}
+
+/* ── Forms ───────────────────────────────────────────────────────────────── */
+
+label {
+    display: block;
+    font-weight: var(--weight-semibold);
+    margin-bottom: var(--space-1);
+}
+
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="search"],
+input[type="url"],
+textarea,
+select {
+    width: 100%;
+    max-width: var(--container-narrow);
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--border-control);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+}
+
+.form-group {
+    margin-bottom: var(--space-4);
+}
+
+.help {
+    color: var(--text-muted);
+    font-size: var(--text-sm);
+    margin-top: var(--space-1);
+}
+
+/* ── Messages ────────────────────────────────────────────────────────────── */
+
+.message {
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--border-control);
+    border-radius: var(--radius);
+    background: var(--surface-sunken);
+    margin-bottom: var(--space-3);
+}
+
+/* ── Footer ──────────────────────────────────────────────────────────────── */
+
 .site-footer {
-    padding: 2rem 0;
+    border-top: 1px solid var(--border);
+    margin-top: var(--space-12);
+    padding-block: var(--space-8);
+    color: var(--text-muted);
+    font-size: var(--text-sm);
 }
 
 .footer-nav {
     display: flex;
     flex-wrap: wrap;
-    gap: 1rem;
+    gap: var(--space-4);
+    margin-bottom: var(--space-4);
+}
+
+.site-footer__colophon {
+    margin: 0;
+    max-width: var(--measure);
+}
+
+/* ── Wide ────────────────────────────────────────────────────────────────── */
+
+@media (min-width: 48rem) {
+    .site-branding__slogan {
+        display: inline;
+    }
+
+    .site-nav {
+        width: auto;
+        margin-inline-start: auto;
+    }
+
+    /* The disclosure is a narrow-screen affordance. Wide, the links are always
+       shown and the toggle is gone — whether or not the <details> is open.
+       Both declarations are needed: older engines hide the content with a UA
+       `display: none`, which `display: block` on the child overrides, and Chrome
+       128 and later hide it with `content-visibility` on `::details-content`,
+       which only the second rule reaches. Without them the main menu vanishes on
+       a desktop, which is exactly what the first screenshot pass caught. */
+    .site-nav__toggle {
+        display: none;
+    }
+
+    .site-nav > nav {
+        display: block;
+    }
+
+    .site-nav::details-content {
+        content-visibility: visible;
+        block-size: auto;
+    }
+
+    .site-nav__list {
+        flex-direction: row;
+        gap: var(--space-5);
+        padding: 0;
+    }
+
+    .site-search {
+        width: auto;
+        max-width: 18rem;
+    }
+
+    .site-branding__lockup {
+        height: 2.5rem;
+    }
+}
+
+
+/* ── The search widget ───────────────────────────────────────────────────────
+   The kernel ships the search UI with its own stylesheet, and that stylesheet
+   is entirely driven by `--scolta-*` custom properties on :root — its own
+   comment says platform adapters are meant to override them. So the whole
+   widget is rethemed by mapping fourteen properties onto the site's tokens,
+   without touching the kernel's file or the markup its script injects.
+
+   This is the difference between a site and a fork. The search button was a
+   navy `#1a3a5c` on cream until these fourteen lines existed, and the automated
+   scan in scripts/shoot.mjs is what noticed.
+
+   `:root:root` and not `:root`: the search page adds scolta.css in the head
+   block, which base.html renders after the site's own stylesheets, so a
+   single-`:root` override loses the cascade to the file it is overriding purely
+   on source order. Doubling the selector wins on specificity instead, which does
+   not depend on which file the kernel decides to link last. */
+
+:root:root {
+    --scolta-primary: var(--accent);
+    --scolta-primary-hover: var(--link);
+    --scolta-accent: var(--link);
+    --scolta-bg: var(--surface-sunken);
+    --scolta-card-bg: var(--surface);
+    --scolta-text: var(--text);
+    --scolta-text-muted: var(--text-muted);
+    --scolta-text-light: var(--text-muted);
+    --scolta-border: var(--border);
+    --scolta-highlight: var(--brand-peach);
+    --scolta-summary-bg-start: var(--surface-sunken);
+    --scolta-summary-bg-mid: var(--surface-sunken);
+    --scolta-summary-border: var(--border);
+    --scolta-badge-bg: var(--surface-sunken);
+}
+
+/* The widget's stylesheet hard-codes the button's text to white. On the light
+   scheme that is fine — white on Clay is 5.36:1. On dark the button fill becomes
+   Clay Light and white on it measures 2.65:1, which fails AA outright. The
+   custom properties above cannot reach this: the color is not one of them.
+
+   Addressed by id, not by class: the class alone ties on specificity and loses
+   on source order, exactly as the properties above did. */
+#scolta-search-btn {
+    color: var(--on-accent);
+}
+
+/* ── Dark ────────────────────────────────────────────────────────────────── */
+
+
+@media (prefers-color-scheme: dark) {
+    .site-branding__lockup--light { display: none; }
+    .site-branding__lockup--dark { display: block; }
+    .front__wordmark--light { display: none; }
+    .front__wordmark--dark { display: block; }
+}
+
+/* ── Motion ──────────────────────────────────────────────────────────────── */
+
+/* There is very little to switch off, which is the point. What exists is the
+   chevron rotation and the button hover, and both stop here. */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
 }

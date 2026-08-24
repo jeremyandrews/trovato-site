@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["plugins/trovato_site"]
+members = ["plugins/trovato_site", "checks"]
 
 [workspace.package]
 version = "0.1.0"
