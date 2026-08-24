@@ -1,0 +1,6 @@
+# Matches the toolchain the pinned Trovato release is built with (v0.101.0).
+# CI carries the same version explicitly; bump both together.
+[toolchain]
+channel = "1.96.0"
+components = ["rustfmt", "clippy"]
+targets = ["wasm32-wasip1"]
