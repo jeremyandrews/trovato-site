@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["plugins/trovato_site", "checks"]
+members = ["plugins/trovato_site", "checks", "tools"]
 
 [workspace.package]
 version = "0.1.0"
@@ -15,6 +15,10 @@ trovato-sdk = { git = "https://github.com/jeremyandrews/trovato", rev = "5304a68
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 serde_yml = "0.0.12"
+pulldown-cmark = { version = "0.13", default-features = false, features = ["html"] }
+syntect = { version = "5", default-features = false, features = ["default-fancy"] }
+ureq = "3"
+uuid = { version = "1", features = ["v5", "serde"] }
 
 [workspace.lints.clippy]
 unwrap_used = "warn"

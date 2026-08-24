@@ -13,6 +13,8 @@ export const PAGES = [
   { path: "/contact",  name: "contact",  family: "plugin page + form" },
   { path: "/search",   name: "search",   family: "search.html" },
   { path: "/user/login", name: "login",  family: "user/*" },
+  { path: "/learn",    name: "learn",    family: "gather/query--trovato_site.docs_index" },
+  { path: "/learn/tutorial-01-hello-trovato", name: "docs", family: "elements/item--docs" },
 ];
 
 export const BASE = process.env.SITE_BASE ?? "http://127.0.0.1:3080";

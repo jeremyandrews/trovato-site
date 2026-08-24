@@ -1,0 +1,38 @@
+{# The documentation index.
+
+   Grouped by section the same way the blog archive is grouped by year: the rows
+   arrive in reading order, so a heading is emitted when the section changes.
+   Gather has no grouping of its own. #}
+<div class="listing listing--docs">
+    <h1>{{ query.label }}</h1>
+
+    {% if query.description %}
+    <p class="listing__description">{{ query.description }}</p>
+    {% endif %}
+
+    {% if rows | length == 0 %}
+    <p class="listing__empty">{{ query.display.empty_text | default(value="Nothing here yet.") }}</p>
+    {% else %}
+    {% set_global current_section = "" %}
+    {% for row in rows %}
+    {% set section = row.fields.section | default(value="Documentation") %}
+    {% if section != current_section %}
+    {% if not loop.first %}</ul>{% endif %}
+    <h2 class="docs-index__section">{{ section }}</h2>
+    {% if row.fields.section_blurb %}<p class="docs-index__blurb">{{ row.fields.section_blurb }}</p>{% endif %}
+    <ul class="docs-index__items">
+    {% set_global current_section = section %}
+    {% endif %}
+        <li class="docs-index__item">
+            <a href="/item/{{ row.id }}">{{ row.title }}</a>
+        </li>
+    {% if loop.last %}</ul>{% endif %}
+    {% endfor %}
+    {% endif %}
+
+    <p class="listing__more">
+        Every page here is a mirror. The source of truth is
+        <a href="https://github.com/jeremyandrews/trovato">the kernel repository</a>,
+        and <a href="/llms.txt">llms.txt</a> lists the markdown behind each page.
+    </p>
+</div>

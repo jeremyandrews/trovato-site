@@ -25,3 +25,8 @@ docker compose -p "$PROJECT" cp "site:/tmp/config-export/." "$work/"
 
 echo "==> Comparing against config/"
 cargo run -q -p checks --bin config-roundtrip -- config "$work"
+
+# The generated documentation set is imported separately and has to round-trip
+# too: it is 72 more entities the site's definition depends on.
+echo "==> Comparing against config/docs/"
+cargo run -q -p checks --bin config-roundtrip -- config/docs "$work"

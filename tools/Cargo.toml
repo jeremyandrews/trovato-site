@@ -1,0 +1,22 @@
+[package]
+name = "tools"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Generators for the site's mirrored content. Not shipped and not a plugin."
+publish = false
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "docs-import"
+path = "src/docs_import.rs"
+
+[dependencies]
+serde_json = { workspace = true }
+serde_yml = { workspace = true }
+pulldown-cmark = { workspace = true }
+syntect = { workspace = true }
+ureq = { workspace = true }
+uuid = { workspace = true }
