@@ -1,0 +1,10 @@
+# Aliases generated for content created through the admin interface.
+#
+# It does not apply to content imported as config: `config import` writes the
+# item row directly and does not run pathauto, so every seed item in this
+# directory carries an explicit url_alias file of its own.
+key: pathauto_patterns
+value:
+  news: news/[title]
+  blog: blog/[title]
+  page: '[title]'

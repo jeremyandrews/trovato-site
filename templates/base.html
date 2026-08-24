@@ -49,9 +49,18 @@
     <meta name="twitter:card" content="{% if page_meta.og_image %}summary_large_image{% else %}summary{% endif %}">
     {% endif %}
 
-    {# RSS autodiscovery: one link per gather query that declares a feed. #}
+    {# RSS autodiscovery: one link per gather query that declares a feed.
+
+       SAFE: a feed path is site config, and the kernel rejects one that is not
+       absolute or that contains a route pattern before it registers the route
+       (`routes::feed::is_valid_feed_path`). Emitted raw for the same reason the
+       canonical link above is: Tera's escaper writes every `/` as `&#x2F;`, and
+       while an HTML parser decodes that correctly, the readers and validators
+       that scrape the tag with a regex do not. The kernel's own base.html
+       escapes it, which is why every feed link in a stock Trovato head reads
+       `&#x2F;rss&#x2F;blog.xml`. #}
     {% if feeds is defined %}{% for feed in feeds %}
-    <link rel="alternate" type="application/rss+xml" title="{{ feed.title }}" href="{{ feed.path }}">
+    <link rel="alternate" type="application/rss+xml" title="{{ feed.title }}" href="{{ feed.path | safe }}">
     {% endfor %}{% endif %}
 
     {# The favicon is the tiled mark, not the bare glyph: at 16px a bare glyph

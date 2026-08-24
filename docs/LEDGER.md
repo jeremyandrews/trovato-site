@@ -1,10 +1,10 @@
 # Build ledger
 
-**Status:** Phase 2 complete, Phase 3 next
+**Status:** Phase 3 complete, Phase 4 next
 **Last updated:** 2026-08-24
-**Where things stand:** The site is themed in both color schemes, on self-hosted faces, with
-the contrast of every token pairing enforced by `cargo test`. Gates 0, 1 and 2 passed.
-Content architecture is next.
+**Where things stand:** Every destination in the information architecture serves, with menus,
+breadcrumbs, feeds and a sitemap. A crawl of 37 pages is clean and the config round-trips.
+Gates 0 through 3 passed. The documentation import is next.
 
 This file is the run's memory. Each gate attempt is recorded below with its per-check
 result, the loop count, any blockers, and the commit that closed the phase. A session
@@ -233,3 +233,100 @@ Motion is a chevron rotation and a button hover, both behind
 `prefers-reduced-motion`. No inline `<style>` anywhere: `templates/base.html` is
 overridden precisely because the kernel's carries 350 lines of blue-palette CSS
 that no block could reach.
+
+
+## Gate 3 — content architecture and IA
+
+**Attempt 1 — 2026-08-24 — PASS (2 fix loops)**
+
+| Check | Result |
+|---|---|
+| Every IA route serves with the intended template | PASS — all 14 destinations plus 3 documents return 200; a crawl of 37 pages found no raw-dump fallbacks |
+| Menus correct on every page | PASS — 7 main and 10 footer links from config, `aria-current="page"` on the active one, both navs labelled |
+| Breadcrumbs correct on every page | PASS — `Home › News › Trovato 0.101.0` on an item, `Home › News` on a listing, `Home › Why Trovato` on a page |
+| Feeds validate and autodiscover | PASS — `/rss/news.xml` and `/rss/blog.xml` are well-formed XML (`xmllint`), carry absolute URLs and correct `pubDate`s, and both appear as `<link rel="alternate">` in every page's head |
+| Sitemap covers the public set with absolute URLs | PASS — 16 entries at `/sitemap/pages.xml`, every `<loc>` absolute under `https://trovato.rs`, well-formed XML |
+| From a clean database, `config import` stands the whole structure up | PASS — `./scripts/run.sh --fresh` from empty volumes; 51 entities import and the site is complete |
+| Export/import round-trip | PASS — `./scripts/check-roundtrip.sh`: all 51 declared entities appear in an export with every declared key unchanged |
+
+### The two fix loops
+
+1. **A breadcrumb template that did not parse served a raw dump.** The first
+   version used a Tera object literal (`{% set m = {"News": "/news"} %}`). Tera
+   has none, and a template that fails to parse is not an error: the kernel falls
+   back to writing the item's fields into a bare `<html><body>` with no head, no
+   navigation and no styling, and returns it with a 200. The page looked fine to
+   a status-code check. This is why `scripts/crawl.mjs` checks for the shape of a
+   document rather than only its status, and why it caught the second loop.
+
+2. **Two broken links on the login page.** `/user/register` 404'd because
+   registration was off, and "Forgot password?" pointed at `/user/password-reset`,
+   which is registered POST-only — a GET returns 405. The human-facing recovery
+   page is `/user/recover`. Fixed by enabling registration (pulled forward from
+   Phase 6, see below) and by overriding the login template.
+
+### Findings
+
+- **The kernel's `sitemap.xml` emits relative URLs.** `<loc>/news</loc>`, where
+  the sitemap protocol requires an absolute URL. It also lists items only, so
+  every listing route is missing. *Trovato-side.* The site cannot fix it in place:
+  the kernel registers `/sitemap.xml` and axum panics on a duplicate route, so a
+  plugin declaring it would take the process down at startup. The site serves a
+  correct one at `/sitemap/pages.xml` instead, and Phase 8's proxy maps
+  `/sitemap.xml` onto it.
+- **The kernel's login page ships an inline script its own CSP blocks.** The
+  passkey ceremony is an inline `<script>`; the CSP is
+  `script-src 'self' 'wasm-unsafe-eval' https://cdn.jsdelivr.net` with no
+  `'unsafe-inline'`. Verified in a browser: the console reports the violation and
+  the passkey button stays hidden. Passkey sign-in does not work on a default
+  install. *Trovato-side.* The site's login override serves the same code from
+  `/static/js/passkey-login.js`, where `'self'` covers it.
+- **"Forgot password?" is a dead link in the kernel.** It points at
+  `/user/password-reset`, which `password_reset::router` registers as `post` only.
+  `/user/recover` is the page a person is meant to reach. *Trovato-side.*
+- **Gather cannot link to a friendly URL.** A relationship joins on column
+  equality, and the alias join is an expression
+  (`url_alias.source = '/item/' || item.id::text`); `includes` matches on plain
+  fields too, and no Tera filter resolves an alias. So every gather listing links
+  to `/item/{uuid}` — the kernel's own `query--blog_listing.html` does exactly
+  that. *Trovato-side.* What the site does about it: canonical URLs and every
+  sitemap entry are the alias, so what a crawler indexes is the friendly path; and
+  the front page's listing, which the site plugin renders rather than Gather,
+  does link to aliases. That asymmetry is the demonstration that the data is
+  there and only the query layer cannot reach it.
+- **`elements/comments.html` is not in the image.** `trovato_comments` is enabled
+  by default and the kernel logs `failed to render the comment thread … Template
+  'elements/comments.html' not found` on every item view. *Trovato-side;* Phase 6
+  supplies the template.
+- **The kernel's field naming, again.** Its own `gather/row.html` reads
+  `row.summary`, a top-level key no item has — a summary lives at
+  `row.fields.summary`. Both listing templates are overridden partly for this.
+
+### Decisions
+
+- **`/learn` will use `trovato_book`.** It gives an ordered hierarchy with
+  previous, next and up links, which is what a documentation series is, and the
+  alternative is a docs content type that reimplements it. The tradeoff: a book's
+  tree lives in the plugin's `book_page` table, which is not a config entity, so
+  `/learn`'s structure is not reproducible by `config import` alone. It is
+  reproduced by re-running the Phase 4 documentation refresh, which is idempotent
+  and which has to run anyway — the pages themselves are generated from the kernel
+  repository and could never have been config either.
+- **Registration was enabled in this phase, not Phase 6.** One config variable,
+  to close a 404 the site's own login page linked to. Phase 6 still owns what
+  registration then does: verification posture, rate limits, and what a new
+  account may post.
+- **Author pages are a page, not a query.** A gather query filtered by author
+  would need the author's UUID, which the installer assigns and which therefore
+  differs on every install — it cannot appear in config or in a template. So
+  `/authors/jeremy-andrews` is a page item and the blog byline links to it by path.
+- **The blog archive groups by year in the template.** Gather has no `GROUP BY`
+  and no aggregates. The rows arrive newest-first, so the template emits a heading
+  when the year changes — a presentation decision made where presentation
+  decisions belong.
+
+### Deferred
+
+- Page copy is `PLACEHOLDER-PHASE-5` on `/get-started`, `/learn`, `/rust`,
+  `/community`, `/accessibility`, `/comment-policy`, `/authors/jeremy-andrews`
+  and `/why`. Gate 5 greps for that marker.

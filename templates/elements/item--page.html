@@ -1,0 +1,8 @@
+{# A page. Title, body, nothing else: a page is not dated content and a
+   creation date under a heading on /why or /accessibility is noise. #}
+<article class="item item--page">
+    <h1 class="item__title">{{ item.title }}</h1>
+    <div class="item__content prose">
+        {{ children | safe }} {# SAFE: kernel field pipeline and tap output, both sanitized upstream #}
+    </div>
+</article>

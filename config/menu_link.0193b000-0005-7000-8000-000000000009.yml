@@ -1,11 +1,11 @@
-# Footer menu.
+# Footer menu: every primary destination, plus the ones the header reaches another way.
 id: 0193b000-0005-7000-8000-000000000009
 menu_name: footer
-path: /contact
-title: Contact
-weight: 30
+path: /get-started
+title: Get started
+weight: 10
 hidden: false
 plugin: trovato_site
 stage_id: 0193a5a0-0000-7000-8000-000000000001
-created: 1766000000
-changed: 1766000000
+created: 1785542400
+changed: 1785542400

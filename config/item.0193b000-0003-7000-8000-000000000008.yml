@@ -1,0 +1,13 @@
+# Accessibility. Structure only — the copy is written in Phase 5.
+id: '0193b000-0003-7000-8000-000000000008'
+type: page
+title: Accessibility
+language: en
+status: 1
+created: 1785542400
+changed: 1785542400
+fields:
+  body:
+    value: |
+      <p>PLACEHOLDER-PHASE-5. What is tested, how, and what is known to be missing.</p>
+    format: filtered_html

@@ -1,0 +1,80 @@
+{# The login page.
+
+   Overrides the kernel's. Three differences, each one a defect in the original:
+
+   1. "Forgot password?" linked to `/user/password-reset`, which is registered
+      POST-only as a JSON endpoint — a GET returns 405. The human-facing recovery
+      page is `/user/recover`, and that is where it points now.
+
+   2. The passkey ceremony was an inline `<script>`, and the kernel's own CSP is
+      `script-src 'self' 'wasm-unsafe-eval' https://cdn.jsdelivr.net` with no
+      'unsafe-inline'. The browser refused to run it and the passkey button
+      stayed hidden on every install. It is now `/static/js/passkey-login.js`,
+      byte-for-byte the same code, served from a file so 'self' covers it.
+
+   3. `style="display: none"` on the passkey wrapper was a second inline the CSP
+      does allow (style-src carries 'unsafe-inline') but the site's own rule does
+      not. It is a class now.
+
+   The cost of this override is that it is a copy: a change to the kernel's login
+   page will not reach this file. That is the tradeoff for a login page whose
+   links work. #}
+{% extends "page.html" %}
+
+{% block title %}Log in{% endblock %}
+
+{% block content %}
+<div class="login-page">
+    <div class="login-card">
+        <h1 class="login-card__title">Log in</h1>
+
+        {% if success %}
+        <div class="message message--success" role="status">{{ success | escape }}</div>
+        {% endif %}
+
+        {% if error %}
+        <div class="message message--error" role="alert">{{ error | escape }}</div>
+        {% endif %}
+
+        <form method="post" action="/user/login" class="login-form">
+            <input type="hidden" name="_token" value="{{ csrf_token }}">
+
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" required autofocus autocomplete="username">
+            </div>
+
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" required autocomplete="current-password">
+            </div>
+
+            <div class="login-form__options">
+                <label class="login-form__remember">
+                    <input type="checkbox" name="remember_me" value="1">
+                    <span>Remember me</span>
+                </label>
+                <a href="/user/recover">Forgot your password?</a>
+            </div>
+
+            <button type="submit">Log in</button>
+        </form>
+
+        {# The passkey path is the server-rendered entry onto the same JSON
+           ceremony an API client drives. Hidden until the script confirms the
+           browser supports WebAuthn, so password login is never obstructed. #}
+        <div id="passkey-login" class="passkey-login" hidden>
+            <button type="button" id="passkey-login-button">Log in with a passkey</button>
+            <div id="passkey-login-message" role="status" hidden></div>
+        </div>
+
+        <p class="login-card__footer">
+            No account yet? <a href="/user/register">Create one</a>.
+        </p>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/passkey-login.js" defer></script>
+{% endblock %}

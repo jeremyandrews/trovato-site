@@ -1,0 +1,13 @@
+# Rust. Structure only — the copy is written in Phase 5.
+id: '0193b000-0003-7000-8000-000000000006'
+type: page
+title: Rust
+language: en
+status: 1
+created: 1785542400
+changed: 1785542400
+fields:
+  body:
+    value: |
+      <p>PLACEHOLDER-PHASE-5. The stack, the toolchain, and how to write a plugin.</p>
+    format: filtered_html

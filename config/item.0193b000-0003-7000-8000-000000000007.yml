@@ -1,0 +1,13 @@
+# Community. Structure only — the copy is written in Phase 5.
+id: '0193b000-0003-7000-8000-000000000007'
+type: page
+title: Community
+language: en
+status: 1
+created: 1785542400
+changed: 1785542400
+fields:
+  body:
+    value: |
+      <p>PLACEHOLDER-PHASE-5. Contributing, the code of conduct, and how this is built.</p>
+    format: filtered_html

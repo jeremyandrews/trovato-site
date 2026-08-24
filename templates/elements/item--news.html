@@ -1,0 +1,23 @@
+{# A news item.
+
+   The byline says the site, not a person: news here is written in the site's
+   voice, and a name on a release note implies a byline that means something.
+   The blog carries a person's name; news does not. #}
+<article class="item item--news">
+    <header class="item__header">
+        <h1 class="item__title">{{ item.title }}</h1>
+        <p class="item__meta">
+            News
+            &middot;
+            <time datetime="{{ item.created | format_date(format='%Y-%m-%d') }}">{{ item.created | format_date }}</time>
+        </p>
+    </header>
+
+    <div class="item__content prose">
+        {{ children | safe }} {# SAFE: kernel field pipeline and tap output, both sanitized upstream #}
+    </div>
+
+    <footer class="item__footer">
+        <p><a href="/news">All news</a> &middot; <a href="/rss/news.xml">RSS</a></p>
+    </footer>
+</article>

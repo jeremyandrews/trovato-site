@@ -1,0 +1,9 @@
+# The base every absolute URL the site emits is built from.
+#
+# Declared twice, unavoidably: the kernel reads it from the SITE_URL environment
+# variable, and a plugin cannot read the environment — it can read a site
+# variable. Both defaults are the same value and `cargo test -p checks` fails if
+# they drift. One value in .env feeds the environment side; this file is the
+# other. Change both or neither.
+key: site_base_url
+value: https://trovato.rs

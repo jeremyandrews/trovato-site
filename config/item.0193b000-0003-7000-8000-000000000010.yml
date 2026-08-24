@@ -1,0 +1,13 @@
+# Comment policy. Structure only — the copy is written in Phase 5.
+id: '0193b000-0003-7000-8000-000000000010'
+type: page
+title: Comment policy
+language: en
+status: 1
+created: 1785542400
+changed: 1785542400
+fields:
+  body:
+    value: |
+      <p>PLACEHOLDER-PHASE-5. What is published, what is held, and who decides.</p>
+    format: filtered_html

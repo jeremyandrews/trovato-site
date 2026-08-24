@@ -1,0 +1,9 @@
+# Open registration.
+#
+# Turned on here rather than in Phase 6, where the rest of the community work
+# lives, because the login page links to /user/register and the route 404s while
+# this is false — a broken link on the site's own login page for the length of a
+# phase. Phase 6 owns what registration then does: email verification posture,
+# rate limits, and what a new account may post.
+key: allow_user_registration
+value: true

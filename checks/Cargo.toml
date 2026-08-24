@@ -8,3 +8,7 @@ publish = false
 
 [lints]
 workspace = true
+
+[dependencies]
+serde_yml = { workspace = true }
+serde_json = { workspace = true }

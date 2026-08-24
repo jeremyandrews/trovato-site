@@ -11,14 +11,17 @@ implements = [
     "tap_item_access",
     "tap_item_view",
     "tap_perm",
+    "tap_menu",
+    "tap_api",
 ]
 weight = 0
 
-# `db` because the front page's listing of recent posts is a real query against
-# published content, run when the front page is viewed. `logging` because the
-# #[plugin_tap] macro reaches for the logging import on its error paths, and
-# because a query that fails should say so rather than render an empty page in
-# silence.
+# `db` because the front page's listing of recent posts and the sitemap are both
+# real queries against published content. `logging` because the #[plugin_tap]
+# macro reaches for the logging import on its error paths, and because a query
+# that fails should say so rather than render an empty page in silence.
+# `variables` for one value: the site's base URL, which every absolute URL in the
+# sitemap is built from and which a plugin cannot read from the environment.
 #
 # `db_tables` is this plugin's entire database reach. It owns no migrations, so
 # the effective allowlist is exactly this list, and both are read-only in
@@ -29,6 +32,6 @@ weight = 0
 # types joined to their aliases, with a LIMIT — not something the structured item
 # API can express in one call.
 [capabilities]
-host_interfaces = ["db", "logging"]
+host_interfaces = ["db", "logging", "variables"]
 db_tables = ["item", "url_alias"]
 raw_sql = true
