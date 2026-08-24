@@ -1,0 +1,32 @@
+# The production profile, on this machine.
+#
+#   ./scripts/check-production.sh
+#
+# The point is to run the production configuration rather than something that
+# resembles it: the same docker-compose.production.yml, the same Caddyfile, the
+# same unpublished kernel. Three things have to differ, because a laptop is not
+# the internet:
+#
+#   - the hostname is `localhost`, since DNS does not point here;
+#   - the certificate comes from Caddy's own internal authority rather than from
+#     Let's Encrypt, since a certificate authority cannot reach this machine;
+#   - the ports are high ones, since 80 and 443 are usually taken.
+#
+# Everything else, including HSTS and the www redirect, is exercised as written.
+services:
+  proxy:
+    ports: !override
+      - "127.0.0.1:${LOCAL_HTTP_PORT:-8090}:80"
+      - "127.0.0.1:${LOCAL_HTTPS_PORT:-8444}:443"
+    environment:
+      SITE_HOST: localhost
+      ACME_EMAIL: nobody@localhost
+      # Caddy issues from its own authority for a name it knows is local, so the
+      # certificate path is real and the trust anchor is not.
+      CADDY_INTERNAL_TLS: "1"
+    volumes:
+      - ./deploy/Caddyfile.production-local:/etc/caddy/Caddyfile:ro
+      - ./deploy/shared.caddy:/etc/caddy/shared.caddy:ro
+      - ./static:/srv/public/static:ro
+      - caddy_data:/data
+      - caddy_config:/config

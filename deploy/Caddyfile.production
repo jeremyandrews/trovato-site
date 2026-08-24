@@ -1,0 +1,38 @@
+# The front proxy, in production.
+#
+# Everything about how the site is served is in shared.caddy, which the local
+# entry point imports too. What is here is what only production has: a real
+# hostname, a certificate for it, a redirect from www, and HSTS.
+#
+# Set SITE_HOST in .env.production. Everything below follows from it.
+
+{
+	admin off
+	# A real hostname means a real certificate, from Let's Encrypt, renewed
+	# automatically. It needs port 80 reachable for the challenge and DNS already
+	# pointing here.
+	email {$ACME_EMAIL}
+}
+
+import /etc/caddy/shared.caddy
+
+{$SITE_HOST} {
+	import site
+
+	# HSTS, and only here. It is a promise that this hostname will always be
+	# reachable over TLS, and a browser holds you to it for the full year: making
+	# it on a host without a working certificate locks readers out.
+	#
+	# `preload` is deliberately absent. Adding a domain to the preload list is
+	# effectively irreversible, and that is a decision to make on purpose rather
+	# than by copying a header from somewhere.
+	header Strict-Transport-Security "max-age=31536000; includeSubDomains"
+}
+
+# www redirects to the apex, permanently, keeping the path.
+#
+# One canonical hostname or two hostnames serving the same pages: search engines
+# will pick one and it may not be the one the sitemap names.
+www.{$SITE_HOST} {
+	redir https://{$SITE_HOST}{uri} permanent
+}

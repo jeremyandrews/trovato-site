@@ -66,6 +66,21 @@ services:
       # ignored — the safe default, and the right one when the kernel is the thing
       # listening.
       TRUSTED_PROXIES: ${TRUSTED_PROXIES:-}
+      # Mail. Without SMTP_HOST the kernel logs that it did not send and carries
+      # on, which means a registration cannot be completed and the contact form
+      # silently delivers nothing. Both are working features waiting on
+      # credentials, not broken ones.
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_ENCRYPTION: ${SMTP_ENCRYPTION:-starttls}
+      SMTP_FROM_EMAIL: ${SITE_MAIL:-}
+      # The AI provider's key. Which variable holds it is named by the
+      # `ai_providers` entry in site configuration, so this passes through
+      # whichever one that is. Empty until a provider is chosen, and the site
+      # says so on /search and /comment-policy.
+      ${AI_API_KEY_ENV:-AI_API_KEY}: ${AI_API_KEY:-}
       RUST_LOG: ${RUST_LOG:-info,tower_http=info,sqlx=warn}
       CRON_KEY: ${CRON_KEY:-local-development-cron-key}
       PLUGINS_DIR: /app/plugins:/site/plugins
