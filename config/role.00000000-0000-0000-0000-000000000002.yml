@@ -1,0 +1,26 @@
+# What a registered account may do.
+#
+# Import grants exactly the permissions listed here and revokes anything the file
+# does not name, so this is the whole set and not an addition to it. The three
+# the installer creates are kept; `post comments` and `edit own comments` are what
+# this site adds.
+#
+# `skip comment approval` is deliberately absent. It is the explicit excuse from
+# the moderation queue and belongs to the comment_moderator role. What a new
+# account earns instead is the trust ladder: after three approved comments its
+# comments publish immediately, and the classifier still runs and can take one
+# down afterwards.
+#
+# `created` is required here and defaulted everywhere else: `ConfigItem` and the
+# rest give it a serde default, and the role deserializer does not, so a role file
+# without one fails validation and takes the whole import down with it. The value
+# is not used on an upsert; the installer's own timestamp stays.
+id: '00000000-0000-0000-0000-000000000002'
+name: authenticated user
+created: '2026-08-01T00:00:00Z'
+permissions:
+- access content
+- use filtered_html
+- view own profile
+- post comments
+- edit own comments

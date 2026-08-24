@@ -1,10 +1,10 @@
 # Build ledger
 
-**Status:** Phase 5 complete, Phase 6 next
+**Status:** Phase 6 complete, Phase 7 next
 **Last updated:** 2026-08-24
-**Where things stand:** Every page carries real copy. No placeholders, no unmeasured numbers,
-no marketing vocabulary. A crawl of 183 pages is clean. Gates 0 through 5 passed. Community,
-comments and moderation are next.
+**Where things stand:** Accounts, comments and moderation work end to end and fail closed,
+with a check that proves it and goes red when the guarantee is broken. Gates 0 through 6
+passed. Accessibility and performance posture are next.
 
 This file is the run's memory. Each gate attempt is recorded below with its per-check
 result, the loop count, any blockers, and the commit that closed the phase. A session
@@ -487,3 +487,88 @@ published prose carries dash punctuation.
   on Cream passes for large text and buttons only. Measured, it is 4.95:1, which
   clears AA for body text. Recorded at Gate 2, and worth repeating here: the
   claims audit is not only about the copy.
+
+
+## Gate 6 — community: accounts, comments, moderation
+
+**Attempt 1 — 2026-08-24 — PASS (2 fix loops)**
+
+| Check | Result |
+|---|---|
+| A fresh registered account can comment | PASS — registered through the form, logged in, and the comment form is offered; an anonymous visitor gets the log-in prompt instead |
+| The comment is held pending | PASS — stored at status 2, and the author is told it is waiting |
+| Invisible to anonymous | PASS — the marker does not appear on the page for a visitor with no session |
+| Visible in the admin queue | PASS — `/admin/content/comments` lists it with Approve and Spam controls |
+| Approval publishes it into the rendered thread | PASS — status 1, and an anonymous visitor then sees it with its author's name |
+| The fail-closed test passes | PASS — `./scripts/check-moderation.sh`; and it exits 1 when the guarantee is broken, verified by flipping `comment_default_status` to `published` and watching it catch that |
+| Rate limits on registration | PASS — measured: the fourth registration from one IP returns 429 with `retry-after: 3600` |
+| Rate limits on comment POSTs | PASS — measured: four comments succeed, the fifth returns 429 |
+
+### How the moderation pipeline is put together
+
+Everything except one template already shipped in the kernel image, so this phase
+enabled and configured rather than built:
+
+- `trovato_comments` provides the threaded comments, the admin queue and the
+  permissions.
+- `trovato_spam` provides the pipeline the plan describes, tap for tap:
+  `tap_comment_insert` pushes a classification job, `tap_cron` drains it, and
+  `tap_queue_worker` runs under the background principal
+  (`ai_background = true`, `host_interfaces = ["logging", "queue", "ai-api", "db"]`,
+  `db_tables = ["comment"]`, no `raw_sql`) and writes the verdict back.
+- The trust ladder is the kernel's, with the threshold the plan asked for as its
+  default: `comment_trust_threshold` is 3, and the classifier still runs on a
+  trusted account's comments and can unpublish one afterwards.
+
+What the site added: `comment_default_status: pending`, the trust threshold, the
+`post comments` and `edit own comments` permissions on the registered-user role,
+and `elements/comments.html`, which the kernel resolves for every item page and
+does not ship.
+
+### Fail closed, demonstrated rather than asserted
+
+This stack has no AI provider configured, which is the failure the policy is about.
+Observed: the job is queued, the queue worker traps, `plugin_queue` records
+`tap_queue_worker failed (trap or error result)`, and the comment stays at status
+2. Nothing publishes.
+
+`scripts/check-moderation.sh` performs that sequence and asserts it: register (or
+reuse), log in, post, drain the queue, then check three things — the comment was
+stored, it is not published, and an anonymous visitor cannot see it. It was then
+verified to fail: with `comment_default_status` flipped to `published` it exits 1
+with "the comment was PUBLISHED after the classifier failed", and with the value
+restored it exits 0.
+
+### The two fix loops
+
+1. **A role file without `created` takes the whole import down.** `ConfigItem` and
+   the other entities give `created` a serde default; the role deserializer does
+   not. The error is `missing field 'created'`, and because import validates the
+   whole set before writing anything, one role file failed 54 entities.
+   *Trovato-side.*
+
+2. **The round-trip check failed on a permission list that had only been
+   reordered.** The exporter writes permissions sorted; a hand-written file lists
+   them in whatever order made sense. A role's permissions are a set, so the
+   checker now compares that one key order-insensitively. Everything else keeps
+   its order, because a gather query's `sorts` and `filters` do not mean the same
+   thing rearranged.
+
+### Findings
+
+- **Email verification cannot be completed without SMTP, by design.** Registration
+  creates a blocked account and logs `SMTP not configured; verification email not
+  sent`. The database stores only the token's *hash*, so there is no way to
+  recover the link from the server: the plaintext existed only in the email. That
+  is correct, and it means the account activation in `check-moderation.sh` is the
+  one step in that script a visitor could not perform. Real SMTP credentials are
+  a Jeremy gate.
+- **No AI provider is configured, so classification never returns a verdict.** The
+  pipeline is enabled and inert, which is the state the plan asked for. Which
+  provider, at what token budget, is a Jeremy gate. Until it is answered, every
+  comment from an unproven account waits for a person, and the site says so on
+  `/comment-policy`.
+- **A registration attempt is rate-limited per IP at three an hour.** Reasonable
+  for a public site and awkward for a check that registers: `check-moderation.sh`
+  reuses one fixed account for that reason, and clears its comments first so the
+  trust ladder cannot make the check pass for the wrong reason.

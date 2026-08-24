@@ -1,0 +1,6 @@
+# Approved comments after which an account's comments publish immediately.
+#
+# Three. Low on purpose: the ladder is not a security boundary. The classifier
+# runs on every comment including these, and can unpublish one after the fact.
+key: comment_trust_threshold
+value: 3

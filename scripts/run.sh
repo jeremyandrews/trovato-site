@@ -36,6 +36,13 @@ IMAGE_PLUGINS=(
     trovato_contact
     trovato_scheduled_publishing
     trovato_redirects
+    trovato_comments
+    # AI comment moderation. Enabled and inert: it queues a classification job
+    # for every comment and the queue worker calls whichever AI provider the site
+    # is configured with. This site has none, so the job dead-letters and the
+    # comment stays held for a person. That is the designed failure direction and
+    # there is a test for it.
+    trovato_spam
 )
 
 dc() { docker compose -p "$PROJECT" "$@"; }

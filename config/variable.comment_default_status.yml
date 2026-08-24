@@ -1,0 +1,7 @@
+# New comments are held, not published.
+#
+# The site launches with a person reading every comment from an account that has
+# not earned its way past the queue. That is the safe direction while the
+# classifier has no AI provider configured to call.
+key: comment_default_status
+value: pending

@@ -116,7 +116,7 @@ fn compare(
 
         match b.get(key) {
             None => problems.push(format!("{name}: '{key_name}' absent from the export")),
-            Some(exported_value) if !equivalent(declared_value, exported_value) => {
+            Some(exported_value) if !equivalent_for(key_name, declared_value, exported_value) => {
                 problems.push(format!(
                     "{name}: '{key_name}'\n      declared: {}\n      exported: {}",
                     render(declared_value),
@@ -126,6 +126,26 @@ fn compare(
             Some(_) => {}
         }
     }
+}
+
+/// Whether two values mean the same thing under a given key.
+///
+/// A role's `permissions` is a set: the exporter writes it sorted and a
+/// hand-written file lists it in whatever order made sense to whoever wrote it,
+/// and the two mean the same role. Everything else keeps its order, because a
+/// gather query's `sorts` and `filters` do not mean the same thing rearranged.
+fn equivalent_for(key: &str, a: &serde_yml::Value, b: &serde_yml::Value) -> bool {
+    if key == "permissions"
+        && let (Some(x), Some(y)) = (a.as_sequence(), b.as_sequence())
+    {
+        let sorted = |seq: &[serde_yml::Value]| -> Vec<String> {
+            let mut out: Vec<String> = seq.iter().filter_map(scalar_text).collect();
+            out.sort();
+            out
+        };
+        return sorted(x) == sorted(y);
+    }
+    equivalent(a, b)
 }
 
 /// Whether two values mean the same thing.
