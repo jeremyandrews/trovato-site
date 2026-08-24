@@ -53,6 +53,19 @@ services:
       # local stack emits the production URLs by default and there is no second
       # setting to forget. Override it in .env when that is not what you want.
       SITE_URL: ${SITE_URL:-https://trovato.rs}
+      # Which proxies may speak for a client.
+      #
+      # Rate limits are per IP, and behind a proxy every request arrives from the
+      # proxy. Without this the whole site shares one bucket of 100 requests a
+      # minute and the first busy minute locks everybody out; with it, the kernel
+      # reads X-Forwarded-For from this address and nobody else's.
+      #
+      # It takes exact addresses and not ranges, which is why the proxy has a
+      # fixed one on the network below rather than whichever the bridge hands it.
+      # Empty when the proxy is not running, which means forwarding headers are
+      # ignored — the safe default, and the right one when the kernel is the thing
+      # listening.
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-}
       RUST_LOG: ${RUST_LOG:-info,tower_http=info,sqlx=warn}
       CRON_KEY: ${CRON_KEY:-local-development-cron-key}
       PLUGINS_DIR: /app/plugins:/site/plugins
@@ -97,6 +110,16 @@ services:
     depends_on:
       site:
         condition: service_healthy
+
+# A fixed subnet so the proxy can have a fixed address for TRUSTED_PROXIES.
+# Docker assigns bridge addresses in creation order, so without this the proxy's
+# address changes whenever the stack is rebuilt in a different order and the
+# kernel silently stops trusting it.
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: ${COMPOSE_SUBNET:-172.31.71.0/24}
 
 volumes:
   postgres_data:

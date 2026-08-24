@@ -40,7 +40,7 @@ fields:
     trailers of any kind.</p>
     <h2>Before submitting</h2>
     <p>Run the local check script, which mirrors CI:</p>
-    <figure class="code"><figcaption class="code__lang">bash</figcaption><pre class="code__body"><code class="language-bash"><span class="tok-source tok-shell tok-bash"><span class="tok-meta tok-function-call tok-shell"><span class="tok-variable tok-function tok-shell">./scripts/pre-commit-check.sh          <span class="tok-comment tok-line tok-number-sign tok-shell"><span class="tok-punctuation tok-definition tok-comment tok-begin tok-shell">#</span></span><span class="tok-comment tok-line tok-number-sign tok-shell"> fmt + clippy + unit tests</span><span class="tok-comment tok-line tok-number-sign tok-shell">
+    <figure class="code"><figcaption class="code__lang">bash</figcaption><pre class="code__body" tabindex="0" aria-label="bash code"><code class="language-bash"><span class="tok-source tok-shell tok-bash"><span class="tok-meta tok-function-call tok-shell"><span class="tok-variable tok-function tok-shell">./scripts/pre-commit-check.sh          <span class="tok-comment tok-line tok-number-sign tok-shell"><span class="tok-punctuation tok-definition tok-comment tok-begin tok-shell">#</span></span><span class="tok-comment tok-line tok-number-sign tok-shell"> fmt + clippy + unit tests</span><span class="tok-comment tok-line tok-number-sign tok-shell">
     </span></span></span><span class="tok-meta tok-function-call tok-shell"><span class="tok-variable tok-function tok-shell">./scripts/pre-commit-check.sh</span></span><span class="tok-meta tok-function-call tok-arguments tok-shell"><span class="tok-variable tok-parameter tok-option tok-shell"><span class="tok-punctuation tok-definition tok-parameter tok-shell"> --</span>quick  <span class="tok-comment tok-line tok-number-sign tok-shell"><span class="tok-punctuation tok-definition tok-comment tok-begin tok-shell">#</span></span><span class="tok-comment tok-line tok-number-sign tok-shell"> fmt + clippy only</span><span class="tok-comment tok-line tok-number-sign tok-shell">
     </span></span></span></span></code></pre></figure><p>Or the steps by hand:</p>
     <ol>
@@ -114,7 +114,7 @@ fields:
     update check reads the first of them. A tag with no Release is a release no site
     learns about.</p>
     <p><strong>A security release's title starts with <code>[security]</code>.</strong> For example:</p>
-    <figure class="code"><pre class="code__body"><code>[security] 0.99.2 — session fixation in the recovery flow
+    <figure class="code"><pre class="code__body" tabindex="0" aria-label="Example code"><code>[security] 0.99.2 — session fixation in the recovery flow
     </code></pre></figure><p>That single convention is the whole difference between "a newer version exists" and
     "act now": the latest-release JSON says what the newest version is and has no field
     for urgency, so the signal lives in the one field a human writes deliberately. The

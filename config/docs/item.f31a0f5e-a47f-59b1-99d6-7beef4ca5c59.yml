@@ -23,7 +23,7 @@ fields:
     <p><a href="/learn/known-issues">KNOWN-ISSUES.md</a> is the full list, and <a href="/learn/roadmap">ROADMAP.md</a> says what happens to it.</p>
     <h2>Quick start</h2>
     <p>Docker starts the kernel, PostgreSQL and Redis together. No Rust toolchain needed.</p>
-    <figure class="code"><pre class="code__body"><code>git clone https://github.com/jeremyandrews/trovato
+    <figure class="code"><pre class="code__body" tabindex="0" aria-label="Example code"><code>git clone https://github.com/jeremyandrews/trovato
     cd trovato
     cp .env.example .env
     docker compose --profile full up

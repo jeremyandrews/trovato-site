@@ -38,3 +38,64 @@ jobs:
         # Only the plugin. `tools` is a native binary and its dependency tree
         # reaches C that does not cross-compile to wasm.
         run: cargo build --release --target wasm32-wasip1 -p trovato_site
+
+  site:
+    name: The site, end to end
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          targets: wasm32-wasip1
+      - uses: Swatinem/rust-cache@v2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install the browser harness
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Bring the site up
+        run: ./scripts/run.sh --fresh --proxy
+
+      # Every page reachable from the front page: no 404s, no template-failure
+      # dumps served as 200s, every page themed and navigable.
+      - name: Crawl
+        run: npm run crawl
+
+      # axe-core over one page per template family, in both colour schemes.
+      # Nothing is allowlisted.
+      - name: Accessibility
+        run: npm run a11y
+
+      # Both widths, both schemes: no horizontal overflow, nothing carrying a
+      # background from the wrong scheme, no off-origin requests.
+      - name: Render
+        run: npm run shoot
+
+      # Comment moderation fails closed.
+      - name: Moderation
+        run: ./scripts/check-moderation.sh
+
+      # Every entity this repository declares comes back from an export unchanged.
+      - name: Config round-trip
+        run: ./scripts/check-roundtrip.sh
+
+      - name: What the server said
+        if: failure()
+        run: docker compose -p trovato-site logs --tail=200 site
+
+      - name: Keep the screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: screenshots/
+          retention-days: 7
+          if-no-files-found: ignore

@@ -83,7 +83,7 @@ fields:
     so the tutorial works without a second repository", and that is not true in either
     half: the directory holds the <code>.wasm</code> and <strong>no <code>.info.toml</code> and no migrations</strong>, so the
     plugin loader skips it —</p>
-    <figure class="code"><pre class="code__body"><code>WARN trovato::plugin::runtime: no .info.toml file found, skipping
+    <figure class="code"><pre class="code__body" tabindex="0" aria-label="Example code"><code>WARN trovato::plugin::runtime: no .info.toml file found, skipping
          dir=…/trovato/plugins/ritrovo_importer
     </code></pre></figure><p>— and <code>docs/tutorial/part-02-ritrovo-importer.md</code> has been stale since Ritrovo moved to
     its own repository. It tells the reader to read the plugin's source (not here), to run

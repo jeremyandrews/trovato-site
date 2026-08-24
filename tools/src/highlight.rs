@@ -43,7 +43,24 @@ pub fn block(lang: &str, body: &str) -> String {
             escape(&language)
         ));
     }
-    html.push_str("<pre class=\"code__body\"><code");
+    // `tabindex="0"` because the block scrolls sideways when a line is longer
+    // than the column, and a scrollable region that cannot take focus cannot be
+    // scrolled without a mouse. `aria-label` so the stop in the tab order has a
+    // name rather than being a mystery.
+    //
+    // Deliberately not `role="region"`. That was the first version, and it makes
+    // every code block a landmark: a mirrored tutorial has more than a hundred of
+    // them, so the landmark list became unusable and axe reported every one as a
+    // duplicate name. A scrollable region has to be focusable; it does not have
+    // to be a landmark.
+    html.push_str(&format!(
+        "<pre class=\"code__body\" tabindex=\"0\" aria-label=\"{} code\"><code",
+        escape(if language.is_empty() {
+            "Example"
+        } else {
+            &language
+        })
+    ));
     if !language.is_empty() {
         html.push_str(&format!(" class=\"language-{}\"", escape(&language)));
     }
@@ -134,8 +151,25 @@ mod tests {
     #[test]
     fn an_unknown_language_still_renders_as_code() {
         let html = block("brainfuck-9000", "++++.\n");
-        assert!(html.contains("<pre class=\"code__body\">"));
+        assert!(html.contains("<pre class=\"code__body\""));
         assert!(html.contains("++++."));
+    }
+
+    #[test]
+    fn a_code_block_can_be_reached_and_named_by_a_keyboard() {
+        // The block scrolls sideways when a line is longer than the column, and
+        // a scrollable region that cannot take focus cannot be scrolled without a
+        // mouse. axe reports it as `scrollable-region-focusable`.
+        let html = block("rust", "fn f() {}\n");
+        assert!(html.contains("tabindex=\"0\""));
+        assert!(html.contains("aria-label=\"rust code\""));
+        // Not a landmark: a page of mirrored documentation has more than a
+        // hundred code blocks, and a hundred landmarks is not a landmark list.
+        assert!(!html.contains("role=\"region\""));
+
+        // A fence with no language still gets a name, because a tab stop with no
+        // name is worse than one with a dull name.
+        assert!(block("", "output\n").contains("aria-label=\"Example code\""));
     }
 
     #[test]

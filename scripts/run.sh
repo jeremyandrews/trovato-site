@@ -3,6 +3,11 @@
 #
 #   ./scripts/run.sh          bring it up (idempotent — safe to re-run)
 #   ./scripts/run.sh --fresh  destroy this project's volumes first, then bring it up
+#   ./scripts/run.sh --proxy  also start the front proxy, on PROXY_PORT (8081)
+#
+# The proxy is what production runs in front of the kernel: it serves /static
+# itself, sets Cache-Control on HTML, and maps /sitemap.xml onto the one the site
+# generates. Without it the site is complete and none of those three are true.
 #
 # Everything it touches is scoped to the compose project named below. It never
 # runs a global docker prune and never removes anything it did not create.
@@ -45,7 +50,32 @@ IMAGE_PLUGINS=(
     trovato_spam
 )
 
-dc() { docker compose -p "$PROJECT" "$@"; }
+WITH_PROXY=0
+for arg in "$@"; do
+    [ "$arg" = "--proxy" ] && WITH_PROXY=1
+done
+
+compose_files=(-f docker-compose.yml)
+if [ "$WITH_PROXY" = "1" ]; then
+    compose_files+=(-f docker-compose.proxy.yml)
+    # Rate limits are per client address, and behind a proxy every request
+    # arrives from the proxy: without this, one bucket of 100 requests a minute
+    # is shared by everybody and the first busy minute locks the site out.
+    #
+    # Only the proxy's own address. The kernel honours X-Forwarded-For from a
+    # peer on this list and ignores it from everyone else, and Caddy replaces
+    # whatever a client sent with the address it actually saw, so the chain is
+    # sound at both ends. Adding the network gateway here would also trust
+    # anything arriving through the published kernel port, which is a way for a
+    # direct caller to mint an unlimited number of buckets.
+    #
+    # It takes exact addresses and not ranges, which is why the proxy has a fixed
+    # one on the network in docker-compose.proxy.yml rather than whichever the
+    # bridge happens to hand it.
+    export TRUSTED_PROXIES="${TRUSTED_PROXIES:-${PROXY_IP:-172.31.71.10}}"
+fi
+
+dc() { docker compose -p "$PROJECT" "${compose_files[@]}" "$@"; }
 in_site() { dc exec -T site "$@"; }
 
 # Wait for the site to answer its health check, or give up loudly.
@@ -59,7 +89,7 @@ wait_for_site() {
     return 1
 }
 
-if [ "${1:-}" = "--fresh" ]; then
+if [ "${1:-}" = "--fresh" ] || [ "${2:-}" = "--fresh" ]; then
     echo "==> Removing this project's containers and volumes"
     dc down -v --remove-orphans
 fi
@@ -122,6 +152,14 @@ echo "==> Restarting the site so the imported config is live"
 dc restart site >/dev/null
 wait_for_site
 
+if [ "$WITH_PROXY" = "1" ]; then
+    echo "==> Starting the front proxy"
+    dc up -d proxy
+fi
+
 echo
 echo "The site is on ${BASE}"
+if [ "$WITH_PROXY" = "1" ]; then
+    echo "Through the proxy: http://127.0.0.1:${PROXY_PORT:-8081}"
+fi
 echo "Administrator: ${ADMIN_USER} / ${ADMIN_PASS}"
