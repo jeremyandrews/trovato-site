@@ -1,0 +1,84 @@
+{# The search page.
+
+   Overrides the kernel's. The markup below is the kernel's own, kept so the
+   client-side widget and the server-rendered fallback both still work; what the
+   site adds is an accurate description of what happens when you type something.
+
+   The widget's markup and classes carry a product name that belongs to Tag1.
+   None of it appears in anything a reader sees, and this page calls the feature
+   search. #}
+{% extends "page.html" %}
+
+{% block title %}Search{% if query %}: {{ query }}{% endif %}{% endblock %}
+
+{% block content %}
+<div class="search-page">
+    <h1>Search</h1>
+
+    {# The client-side widget takes this element over when JavaScript is available. #}
+    <div id="scolta-search"></div>
+
+    {# Server-rendered results. Shown on the initial load and whenever the widget
+       is not running, so search works with JavaScript switched off. #}
+    <div id="search-fallback" class="search-fallback">
+        <form action="/search" method="get" class="search-form" role="search">
+            <label class="visually-hidden" for="search-q">Search this site</label>
+            <input type="search" id="search-q" name="q" value="{{ query }}" placeholder="Search">
+            <button type="submit">Search</button>
+        </form>
+
+        {% if query %}
+        <p class="search-summary" aria-live="polite">
+            {{ total }} result{% if total != 1 %}s{% endif %} for &ldquo;{{ query }}&rdquo;
+        </p>
+
+        {% if results | length > 0 %}
+        <ul class="listing__items">
+            {% for result in results %}
+            <li class="teaser">
+                <h2 class="teaser__title"><a href="/item/{{ result.id }}">{{ result.title }}</a></h2>
+                <p class="teaser__meta">{{ result.item_type }}</p>
+                {% if result.snippet %}
+                {# SAFE: the search service escapes the source title and body before
+                   ts_headline runs, so the only markup in a snippet is the <mark>
+                   the highlighter added afterwards. #}
+                <p class="teaser__summary">{{ result.snippet | safe }}</p>
+                {% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+
+        {% if total_pages > 1 %}
+        <nav class="search-pagination" aria-label="Search results">
+            {% if has_prev %}<a href="/search?q={{ query | urlencode }}&amp;page={{ prev_page }}">Previous</a>{% endif %}
+            <span class="page-info">Page {{ page }} of {{ total_pages }}</span>
+            {% if has_next %}<a href="/search?q={{ query | urlencode }}&amp;page={{ next_page }}">Next</a>{% endif %}
+        </nav>
+        {% endif %}
+        {% else %}
+        <p class="listing__empty">Nothing matched. Try fewer words, or different ones.</p>
+        {% endif %}
+        {% endif %}
+    </div>
+
+    <section class="search-explainer prose">
+        <h2>What happens when you search</h2>
+
+        <p>Search here has three parts, and they do not all behave the same way. It is worth knowing which is which.</p>
+
+        <h3>Keyword search runs in your browser</h3>
+        <p>The site publishes its search index as static files. Your browser downloads the fragments it needs and runs the search locally, in WebAssembly. For this part there is no request to the server, no database query, and nothing about what you typed goes anywhere.</p>
+
+        <h3>Without JavaScript, the server answers instead</h3>
+        <p>The form above submits to the server, which runs a PostgreSQL full-text query and renders the results as a page. It is a round trip rather than instant, and it is always available. The instant search is an enhancement on top of it, not a replacement for it.</p>
+
+        <h3>The AI features are server-side, and they send your query onward</h3>
+        <p>Two of the four stages use a language model: one expands your query into related terms, and one writes a summary above the results. Both run on the server, and both send your query, and the snippets retrieved for it, to whichever AI provider the site is configured to use. That is a request to a third party, and no amount of the first paragraph being true changes it.</p>
+        <p>This site has no AI provider configured, so today those two stages do not run and nothing you type leaves this server. If that changes, this page changes with it and says which provider.</p>
+    </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/search-init.js" defer></script>
+{% endblock %}

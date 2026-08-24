@@ -1,4 +1,3 @@
-# Comment policy. Structure only — the copy is written in Phase 5.
 id: '0193b000-0003-7000-8000-000000000010'
 type: page
 title: Comment policy
@@ -9,5 +8,29 @@ changed: 1785542400
 fields:
   body:
     value: |
-      <p>PLACEHOLDER-PHASE-5. What is published, what is held, and who decides.</p>
+      <p>Comments are open to anyone with an account. This page says what happens to one after you post it.</p>
+      
+      <h2>What is held, and for how long</h2>
+      
+      <p>A new comment is not published straight away. It is held, reviewed, and then published or not. Once an account has three approved comments, its comments publish immediately.</p>
+      
+      <p>The review is automated first and human second. An automated classifier reads the comment, the title of the thing it is a comment on, and a few cheap signals about the account, and returns one of three verdicts: publish, hold for a person, or spam. The classifier runs on every comment, including the ones from accounts that publish immediately, so a comment that publishes on the way in can still be unpublished afterwards.</p>
+      
+      <h2>What happens when the classifier cannot answer</h2>
+      
+      <p>The comment stays held and waits for a person. If the provider is down, if the job fails, if it is retried and fails again, the answer is always the same: nothing publishes. There is no path through this system where a failure results in a comment appearing. That is a design decision and there is a test that fails if it stops being true.</p>
+      
+      <h2>What gets removed</h2>
+      
+      <p>Spam. Abuse aimed at a person. Anything posted to make a point about the moderation rather than about the subject.</p>
+      
+      <p>Disagreement is not on that list. A comment that says the design is wrong, or that I have made a mistake, or that another CMS does this better, is a comment worth having. The bar is whether it is addressed to the argument.</p>
+      
+      <h2>Who decides</h2>
+      
+      <p>I do. There is no appeals process because there is nobody to appeal to. If I have got it wrong, <a href="/contact">the contact form</a> reaches me, and I would rather hear it than not.</p>
+      
+      <h2>What is logged</h2>
+      
+      <p>Every decision is recorded with its verdict, so a comment that was held or removed has a reason attached to it that I can look up. The comment text is sent to the configured AI provider for classification, and that is the only place it goes that is not this site.</p>
     format: filtered_html

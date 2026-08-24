@@ -1,11 +1,10 @@
 # Build ledger
 
-**Status:** Phase 4 complete, Phase 5 next
+**Status:** Phase 5 complete, Phase 6 next
 **Last updated:** 2026-08-24
-**Where things stand:** 36 documentation pages are mirrored from the kernel repository at
-v0.101.0, syntax-highlighted, with markdown sources and an llms.txt. A crawl of 181 pages is
-clean. Gates 0 through 4 passed. Copy is next — every page still carries a
-`PLACEHOLDER-PHASE-5` marker.
+**Where things stand:** Every page carries real copy. No placeholders, no unmeasured numbers,
+no marketing vocabulary. A crawl of 183 pages is clean. Gates 0 through 5 passed. Community,
+comments and moderation are next.
 
 This file is the run's memory. Each gate attempt is recorded below with its per-check
 result, the loop count, any blockers, and the commit that closed the phase. A session
@@ -427,3 +426,64 @@ generation time, the book bought nothing: the generator writes each page's
 previous, next and up links into its own fields, so navigation is static, needs no
 query, and — unlike `book_page` — round-trips through `config export`. The
 hierarchy trovato_book would have provided is one level deep here, which is a list.
+
+
+## Gate 5 — copy
+
+**Attempt 1 — 2026-08-24 — PASS (1 fix loop)**
+
+| Check | Result |
+|---|---|
+| Every page has real copy | PASS — nine pages written: the front page hero and its two proof blocks, `/why`, `/get-started`, `/rust`, `/community`, `/accessibility`, `/comment-policy`, `/authors/jeremy-andrews`, and `/search` |
+| Zero lorem, zero TODO markers | PASS — a test over the whole config set fails on `PLACEHOLDER`, `TODO`, `Lorem ipsum`, `FIXME` or `XXX` in any reader-visible copy |
+| Claims audit: superlatives | PASS — a grep across every page for `blazingly`, `enterprise-grade`, `batteries included`, `lightning`, `10x`, `world-class`, `cutting-edge`, `best-in-class`, `revolutionary` and `seamless` returns nothing |
+| Claims audit: numbers | PASS — every number in the copy enumerated and traced. Release versions and dependency versions read from the kernel's `Cargo.toml`; PostgreSQL 16 and Redis 7 from its INSTALL; ports 3000 and 3001 from its README; 360 and 1280 are the widths the screenshot pass actually uses; WCAG 2.2 is the target named. No performance number appears anywhere |
+| Register spot-check | PASS — read next to the kernel's README and CONTRIBUTING; first person where it is Jeremy's history, plain declaratives, and the honesty sections kept |
+| Crawl still clean | PASS — 183 pages, no 404s, no raw dumps |
+
+### The fix loop
+
+**`/why` served a placeholder while its copy sat at a URL nothing linked to.**
+The copy was written into a new item rather than into the item the `/why` alias
+points at, so the site had two pages titled "Why Trovato": the old one with the
+alias and the new one with the words. Every file involved was valid; the set was
+wrong, and no per-file check could have seen it.
+
+`checks/tests/content.rs` now holds six checks over the set as a whole: every
+alias points at an item that exists, no item is orphaned (an item with no alias
+is still reachable at `/item/{uuid}` and still appears in the sitemap), no two
+items share a title, no two aliases share a path, no placeholder survives, and no
+published prose carries dash punctuation.
+
+### Decisions
+
+- **No em dashes, en dashes or double hyphens in published copy.** They read as
+  machine writing, and this site is written in one person's voice. Two exemptions,
+  both in the test: a mirrored document is somebody else's prose reproduced, and
+  repunctuating it would make it a paraphrase; and a YAML comment is written for
+  whoever edits the file, never served, and follows the kernel repository's own
+  style, which uses em dashes freely (96 of them in its CHANGELOG). A double
+  hyphen inside `<code>` or `<pre>` is a command-line flag and is exempt for that
+  reason, which the test implements by blanking code spans before it looks.
+- **Search is called search.** The widget's class names carry a product name that
+  belongs to Tag1; none of it reaches anything a reader sees. Whether the site
+  should use that name in its copy is Jeremy's to decide and is in the completion
+  report as a gate, not assumed either way.
+- **The `/search` page says what actually leaves the browser.** Keyword search
+  runs locally in WebAssembly against a static index and sends nothing anywhere.
+  Without JavaScript the form submits to a server-side full-text query. The two AI
+  stages run on the server and send the query and the retrieved snippets to the
+  configured provider. The page says all three separately, and says that this site
+  has no provider configured today, so those two stages do not run.
+- **Code samples in CMS-authored copy are not syntax-highlighted.** `filtered_html`
+  allows `pre` and `code` and strips every class, so a token span cannot survive.
+  The mirrored documentation is highlighted because it is generated and rendered
+  by the site's own template. The two look slightly different, and the difference
+  is real rather than an oversight.
+
+### Findings
+
+- **An unmeasured claim in the plan turned out to be wrong.** The plan said Clay
+  on Cream passes for large text and buttons only. Measured, it is 4.95:1, which
+  clears AA for body text. Recorded at Gate 2, and worth repeating here: the
+  claims audit is not only about the copy.

@@ -1,4 +1,3 @@
-# Accessibility. Structure only — the copy is written in Phase 5.
 id: '0193b000-0003-7000-8000-000000000008'
 type: page
 title: Accessibility
@@ -9,5 +8,41 @@ changed: 1785542400
 fields:
   body:
     value: |
-      <p>PLACEHOLDER-PHASE-5. What is tested, how, and what is known to be missing.</p>
+      <p>The target is WCAG 2.2 AA. This page says what is actually checked, how, and what is known to be missing. It is written the way an engineering page should be, because a statement that only says "we are committed to accessibility" tells you nothing you can act on.</p>
+      
+      <h2>What is checked automatically, on every build</h2>
+      
+      <ul>
+      <li><strong>Colour contrast.</strong> Every colour pairing the site uses is declared in the stylesheet and verified by the test suite: body text, muted text, links, control borders and focus rings, against both surfaces, in both the light and the dark colour scheme. A pairing that drops below its threshold fails the build. Code syntax colours are checked the same way, against the surface a code block actually sits on.</li>
+      <li><strong>Horizontal overflow.</strong> Every page in the check set is rendered at 360 and 1280 pixels wide, in both colour schemes, and the build fails if the document scrolls sideways at either width.</li>
+      <li><strong>Unthemed elements.</strong> The same pass measures every visible element and fails if any of them carries a background from the wrong colour scheme. This is what catches a control that a template the site does not own left at its browser default.</li>
+      <li><strong>Off-origin requests.</strong> The same pass records every request each page makes and fails if any of them leaves this site. Nothing here loads a font, a script or an image from anywhere else.</li>
+      <li><strong>Structure.</strong> A crawl of every page reachable from the front page checks that each one has a main landmark, a skip link and a labelled main navigation, and that no page came back as a template-failure fallback.</li>
+      </ul>
+      
+      <h2>What the site does deliberately</h2>
+      
+      <ul>
+      <li>Every navigation is labelled, so a screen reader lists them apart rather than reading four unnamed navs.</li>
+      <li>The current page carries <code>aria-current="page"</code>, not only a styling class, because a class is invisible to assistive technology.</li>
+      <li>The narrow-screen menu is a disclosure element, not a scripted menu button. It opens by click or by keyboard, announces its own expanded state, and works with JavaScript switched off.</li>
+      <li>Search is a form that submits to the server. The instant search layered on top of it is an enhancement; without JavaScript the form still returns results.</li>
+      <li>Focus is visible everywhere, with an outline that meets the contrast threshold for a user interface component in both colour schemes.</li>
+      <li>Motion is a chevron rotation and a button hover, and both stop under <code>prefers-reduced-motion</code>.</li>
+      <li>Long unbreakable text wraps rather than pushing the page sideways. Code blocks scroll inside their own box instead, so the source stays selectable.</li>
+      </ul>
+      
+      <h2>What is not checked yet</h2>
+      
+      <ul>
+      <li><strong>A screen reader has not been used on this site.</strong> Not VoiceOver, not NVDA, not JAWS. Automated checking finds missing labels and bad contrast; it does not tell you whether a page is comprehensible when it is read aloud. Until somebody sits down with one, this page will say so.</li>
+      <li><strong>Keyboard navigation has been verified in one place and not everywhere.</strong> The disclosure menu is tested by keyboard in the automated pass. The rest of the site has not had a deliberate tab-through.</li>
+      <li><strong>There is no automated rule-based audit yet.</strong> The checks above are specific things the site verifies about itself. A general accessibility engine has not been wired into the build.</li>
+      </ul>
+      
+      <h2>Reporting a problem</h2>
+      
+      <p>If something here does not work for you, <a href="/contact">the contact form</a> reaches me. Tell me what you were using and what happened. A report about a page being unusable is more useful than a report about a rule being violated, and both are welcome.</p>
+      
+      <p>This page is kept in step with what the build actually checks. If it claims something, that claim is either in the test suite or in the list of what is not checked yet.</p>
     format: filtered_html

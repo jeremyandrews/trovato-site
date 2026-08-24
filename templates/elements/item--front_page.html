@@ -1,14 +1,23 @@
 {# The front page item.
 
-   The kernel's elements/item.html renders a title and a meta line with the
-   content type and the creation date. On the front page that produces a second
-   heading under the site name and a stray "front_page 1 August 2026", so this
-   template renders the body and nothing else.
+   The fields are rendered here rather than by the kernel, because the order
+   matters and the kernel cannot produce it. `children` on this page is the site
+   plugin's listing of recent posts and nothing else: the front-page handler
+   renders a field only when it carries a `value` key, and this item's `body` and
+   `proof` are bare strings, so they arrive untouched for the template to place.
 
-   `children` is the item's rendered fields followed by every tap_item_view
-   output — here, the site plugin's calls to action and its listing of recent
-   posts. The kernel hands them over as one string, which is why the calls to
-   action are rendered by the plugin rather than placed here. #}
+   SAFE on both fields: they are site copy, written in `config/` and reviewed in a
+   pull request, in the same position as the mirrored documentation. No visitor
+   input reaches either. #}
 <div class="front__body">
-    {{ children | safe }} {# SAFE: kernel field pipeline and tap output, both sanitized upstream #}
+    {{ item.fields.body | safe }} {# SAFE: see above. #}
+
+    <nav class="front-hero__actions" aria-label="Get started">
+        <a class="button" href="/get-started">Get started</a>
+        <a class="button button--secondary" href="/why">Why Trovato</a>
+    </nav>
+
+    {{ item.fields.proof | safe }} {# SAFE: see above. #}
 </div>
+
+{{ children | safe }} {# SAFE: the site plugin's listing, sanitized where it is built. #}

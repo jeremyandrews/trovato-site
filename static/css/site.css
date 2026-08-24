@@ -417,13 +417,21 @@ button.site-nav__logout {
     max-width: var(--measure);
 }
 
-/* The lede is the body's first paragraph. It cannot be marked up as one:
-   `filtered_html` strips the class off anything written in an item body, so the
-   only handle a stylesheet has on it is its position. */
-.front__body .field-body > p:first-child {
+.front-hero__lede {
     font-size: var(--text-xl);
     color: var(--text-muted);
     margin-bottom: var(--space-5);
+}
+
+.proof {
+    margin-top: var(--space-10);
+    padding-top: var(--space-6);
+    border-top: 1px solid var(--border);
+}
+
+.proof__title {
+    margin-top: 0;
+    font-size: var(--text-xl);
 }
 
 .front-hero__actions {
@@ -657,6 +665,31 @@ button.site-nav__logout {
 .docs-index__item {
     padding-block: var(--space-2);
     border-bottom: 1px solid var(--border);
+}
+
+.search-page {
+    max-width: var(--measure);
+}
+
+.search-form {
+    display: flex;
+    gap: var(--space-2);
+    margin-bottom: var(--space-5);
+}
+
+.search-form input[type="search"] {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.search-explainer {
+    margin-top: var(--space-10);
+    padding-top: var(--space-6);
+    border-top: 1px solid var(--border);
+}
+
+.search-explainer h3 {
+    font-size: var(--text-lg);
 }
 
 /* ── Forms ───────────────────────────────────────────────────────────────── */

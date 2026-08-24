@@ -1,4 +1,3 @@
-# Get started. Structure only — the copy is written in Phase 5.
 id: '0193b000-0003-7000-8000-000000000004'
 type: page
 title: Get started
@@ -9,5 +8,39 @@ changed: 1785542400
 fields:
   body:
     value: |
-      <p>PLACEHOLDER-PHASE-5. Running Trovato, with Docker or from source.</p>
+      <p>Two ways in. Docker needs no Rust toolchain and gets you a running site. Building from source needs the toolchain and gets you something you can change.</p>
+      
+      <h2>With Docker</h2>
+      
+      <p>PostgreSQL, Redis and the kernel come up together.</p>
+      
+      <pre><code>git clone https://github.com/jeremyandrews/trovato
+      cd trovato
+      cp .env.example .env
+      docker compose --profile full up</code></pre>
+      
+      <p>Open <code>http://localhost:3001</code> and follow the installer. It asks for an administrator account and a site name, and then the site is yours.</p>
+      
+      <p>The <code>full</code> profile is what starts the Trovato container. Without it, <code>docker compose up</code> brings up PostgreSQL and Redis alone, which is what you want when you are running the server natively on port 3000.</p>
+      
+      <h2>From source</h2>
+      
+      <p>You need Rust, PostgreSQL 16 or newer, and Redis 7 or newer. The toolchain is pinned in <code>rust-toolchain.toml</code>, so rustup will fetch the right version on its own.</p>
+      
+      <pre><code>docker compose up -d          # PostgreSQL and Redis
+      cargo build --release
+      cp .env.example .env
+      cargo run --release --bin trovato</code></pre>
+      
+      <p>Migrations run on startup. <a href="/learn/install">Installing Trovato</a> has the details, including running the databases yourself instead of in containers.</p>
+      
+      <h2>Then what</h2>
+      
+      <p><a href="/learn/building-your-first-site">Building your first site</a> walks through pages, a blog and navigation on a fresh install. <a href="/learn/tutorial-01-hello-trovato">The tutorial</a> is longer: nine parts that build one real site from an empty database, ending with translations, search and a production deployment.</p>
+      
+      <h2>Before you put it somewhere that matters</h2>
+      
+      <p>Trovato is at 0.101.0. The plugin contract is frozen, so a plugin you write now will keep working. The rest is not finished: there is no plugin registry, parts of administration are done by importing YAML rather than filling in a form, and migrations only move forward, so an upgrade that goes wrong is recovered from a backup.</p>
+      
+      <p><a href="/learn/known-issues">Known issues</a> is the list, kept honestly. <a href="/why">Why Trovato</a> is the argument for the design. Neither is marketing, and if one of them talks you out of it that is a good outcome.</p>
     format: filtered_html
