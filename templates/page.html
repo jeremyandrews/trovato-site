@@ -1,0 +1,123 @@
+{# The site's page layout.
+
+   Overrides the kernel's templates/page.html by winning the TEMPLATES_DIR name
+   collision. It keeps the kernel's structure — skip link, labelled navs,
+   aria-current, breadcrumbs, tile regions — because that structure is already
+   correct, and adds what the site needs: its own stylesheet and a search box in
+   the header.
+
+   Phase 1 markup. The theme lands in Phase 2. #}
+{% extends "base.html" %}
+
+{% block head %}
+<link rel="stylesheet" href="/static/css/tokens.css">
+<link rel="stylesheet" href="/static/css/site.css">
+{% endblock %}
+
+{% block header %}
+<div class="site-header">
+    <div class="container site-header__bar">
+        <div class="site-branding">
+            <a href="/" class="site-branding__name">
+                <img src="/static/brand/trovato-lockup-horizontal.svg" alt="{{ site_name | default(value='Trovato') }}" class="site-branding__lockup" width="220" height="60">
+            </a>
+            {% if site_slogan %}
+            <span class="site-branding__slogan">{{ site_slogan }}</span>
+            {% endif %}
+        </div>
+
+        <nav class="site-nav" aria-label="Main">
+            {% if main_menu is defined and main_menu %}
+            {% for link in main_menu %}
+            {% if not link.hidden %}
+            <a href="{{ link.path }}" class="site-nav__link{% if current_path is defined and current_path == link.path %} site-nav__link--active{% endif %}"{% if current_path is defined and current_path == link.path %} aria-current="page"{% endif %}>{{ link.title }}</a>
+            {% endif %}
+            {% endfor %}
+            {% endif %}
+        </nav>
+
+        {# Search is a form, not a nav link: it is server-handled at /search and
+           works with JavaScript switched off. #}
+        <form class="site-search" action="/search" method="get" role="search">
+            <label class="visually-hidden" for="site-search-input">Search this site</label>
+            <input type="search" id="site-search-input" name="q" class="site-search__input" placeholder="Search">
+            <button type="submit" class="site-search__button">Search</button>
+        </form>
+
+        <nav class="site-account" aria-label="Account">
+            {% if user_authenticated %}
+            {% if user_is_admin %}<a href="/admin" class="site-nav__link">Admin</a>{% endif %}
+            <a href="/user/profile" class="site-nav__link">Profile</a>
+            <form method="post" action="/user/logout" class="site-nav__logout-form">
+                <input type="hidden" name="_token" value="{{ csrf_token }}">
+                <button type="submit" class="site-nav__link site-nav__logout">Log out</button>
+            </form>
+            {% else %}
+            <a href="/user/login" class="site-nav__link">Log in</a>
+            {% endif %}
+        </nav>
+    </div>
+
+    {% if header_tiles is defined and header_tiles %}
+    <div class="container">
+        {{ header_tiles | safe }} {# SAFE: kernel tile render pipeline output #}
+    </div>
+    {% endif %}
+</div>
+
+{% if navigation_tiles is defined and navigation_tiles %}
+<div class="site-navigation">
+    <div class="container">
+        {{ navigation_tiles | safe }} {# SAFE: kernel tile render pipeline output #}
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+{% if breadcrumbs is defined and breadcrumbs %}
+<nav class="breadcrumb" aria-label="Breadcrumb">
+    {% for crumb in breadcrumbs %}
+    {% if not loop.last %}
+    <a href="{{ crumb.path }}">{{ crumb.title }}</a>
+    <span class="breadcrumb__separator" aria-hidden="true">&rsaquo;</span>
+    {% else %}
+    <span aria-current="page">{{ crumb.title }}</span>
+    {% endif %}
+    {% endfor %}
+</nav>
+{% endif %}
+
+{% block main %}
+{{ content | safe }} {# SAFE: kernel render pipeline output — sanitized via SAFE_TAGS and Tera autoescape #}
+{% endblock %}
+
+{% if sidebar_tiles is defined and sidebar_tiles %}
+<aside class="page-sidebar" aria-label="Sidebar">
+    {{ sidebar_tiles | safe }} {# SAFE: kernel tile render pipeline output #}
+</aside>
+{% endif %}
+{% endblock %}
+
+{% block footer %}
+<div class="site-footer">
+    <div class="container">
+        {% if footer_menu is defined and footer_menu %}
+        <nav class="footer-nav" aria-label="Footer">
+            {% for link in footer_menu %}
+            {% if not link.hidden %}
+            <a href="{{ link.path }}">{{ link.title }}</a>
+            {% endif %}
+            {% endfor %}
+        </nav>
+        {% endif %}
+        {% if footer_tiles is defined and footer_tiles %}
+        {{ footer_tiles | safe }} {# SAFE: kernel tile render pipeline output #}
+        {% endif %}
+        <p class="site-footer__colophon">
+            Trovato is dual licensed under MIT or Apache-2.0.
+            The source is on <a href="https://github.com/jeremyandrews/trovato">GitHub</a>.
+        </p>
+    </div>
+</div>
+{% endblock %}

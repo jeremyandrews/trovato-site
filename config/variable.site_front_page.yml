@@ -1,0 +1,4 @@
+# The front page is an item, so the kernel renders it inline at `/` with the
+# address bar unchanged. Any other path would make `/` a redirect.
+key: site_front_page
+value: /item/0193b000-0000-7000-8000-000000000001

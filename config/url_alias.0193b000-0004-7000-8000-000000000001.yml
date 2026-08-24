@@ -1,0 +1,7 @@
+# /news serves the news listing.
+id: '0193b000-0004-7000-8000-000000000001'
+source: /gather/trovato_site.news_listing
+alias: /news
+language: en
+stage_id: '0193a5a0-0000-7000-8000-000000000001'
+created: 1766000000

@@ -1,0 +1,13 @@
+{# The front page.
+
+   `content` here is the front-page item's body followed by the site plugin's
+   recent-posts listing — the plugin appends it through tap_item_view, which the
+   front-page handler renders just as the item route does. The template's job is
+   the frame around it. #}
+{% extends "page.html" %}
+
+{% block main %}
+<div class="front">
+    {{ content | safe }} {# SAFE: kernel render pipeline output plus tap_item_view output, both sanitized upstream #}
+</div>
+{% endblock %}

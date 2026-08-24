@@ -1,0 +1,11 @@
+# Main menu. /contact is served by the kernel's trovato_contact plugin.
+id: 0193b000-0005-7000-8000-000000000005
+menu_name: main
+path: /contact
+title: Contact
+weight: 40
+hidden: false
+plugin: trovato_site
+stage_id: 0193a5a0-0000-7000-8000-000000000001
+created: 1766000000
+changed: 1766000000

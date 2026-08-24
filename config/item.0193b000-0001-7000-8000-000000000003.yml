@@ -1,0 +1,16 @@
+id: '0193b000-0001-7000-8000-000000000003'
+type: news
+title: This site runs on a released Trovato
+language: en
+status: 1
+created: 1756080000
+changed: 1756080000
+fields:
+  body:
+    value: |
+      <p>trovato.rs is built as an external application on a published release image. It adds a plugin, some templates, a config set and its own static files, and it patches nothing in the kernel. Whatever it needed that the kernel did not have is written down rather than worked around.</p>
+      <p>The site's own repository is <a href="https://github.com/jeremyandrews/trovato-site">jeremyandrews/trovato-site</a>.</p>
+    format: full_html
+  summary:
+    value: The website is an external application on a released kernel, not a fork of it.
+    format: plain_text
