@@ -15,8 +15,12 @@
 
 {% block content %}
 <div class="front">
+    {# The heading is the wordmark, and its text is the heading's own rather than
+       an image's: in dark mode the light image is hidden and the dark one is
+       decorative, so an alt-text heading was an empty heading. #}
     <h1 class="front__title">
-        <img src="/static/brand/trovato-wordmark.svg" alt="trovato"
+        <span class="visually-hidden">trovato</span>
+        <img src="/static/brand/trovato-wordmark.svg" alt="" aria-hidden="true"
              class="front__wordmark front__wordmark--light" width="420" height="120">
         <img src="/static/brand/trovato-wordmark-white.svg" alt="" aria-hidden="true"
              class="front__wordmark front__wordmark--dark" width="420" height="120">

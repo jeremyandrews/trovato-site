@@ -46,10 +46,39 @@ psql_q() {
 
 fail() { echo "FAIL: $1"; exit 1; }
 
+# curl, retrying a 429.
+#
+#   rc <body-destination> <curl arguments...>
+#
+# The body always goes to a file the caller names, so the helper can own `-o` and
+# the caller never passes one; the status comes back through `-w`.
+#
+# It exists because the kernel rate-limits every GET at 100 a minute per IP,
+# static assets and this script's page fetches alike, with no way to configure it.
+# Running this after a crawl or a screenshot pass — which is exactly what CI does
+# — means arriving with the budget already spent. See docs/LEDGER.md, Gate 2.
+rc() {
+    local dest="$1"; shift
+    local attempt status
+    for attempt in 1 2 3 4; do
+        status="$(curl -sS -o "$dest" -w '%{http_code}' "$@" || echo 000)"
+        case "$status" in
+            429)
+                echo "    rate limited, waiting 61s (attempt ${attempt})"
+                sleep 61
+                ;;
+            2*|3*) return 0 ;;
+            *) echo "    HTTP ${status}"; return 1 ;;
+        esac
+    done
+    echo "    still rate limited after ${attempt} attempts"
+    return 1
+}
+
 if [ -z "$(psql_q "SELECT 1 FROM users WHERE name = '${USERNAME}';")" ]; then
     echo "==> Registering ${USERNAME}"
-    curl -fsS -c "$jar" "${BASE}/user/register" -o "${work}/register.html"
-    curl -fsS -b "$jar" -c "$jar" -o /dev/null -X POST "${BASE}/user/register" \
+    rc "${work}/register.html" -c "$jar" "${BASE}/user/register" || fail "could not load the registration page"
+    rc /dev/null -b "$jar" -c "$jar" -X POST "${BASE}/user/register" \
         --data-urlencode "_token=$(token_from "${work}/register.html" _token)" \
         --data-urlencode "username=${USERNAME}" \
         --data-urlencode "mail=${USERNAME}@example.com" \
@@ -78,15 +107,15 @@ psql_q "UPDATE users SET status = 1 WHERE name = '${USERNAME}';" >/dev/null
 psql_q "DELETE FROM comment WHERE author_id = (SELECT id FROM users WHERE name = '${USERNAME}');" >/dev/null
 
 echo "==> Logging in"
-curl -fsS -b "$jar" -c "$jar" "${BASE}/user/login" -o "${work}/login.html"
-curl -fsS -b "$jar" -c "$jar" -o /dev/null -X POST "${BASE}/user/login" \
+rc "${work}/login.html" -b "$jar" -c "$jar" "${BASE}/user/login" || fail "could not load the log-in page"
+rc /dev/null -b "$jar" -c "$jar" -X POST "${BASE}/user/login" \
     --data-urlencode "_token=$(token_from "${work}/login.html" _token)" \
     --data-urlencode "username=${USERNAME}" \
-    --data-urlencode "password=${PASSWORD}"
+    --data-urlencode "password=${PASSWORD}" || fail "could not log in"
 
 echo "==> Posting a comment"
 item_path="/news/trovato-0-101-0"
-curl -fsS -b "$jar" "${BASE}${item_path}" -o "${work}/item.html"
+rc "${work}/item.html" -b "$jar" "${BASE}${item_path}" || fail "could not load the item page"
 csrf="$(token_from "${work}/item.html" _csrf)"
 [ -n "$csrf" ] || fail "the comment form was not offered to a logged-in account"
 
@@ -94,13 +123,13 @@ item_id="$(grep -o 'action="/api/item/[0-9a-f-]*/comments"' "${work}/item.html" 
     | head -1 | sed 's|.*/api/item/||;s|/comments"||')"
 [ -n "$item_id" ] || fail "could not find the comment form's target item"
 
-curl -fsS -b "$jar" -c "$jar" -o /dev/null -X POST "${BASE}/api/item/${item_id}/comments" \
+rc /dev/null -b "$jar" -c "$jar" -X POST "${BASE}/api/item/${item_id}/comments" \
     --data-urlencode "_csrf=${csrf}" \
-    --data-urlencode "body=${MARKER}"
+    --data-urlencode "body=${MARKER}" || fail "could not post the comment"
 
 echo "==> Draining the classification queue"
 for _ in $(seq 1 8); do
-    curl -fsS -o /dev/null -X POST "${BASE}/cron/${CRON_KEY}" || true
+    curl -sS -o /dev/null -X POST "${BASE}/cron/${CRON_KEY}" >/dev/null 2>&1 || true
     sleep 2
 done
 
@@ -118,7 +147,8 @@ status="$(psql_q "SELECT status FROM comment WHERE body LIKE '%${MARKER}%' LIMIT
 echo "    comment status: ${status} (1 would be published)"
 
 # 3. And an anonymous visitor cannot see it, which is the property that matters.
-if curl -fsS "${BASE}${item_path}" | grep -q "${MARKER}"; then
+rc "${work}/anon.html" "${BASE}${item_path}" || fail "could not re-read the item page"
+if grep -q "${MARKER}" "${work}/anon.html"; then
     fail "an anonymous visitor can see a comment that was never approved"
 fi
 echo "    not visible to an anonymous visitor"

@@ -20,7 +20,7 @@ fields:
     plugin API it serves and which SDK its plugins were built against.</p>
     <h2>Where the number lives</h2>
     <p>The single source is <code>[workspace.package]</code> in the root <code>Cargo.toml</code>:</p>
-    <figure class="code"><figcaption class="code__lang">toml</figcaption><pre class="code__body"><code class="language-toml">[workspace.package]
+    <figure class="code"><figcaption class="code__lang">toml</figcaption><pre class="code__body" tabindex="0" aria-label="toml code"><code class="language-toml">[workspace.package]
     version = &quot;0.101.0&quot;
     </code></pre></figure><p>Every in-tree crate inherits it with <code>version.workspace = true</code>. No crate in the
     workspace declares its own version. Everything else derives from it, and the
@@ -39,7 +39,7 @@ fields:
     <code>crates/kernel/src/plugin/mod.rs</code>.</p>
     <h2>Compatibility rule</h2>
     <p>At plugin install and enable time the kernel enforces:</p>
-    <figure class="code"><pre class="code__body"><code>Plugin API MAJOR == Kernel API MAJOR
+    <figure class="code"><pre class="code__body" tabindex="0" aria-label="Example code"><code>Plugin API MAJOR == Kernel API MAJOR
     Plugin API MINOR &lt;= Kernel API MINOR
     </code></pre></figure><p>With a kernel at API 0.101:</p>
     <table><thead><tr><th>Plugin API</th><th>Compatible?</th><th>Reason</th></tr></thead><tbody>
@@ -66,7 +66,7 @@ fields:
     starts with a zero does not make it negotiable.</p>
     <h2>Plugin manifests</h2>
     <p>Plugins declare both numbers in <code>.info.toml</code>:</p>
-    <figure class="code"><figcaption class="code__lang">toml</figcaption><pre class="code__body"><code class="language-toml">name = &quot;my_plugin&quot;
+    <figure class="code"><figcaption class="code__lang">toml</figcaption><pre class="code__body" tabindex="0" aria-label="toml code"><code class="language-toml">name = &quot;my_plugin&quot;
     description = &quot;Example plugin&quot;
     version = &quot;0.101.0&quot;
     api_version = &quot;0.101&quot;
@@ -96,7 +96,7 @@ fields:
     <code>nightly-&lt;sha&gt;</code>, and an auto-incrementing version</li>
     </ul>
     <p>The nightly version increments by counting commits since the latest release tag:</p>
-    <figure class="code"><pre class="code__body"><code>version = BASE_VERSION + commits_since_tag
+    <figure class="code"><pre class="code__body" tabindex="0" aria-label="Example code"><code>version = BASE_VERSION + commits_since_tag
     </code></pre></figure><p><code>BASE_VERSION</code> lives in <code>.github/workflows/docker-publish.yml</code> and is the
     major.minor of the project version. It moves with every release; see
     <a href="https://github.com/jeremyandrews/trovato/blob/v0.101.0/version-map.md">version-map.md</a>.</p>

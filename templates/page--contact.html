@@ -1,0 +1,19 @@
+{# The contact page.
+
+   The contact form is served by the kernel's trovato_contact plugin as a themed
+   response: the plugin hands over a title and a body, and the theme's page.html
+   renders the body and drops the title on the floor. The kernel's own page.html
+   does the same, so every themed plugin page on a stock install ships without a
+   level-one heading.
+
+   Rather than guess in page.html which pages are plugin-served, this template
+   handles the one path that is. `page--contact` is what the theme engine resolves
+   for `/contact` before falling back to `page`. #}
+{% extends "page.html" %}
+
+{% block content %}
+<div class="contact-page">
+    <h1>{{ title | default(value="Contact") }}</h1>
+    {{ content | safe }} {# SAFE: the plugin's own HTML, which is the tap contract. #}
+</div>
+{% endblock %}

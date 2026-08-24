@@ -1,0 +1,39 @@
+# The front proxy, as an override.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.proxy.yml up -d
+#
+# or ./scripts/run.sh --proxy, which does the same and waits.
+#
+# Kept separate from docker-compose.yml so the plain stack stays the smallest
+# thing that serves the site, and so the production profile in docs/DEPLOY.md is
+# this file with two environment variables changed rather than a second copy of
+# the configuration.
+services:
+  proxy:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${PROXY_PORT:-8081}:8081"
+    environment:
+      # `:8081` locally, `trovato.rs` in production. Caddy reads it through the
+      # `{$SITE_ADDRESS}` placeholder in the Caddyfile.
+      SITE_ADDRESS: ${SITE_ADDRESS:-:8081}
+      AUTO_HTTPS: ${AUTO_HTTPS:-off}
+      HSTS: ${HSTS:-}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      # The site's own static files, served without touching the kernel.
+      - ./static:/srv/public/static:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      default:
+        # Fixed, because TRUSTED_PROXIES names addresses and not ranges.
+        ipv4_address: ${PROXY_IP:-172.31.71.10}
+    depends_on:
+      site:
+        condition: service_healthy
+
+volumes:
+  caddy_data:
+  caddy_config:

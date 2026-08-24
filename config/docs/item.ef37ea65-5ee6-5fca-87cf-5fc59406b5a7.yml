@@ -21,7 +21,7 @@ fields:
     <hr />
     <h2>Architecture: Four-Stage Progressive Enhancement</h2>
     <p>The core insight: show something instantly, then make it smarter. Each stage adds intelligence, and each stage is independently useful. A site can ship Stage 1 alone and add stages later.</p>
-    <figure class="code"><pre class="code__body"><code>User types query
+    <figure class="code"><pre class="code__body" tabindex="0" aria-label="Example code"><code>User types query
         |
         +-&gt; Stage 1: Pagefind (client-side, ~50ms, no server)
         |        +-&gt; Instant keyword results displayed
@@ -56,7 +56,7 @@ fields:
     <p><strong>tsvector's role:</strong> tsvector remains the server-side search backbone for programmatic use -- Gather queries in plugin code, API consumers, admin search, cron jobs, anything without a browser. Pagefind is the user-facing default; tsvector is the server-side workhorse.</p>
     <h3>Stage 2: AI Query Expansion</h3>
     <p>When the user searches, the query also goes to the server (async, non-blocking -- Stage 1 results are already visible). The server calls <code>ai_request(operation: Chat)</code> with a prompt like:</p>
-    <figure class="code"><pre class="code__body"><code>Given the search query &quot;{query}&quot;, generate 4-6 related search terms
+    <figure class="code"><pre class="code__body" tabindex="0" aria-label="Example code"><code>Given the search query &quot;{query}&quot;, generate 4-6 related search terms
     that cover synonyms, related concepts, and alternative phrasings.
     Return only the terms, comma-separated. Be specific to the domain;
     avoid generic terms like &quot;technology&quot; or &quot;solution.&quot;
@@ -77,7 +77,7 @@ fields:
     <li><strong>Priority pages:</strong> Admin-configured mapping of keywords to authoritative pages. Searching "team" always shows the Team page first, regardless of keyword frequency elsewhere.</li>
     <li><strong>Content type boost:</strong> Configurable per content type. Documentation pages might rank higher than blog posts for technical queries.</li>
     </ul>
-    <figure class="code"><pre class="code__body"><code>final_score = base_relevance x exact_match_boost x recency_factor x priority_boost x type_boost
+    <figure class="code"><pre class="code__body" tabindex="0" aria-label="Example code"><code>final_score = base_relevance x exact_match_boost x recency_factor x priority_boost x type_boost
     </code></pre></figure><p>These signals are multiplicative. The formula runs entirely client-side -- it's just arithmetic on the result metadata Pagefind already provides (or that we inject into the index at build time).</p>
     <p><strong>UI elements (not AI, but part of the search UX):</strong></p>
     <ul>
@@ -131,7 +131,7 @@ fields:
     <tr><th>tsvector fallback</th><th>Existing Gather search</th><th>Activated when Pagefind unavailable or for server-side consumers</th></tr>
     </tbody></table>
     <h3>Configuration</h3>
-    <figure class="code"><figcaption class="code__lang">toml</figcaption><pre class="code__body"><code class="language-toml">[search]
+    <figure class="code"><figcaption class="code__lang">toml</figcaption><pre class="code__body" tabindex="0" aria-label="toml code"><code class="language-toml">[search]
     engine = &quot;pagefind&quot;              # &quot;pagefind&quot; (default) or &quot;server&quot; (tsvector only)
     index_path = &quot;pagefind&quot;          # relative to static directory
     rebuild_on_save = true           # or false for cron-only rebuild
@@ -183,7 +183,7 @@ fields:
     <hr />
     <h2>Pagefind Integration Details</h2>
     <h3>Index Build Pipeline</h3>
-    <figure class="code"><pre class="code__body"><code>Cron interval fires
+    <figure class="code"><pre class="code__body" tabindex="0" aria-label="Example code"><code>Cron interval fires
         |
         +-&gt; Plugin tap_cron:
         |     Compare MAX(changed) vs last_indexed_at

@@ -21,7 +21,7 @@
     {# Server-rendered results. Shown on the initial load and whenever the widget
        is not running, so search works with JavaScript switched off. #}
     <div id="search-fallback" class="search-fallback">
-        <form action="/search" method="get" class="search-form" role="search">
+        <form action="/search" method="get" class="search-form" role="search" aria-label="Search this site">
             <label class="visually-hidden" for="search-q">Search this site</label>
             <input type="search" id="search-q" name="q" value="{{ query }}" placeholder="Search">
             <button type="submit">Search</button>

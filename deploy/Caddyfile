@@ -1,0 +1,99 @@
+# The front proxy.
+#
+# Three jobs, and each one is something the kernel cannot do for itself:
+#
+# 1. Serve /static. The kernel rate-limits every GET at 100 a minute per IP with
+#    no way to configure it, and static assets fall in that bucket, so a visitor
+#    reading ten pages has their fonts throttled. Measured: the 101st request for
+#    a stylesheet returns 429. Serving the site's own files here takes them off
+#    that budget entirely. Anything the site does not carry falls through to the
+#    kernel, which is where the image's own css and js live.
+#
+# 2. Set Cache-Control on HTML. The kernel sets it on static files and on nothing
+#    else, so an HTML page arrives with no caching policy at all and every cache
+#    between here and the reader invents one.
+#
+# 3. Terminate TLS and serve /sitemap.xml, which the kernel serves with relative
+#    <loc> values that the sitemap protocol does not permit. Both are configured
+#    in the site block below.
+#
+# Local and production share this file. What differs is the address block, which
+# comes from the environment: SITE_ADDRESS is `:8081` locally and `trovato.rs`
+# in production, and Caddy provisions a certificate automatically for the second.
+
+{
+	admin off
+	# Local runs have no public DNS, so certificate provisioning is off unless the
+	# production profile turns it on by giving SITE_ADDRESS a real hostname.
+	auto_https {$AUTO_HTTPS:off}
+}
+
+{$SITE_ADDRESS} {
+	encode zstd gzip
+
+	# ── The site's own static files ────────────────────────────────────────
+	handle /static/* {
+		root * /srv/public
+		@present file
+		route {
+			header @present ?Cache-Control "public, max-age=3600"
+			# Fonts and brand marks change when the brand does, which is not
+			# often. Not `immutable`: these filenames carry no content hash, so a
+			# reader who cached one has no way to be told it changed.
+			@long path /static/fonts/* /static/brand/*
+			header @long ?Cache-Control "public, max-age=604800"
+			file_server @present
+			# Not the site's: the kernel image ships its own css and js under the
+			# same prefix, and they are still served from there.
+			reverse_proxy site:3000
+		}
+	}
+
+	# ── The sitemap ────────────────────────────────────────────────────────
+	# The kernel owns /sitemap.xml and emits paths where the protocol requires
+	# absolute URLs, and it lists items only. The site serves a correct one, and
+	# a plugin cannot claim the standard path because axum panics on a duplicate
+	# route. So the standard path is mapped here.
+	handle /sitemap.xml {
+		rewrite * /sitemap/pages.xml
+		header ?Cache-Control "public, max-age=3600"
+		reverse_proxy site:3000
+	}
+
+	# ── Documents ──────────────────────────────────────────────────────────
+	# Feeds, robots.txt, llms.txt and the raw markdown behind each documentation
+	# page. All public, none of them personal, and none worth a round trip every
+	# time a reader's aggregator wakes up.
+	@documents path /rss/* /robots.txt /llms.txt /learn/raw/* /sitemap/*
+	handle @documents {
+		header ?Cache-Control "public, max-age=3600"
+		reverse_proxy site:3000
+	}
+
+	# ── Everything else ────────────────────────────────────────────────────
+	handle {
+		route {
+			# A page rendered for somebody with a session is that person's page.
+			# `Vary: Cookie` says so to every cache in between, and `private`
+			# keeps it out of the shared ones.
+			@session header Cookie *id=*
+			header @session Cache-Control "private, no-store"
+			header @session Vary "Cookie, Accept-Encoding"
+
+			@anonymous not header Cookie *id=*
+			# A minute of freshness with ten minutes of serving stale while it
+			# revalidates. Short, because publishing a comment or a post should
+			# show up in about a minute, not tomorrow.
+			header @anonymous Cache-Control "public, max-age=60, stale-while-revalidate=600"
+			header @anonymous Vary "Cookie, Accept-Encoding"
+
+			reverse_proxy site:3000
+		}
+	}
+
+	# The kernel already sends X-Frame-Options, X-Content-Type-Options,
+	# Referrer-Policy, Permissions-Policy and a CSP, so they are not repeated
+	# here. HSTS is the proxy's because it is a statement about the transport,
+	# and it is only true once there is a real certificate.
+	header ?Strict-Transport-Security "{$HSTS:}"
+}

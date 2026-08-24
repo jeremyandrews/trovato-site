@@ -1,10 +1,10 @@
 # Build ledger
 
-**Status:** Phase 6 complete, Phase 7 next
-**Last updated:** 2026-08-24
-**Where things stand:** Accounts, comments and moderation work end to end and fail closed,
-with a check that proves it and goes red when the guarantee is broken. Gates 0 through 6
-passed. Accessibility and performance posture are next.
+**Status:** Phase 7 complete, Phase 8 next
+**Last updated:** 2026-08-25
+**Where things stand:** axe-core passes with no violations on eighteen page renders, and a
+front proxy serves the static files, sets the caching policy and maps the sitemap. Gates 0
+through 7 passed. The deployment story is next.
 
 This file is the run's memory. Each gate attempt is recorded below with its per-check
 result, the loop count, any blockers, and the commit that closed the phase. A session
@@ -572,3 +572,109 @@ restored it exits 0.
   for a public site and awkward for a check that registers: `check-moderation.sh`
   reuses one fixed account for that reason, and clears its comments first so the
   trust ladder cannot make the check pass for the wrong reason.
+
+
+## Gate 7 — accessibility and performance posture
+
+**Attempt 1 — 2026-08-25 — PASS (3 fix loops)**
+
+| Check | Result |
+|---|---|
+| An axe job runs in CI against the compose site and passes on the full page set | PASS — a `site` job stands the stack up with `run.sh --fresh --proxy` and runs the crawl, axe, the render pass, the moderation check and the config round-trip; `npm run a11y` reports no violations on 18 page renders |
+| Every template family covered | PASS — front page, content page, both listings, documentation index, documentation page, contact form, search, log-in; each in both colour schemes |
+| Cache-control on anonymous pages, confirmed by header inspection | PASS — `public, max-age=60, stale-while-revalidate=600` with `Vary: Cookie`; a request carrying a session gets `private, no-store`; documents get an hour; the site's static files an hour and its fonts a week |
+| Every claim on /accessibility is one this run verified | PASS — the page was rewritten against what the build now checks, and what it cannot check is listed as such |
+
+### What axe found, and what was wrong
+
+Sixteen violations on the first run, five distinct causes, all real:
+
+1. **`link-name`, on nine page renders.** The site name was the alternative text
+   of an image, and the branding link holds two images: one for each colour
+   scheme, with the other hidden by CSS. In dark mode the stylesheet hid the only
+   image that had a name, so the link had no accessible text at all. Fixed by
+   putting the text in the link and making both images decorative. A name that
+   depends on which stylesheet rule won is not a name.
+2. **`empty-heading`, on the front page in dark mode.** The same mistake in the
+   `<h1>`, which is the wordmark. Same fix.
+3. **`page-has-heading-one`, on the contact page.** A themed plugin response hands
+   the kernel a title and a body, and `render_page` puts the title in the context
+   and leaves it to the theme. The kernel's own `page.html` does not render it
+   either, so *every* themed plugin page on a stock install ships without a
+   level-one heading. Fixed with `templates/page--contact.html`, which is what the
+   theme engine resolves for that path. *Trovato-side finding.*
+4. **`scrollable-region-focusable`, on documentation pages.** A code block that
+   scrolls sideways could not be scrolled without a mouse. Fixed with
+   `tabindex="0"` and a name.
+5. **`landmark-unique`, twice.** Two search landmarks on the search page with no
+   names, and then, after the fix above, a hundred code blocks each marked
+   `role="region"` with the same name. Fixed by labelling the two search forms and
+   by dropping `role="region"`: a scrollable region has to be focusable, it does
+   not have to be a landmark, and a page with a hundred landmarks does not have a
+   landmark list.
+
+### The front proxy
+
+Three things the kernel cannot do for itself, so the proxy does them, and it is
+the same `deploy/Caddyfile` locally and in production with two environment
+variables changed:
+
+- **It serves the site's own `/static`.** Measured: 150 consecutive requests for a
+  stylesheet through the proxy, all 200. Direct to the kernel the 101st is a 429.
+  Anything the site does not carry falls through to the kernel, which is where the
+  image's own css and js live.
+- **It sets Cache-Control on HTML**, which the kernel sets on static files and on
+  nothing else.
+- **It maps `/sitemap.xml`** onto the one the site generates, since the kernel owns
+  that route and emits relative `<loc>` values.
+
+### The three fix loops
+
+1. **The moderation check could not run after the other checks.** Its first
+   request is a GET, and a crawl and a screenshot pass had already spent the
+   hundred-a-minute budget. It now retries a 429 the way the header asks, as the
+   crawler and the screenshot pass already did. Its first retry helper also
+   swallowed the response body by owning `-o`, which cost three registration
+   attempts against a three-an-hour limit before that was noticed.
+2. **The proxy shared one rate-limit bucket with everybody.** Behind a proxy every
+   request arrives from the proxy, so the whole site was one bucket of 100 a
+   minute. Fixed with `TRUSTED_PROXIES` naming the proxy, which needs a fixed
+   address, which needs a fixed subnet: all three are now in the compose files.
+3. **A wrong conclusion, corrected.** The first reading of the evidence was that
+   the kernel honours `X-Forwarded-For` from an untrusted peer, which would have
+   been a security defect worth reporting. It does not. Requests reaching a
+   container through a published port arrive from the network gateway rather than
+   from `127.0.0.1`, so the peer really was trusted; and Caddy replaces a client's
+   `X-Forwarded-For` with the address it saw, so the spoofed headers in the test
+   were correctly discarded. Both halves behave as documented. What the test was
+   measuring was one client with three names.
+
+### Findings
+
+- **A themed plugin page has no level-one heading.** See above. *Trovato-side.*
+- **The contact form does not associate its errors with its fields.** A failed
+  submission renders a `<ul class="contact-errors">` above the form; the fields
+  carry no `aria-invalid` and no `aria-describedby`, and the list has no
+  `role="alert"`, so a screen reader is told there is a problem and not which
+  field has it. The markup belongs to `trovato_contact` and this site does not
+  patch the kernel. *Trovato-side; scoped out and stated on /accessibility.*
+- **The kernel measures request time and never sends it.**
+  `middleware::query_profiler::track_request_timing` sets a `Server-Timing` header
+  and logs slow requests, it is exported from `middleware::mod`, and nothing
+  applies it to the router. Verified: no `Server-Timing` header is sent, on any
+  response. *Trovato-side.*
+- **A render-time footer is therefore not possible.** The template context carries
+  fifteen keys and none of them is a duration, and the header that would carry one
+  is not sent. Where that information belongs for an operator is the proxy's
+  access log, which has it. No performance number appears anywhere in the copy.
+- **`TRUSTED_PROXIES` takes addresses, not ranges.** Fine for a fixed proxy;
+  awkward for anything autoscaled, and worth knowing before the hosting decision.
+  *Trovato-side.*
+
+### For the deployment
+
+**The kernel's port must not be published in production.** Locally it is bound to
+127.0.0.1 so that `run.sh` can drive the installer and the checks can reach it.
+In production only the proxy listens, because a caller that can reach the kernel
+directly is a caller whose forwarded address the kernel has no reason to doubt.
+docs/DEPLOY.md carries this.
