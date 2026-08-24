@@ -22,9 +22,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     {% if csrf_token is defined %}<meta name="csrf-token" content="{{ csrf_token }}">{% endif %}
-    {% if hreflang_links is defined %}{% for alt in hreflang_links %}
-    <link rel="alternate" hreflang="{{ alt.lang }}" href="{{ alt.href }}">
-    {% endfor %}{% endif %}
+    {# No alternate-language links.
+
+       They belong here and cannot be built. The kernel has a
+       `build_hreflang_links` that produces exactly them, and nothing calls it —
+       it is reachable only from its own tests, so `hreflang_links` is never
+       defined. Building them in this template needs the page's reader-facing
+       path, and for an item page the context does not carry one: the route
+       resolves the alias into a local `canonical_path`, uses it to build the
+       absolute `page_meta.canonical`, and inserts only the absolute form. So the
+       only path a template can see is `/item/{uuid}`.
+
+       Emitting alternates pointing at `/item/{uuid}` would be worse than
+       emitting none: it would tell a crawler that the canonical URL and its
+       alternates are different addresses. Recorded in docs/LEDGER.md, Gate 9. #}
     <title>{% block title %}{{ title | default(value="Trovato") }}{% endblock %}</title>
 
     {# Head metadata for search engines and link unfurlers, built by the route in

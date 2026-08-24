@@ -1,0 +1,8 @@
+# The site's default language. No URL prefix: the default language is excluded
+# from prefix matching, so English pages are served at their bare paths and
+# there is no /en/ duplicate of every URL for a crawler to find.
+id: en
+label: English
+direction: ltr
+is_default: true
+weight: 0

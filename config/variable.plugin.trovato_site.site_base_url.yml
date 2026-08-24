@@ -1,0 +1,16 @@
+# The base every absolute URL the site emits is built from.
+#
+# Declared twice, unavoidably: the kernel reads it from the SITE_URL environment
+# variable, and a plugin cannot read the environment — it can read a site
+# variable. Both defaults are the same value and `cargo test -p checks` fails if
+# they drift. One value in .env feeds the environment side; this file is the
+# other. Change both or neither.
+#
+# The `plugin.trovato_site.` prefix is not decoration. `variables_get` namespaces
+# every key by the calling plugin's name before it looks anything up, so a plugin
+# asking for `site_base_url` reads `plugin.trovato_site.site_base_url` and a file
+# named without the prefix is a file nothing ever reads. It fails silently: the
+# call returns the default that was passed in, which here happened to be the right
+# answer, so the sitemap was correct for four phases by luck.
+key: plugin.trovato_site.site_base_url
+value: https://trovato.rs

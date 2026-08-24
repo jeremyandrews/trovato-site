@@ -17,7 +17,10 @@ import { BASE } from "./pages.mjs";
 const startPaths = ["/", "/llms.txt"];
 if (process.argv.includes("--lang")) {
   const lang = process.argv[process.argv.indexOf("--lang") + 1];
-  if (lang) startPaths.push(`/${lang}/`);
+  // Not `/${lang}/`: the bare language prefix does not resolve on this kernel,
+  // and the front page cannot be translated anyway, so the Italian starts at the
+  // page the footer links to. See docs/LEDGER.md, Gate 9.
+  if (lang) startPaths.push(`/${lang}/why`);
 }
 
 // Paths that are not pages: they are documents, or they change state.

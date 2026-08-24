@@ -13,6 +13,7 @@ implements = [
     "tap_perm",
     "tap_menu",
     "tap_api",
+    "tap_cron",
 ]
 weight = 0
 
@@ -24,14 +25,17 @@ weight = 0
 # sitemap is built from and which a plugin cannot read from the environment.
 #
 # `db_tables` is this plugin's entire database reach. It owns no migrations, so
-# the effective allowlist is exactly this list, and both are read-only in
-# practice: `item` for the posts, `url_alias` so a post links to its friendly
-# path rather than to /item/{uuid}.
+# the effective allowlist is exactly this list. `item` for the posts and the
+# sitemap and `url_alias` for their friendly paths, both read-only;
+# `item_translation` is the one table this plugin writes, and it writes nothing
+# else anywhere. The kernel reads translations from that table and has no way to
+# put a row in it on 0.101.0, so the site's translations are carried in config and
+# brought across by tap_cron.
 #
 # `raw_sql` is declared because the listing is one ORDER BY over two content
 # types joined to their aliases, with a LIMIT — not something the structured item
 # API can express in one call.
 [capabilities]
 host_interfaces = ["db", "logging", "variables"]
-db_tables = ["item", "url_alias"]
+db_tables = ["item", "url_alias", "item_translation"]
 raw_sql = true

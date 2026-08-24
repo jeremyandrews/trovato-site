@@ -1,10 +1,11 @@
 # Build ledger
 
-**Status:** Phase 8 complete, Phase 9 next
+**Status:** Complete. All nine gates passed.
 **Last updated:** 2026-08-25
-**Where things stand:** The production profile boots over TLS on this machine with its
-headers on, and `docs/DEPLOY.md` is a procedure rather than a sketch. Gates 0 through 8
-passed. Reconciliation, Italian, the clean-room rebuild and the report are next.
+**Where things stand:** The site is built, checked and reproducible. A clean-room rebuild
+reaches a populated, themed, working site in 24 seconds from destroyed volumes, and every
+gate passes against it. What stands between this repository and https://trovato.rs serving
+it is DNS, a host, and the decisions in `docs/LAUNCH.md`.
 
 This file is the run's memory. Each gate attempt is recorded below with its per-check
 result, the loop count, any blockers, and the commit that closed the phase. A session
@@ -752,3 +753,108 @@ project so it cannot disturb anything else, and it tears itself down.
 - **First boot is not fully scriptable, on purpose.** The installer sets the
   administrator's password, and a password that came from a file in a public
   repository is a password everybody has. It is the one browser step.
+
+
+## Gate 9 — final review, translations, and the report
+
+**Attempt 1 — 2026-08-25 — PASS (4 fix loops)**
+
+| Check | Result |
+|---|---|
+| Copy reconciled against what shipped | PASS — `/comment-policy` rewritten: it described a classifier that runs and a provider that receives text, and neither happens today; `/accessibility` was already reconciled in Phase 7 |
+| Italian translations of the core pages | PARTIAL — four of five. `/it/why`, `/it/get-started`, `/it/community`, `/it/accessibility` all serve translated titles and bodies. The front page cannot be translated on this kernel; see below |
+| Full-site crawl, both languages | PASS — 191 pages from `/`, `/llms.txt` and the Italian entry point: no 404s, no 5xx, no raw dumps, every page themed and navigable |
+| Clean-room rebuild | PASS — every container and volume destroyed, then `./scripts/run.sh --fresh --proxy`: 24 seconds to a populated site, and every gate re-run against it |
+| The scratch Trovato clone is clean | PASS — `git status --porcelain` empty, still at `v0.101.0`. No file in the Trovato tree was modified at any point |
+| Launch checklist committed | PASS — `docs/LAUNCH.md`, 18 ticked with the command that checks each one, 16 unticked and attributed |
+| Report written and pushed | PASS — this ledger, and the completion report |
+
+### Translations: what works, and the three things that do not
+
+The Italian pages work. What they cost was finding out that three separate parts
+of the translation story are missing on v0.101.0, each verified rather than
+inferred:
+
+1. **Nothing can write a translation.** The kernel reads `item_translation` and
+   overlays it correctly. Nothing populates it. `config import` stores a
+   per-language field map verbatim in the item's own `fields`, where the item
+   renderer looks for a `value` key, finds a language code, and renders the field
+   as nothing *in every language* — observed: putting the tutorial's own
+   `{en: …, it: …}` shape into a page blanked the English page too. The two admin
+   routes are registered `GET` only, and both 500 because their templates are not
+   in the image. There is no API endpoint. *Trovato-side.*
+
+   What the site does: the translations live in a config variable and the site
+   plugin's `tap_cron` copies them into `item_translation`, writing only what
+   changed and removing what configuration no longer declares. That is the one
+   kernel table this plugin writes and it is declared in `db_tables`.
+
+2. **A plugin cannot read a variable outside its own namespace.**
+   `variables_get` prefixes every key with `plugin.{plugin_name}.` before looking
+   it up, so `config/variable.site_base_url.yml` was a file nothing ever read. It
+   fails silently: the call returns the default that was passed in, and the
+   default happened to be the right answer, so the sitemap was correct for four
+   phases by luck. Both variables are now named `plugin.trovato_site.…`.
+   *Trovato-side, and the thing worth knowing is the silence.*
+
+3. **The front page cannot be translated at all.** `routes/front.rs` renders the
+   configured front-page item without calling `apply_translation_overlay`, which
+   `routes/item.rs` does call. So a front page is always in the default language
+   however the reader asked. The Italian front page was written and then removed
+   from configuration rather than left as data nothing reads. *Trovato-side.*
+
+### Two more, found while trying to link the languages together
+
+- **`<html lang>` is always the default language.** `routes/item.rs` inserts the
+  resolved `active_language` into the context and then calls
+  `inject_site_context`, which overwrites it with the site default. The comment
+  there says "route handlers may override active_language"; the handler sets it
+  first and the helper clobbers it. Observed: an Italian page whose body is
+  Italian declares itself `lang="en"`. `text_direction` is clobbered the same way,
+  which would matter more for a right-to-left language than it does here.
+  *Trovato-side.* The consequence for a theme is total: no template can render
+  anything conditional on the language, which is why the Italian pages link to
+  each other in their own copy rather than through a footer block.
+- **`hreflang` alternates cannot be built.** The kernel has
+  `build_hreflang_links`, which produces exactly them, and nothing calls it: it is
+  reachable only from its own tests, so `hreflang_links` is never defined.
+  Building them in a template needs the page's reader-facing path, and for an item
+  page the context does not carry one — `routes/item.rs` resolves the alias into a
+  local `canonical_path`, uses it for the absolute `page_meta.canonical`, and
+  inserts only the absolute form. Emitting alternates pointing at `/item/{uuid}`
+  would tell a crawler that a page's canonical URL and its alternates are
+  different addresses, which is worse than emitting none. *Trovato-side; the site
+  emits none and says why in the template.*
+
+### The four fix loops
+
+1. **A per-language field map blanked the page in both languages.** The shape the
+   kernel's own tutorial uses in config is not the shape the item renderer reads.
+2. **The translation sync read an empty variable and did nothing, silently.** The
+   namespacing above. It took adding a log line saying how many bytes it had read
+   to see it: "read 2 bytes", which is `{}`, the default.
+3. **`tap_cron` with the wrong signature runs and does nothing.** The first
+   version was `fn tap_cron() -> String`. It compiled, exported, was dispatched,
+   and the kernel logged `tap_cron completed` — with the body never running. Every
+   cron tap in the kernel tree is `fn tap_cron(input: CronInput) -> Value`.
+4. **Two template edits served a raw field dump.** Both were unbalanced Tera after
+   a scripted replacement, and both were caught by size: a page that should be
+   12 KB came back as 5 KB. This is the failure mode the crawler was built for in
+   Phase 3 and it is still the easiest one to cause.
+
+### The clean-room rebuild
+
+```
+docker compose -p trovato-site -f docker-compose.yml -f docker-compose.proxy.yml \
+    down -v --remove-orphans
+rm -rf overlay
+./scripts/run.sh --fresh --proxy
+```
+
+24 seconds. Then, against that build: 8 test suites green, 191 pages crawled
+clean, axe with no violations on 18 renders, 36 screenshots with no overflow and
+nothing off-origin, moderation failing closed, 126 config entities round-tripping
+unchanged, and the documentation mirror matching the pinned tag.
+
+`run.sh` now runs cron once before it finishes, so the translations are in place
+when the command returns rather than up to a minute later.

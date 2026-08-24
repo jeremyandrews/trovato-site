@@ -152,6 +152,13 @@ echo "==> Restarting the site so the imported config is live"
 dc restart site >/dev/null
 wait_for_site
 
+# One cron tick, so the site is complete when this command finishes rather than
+# a minute later. The cron container runs every 60 seconds from here on; what
+# this first tick does is bring the translations across from configuration into
+# the kernel's translation table, which is the site plugin's tap_cron.
+echo "==> Running cron once"
+curl -fsS -o /dev/null -m 30 -X POST "${BASE}/cron/${CRON_KEY:-local-development-cron-key}" || true
+
 if [ "$WITH_PROXY" = "1" ]; then
     echo "==> Starting the front proxy"
     dc up -d proxy

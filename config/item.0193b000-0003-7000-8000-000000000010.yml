@@ -30,7 +30,9 @@ fields:
       
       <p>I do. There is no appeals process because there is nobody to appeal to. If I have got it wrong, <a href="/contact">the contact form</a> reaches me, and I would rather hear it than not.</p>
       
-      <h2>What is logged</h2>
+      <h2>Where your comment goes</h2>
       
-      <p>Every decision is recorded with its verdict, so a comment that was held or removed has a reason attached to it that I can look up. The comment text is sent to the configured AI provider for classification, and that is the only place it goes that is not this site.</p>
+      <p>When an AI provider is configured, the comment text, the title of the thing it is a comment on, and a few cheap signals about the account are sent to that provider to be classified. That is the only place a comment goes that is not this site, and every verdict it returns is logged, so a comment that was held or removed has a reason attached to it that I can look up.</p>
+      
+      <p>No provider is configured today. Nothing you write leaves this server, no classification happens, and every comment from an account that has not had three approved waits for me to read it. When that changes this page changes with it and names the provider.</p>
     format: filtered_html

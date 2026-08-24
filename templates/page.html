@@ -167,6 +167,25 @@
         {% if footer_tiles is defined and footer_tiles %}
         {{ footer_tiles | safe }} {# SAFE: kernel tile render pipeline output #}
         {% endif %}
+        {# The Italian pages, linked from every page.
+
+           Not a per-page language switcher, and not a language-dependent block
+           either. Two things stop it. A template cannot work out the current
+           page's Italian address, because for an item page the only path the
+           context carries is `/item/{uuid}`. And a template cannot tell which
+           language it is rendering at all: `routes/item.rs` inserts the resolved
+           `active_language` into the context and then calls
+           `inject_site_context`, which overwrites it with the site default. So
+           `<html lang>` says `en` on an Italian page, and every `{% raw %}{% if %}{% endraw %}` on the
+           language is false everywhere.
+
+           Which leaves this: one link, in both languages, pointing at where the
+           Italian starts. The Italian pages link to each other in their own copy.
+           Both are recorded in docs/LEDGER.md, Gate 9. #}
+        <p class="site-footer__language">
+            <a href="/it/why" hreflang="it" lang="it">Questo sito è disponibile anche in italiano</a>
+        </p>
+
         <p class="site-footer__colophon">
             Trovato is dual licensed under MIT or Apache-2.0.
             The source is on <a href="https://github.com/jeremyandrews/trovato">GitHub</a>.
