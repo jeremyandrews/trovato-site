@@ -1,7 +1,15 @@
 # The front page.
 #
-# The body carries the copy. The listing of recent posts below it is appended by
-# the trovato_site plugin, not written here — it is live.
+# `body` and `proof` are bare strings, not `{value, format}` field objects, and
+# that is deliberate. The front-page handler renders a field only when it carries
+# a `value` key, so a bare string is passed through to the template untouched and
+# the template places it where it belongs. That is what lets the page read hero,
+# calls to action, proof, listing — the tap that renders the listing appends
+# after everything else and could not sit in the middle of that.
+#
+# The consequence: this HTML is not filtered. It is site copy, written here and
+# reviewed in a pull request, and it is treated the same way the mirrored
+# documentation is. Nothing a visitor writes reaches either.
 id: '0193b000-0000-7000-8000-000000000001'
 type: front_page
 title: trovato
@@ -10,13 +18,29 @@ status: 1
 created: 1785542400
 changed: 1785542400
 fields:
-  # No class attributes: `filtered_html` strips every attribute except href,
-  # title and target on a link, so a body cannot carry a styling hook. The lede
-  # is the first paragraph, styled by position from the front page's stylesheet,
-  # and the two calls to action are rendered by the site plugin rather than
-  # written here — they are navigation, not prose.
-  body:
-    value: |
-      <p>A content management system written in Rust.</p>
-      <p>I have worked with Drupal since 2002. Drupal 6 got the mental model right: everything is a node, you add fields to any content type, you query it without writing SQL, and you extend it by implementing a few named functions. Trovato keeps the model and replaces the implementation. Content is one JSONB row instead of a join per field. Plugins are WebAssembly modules that run in their own sandbox and reach nothing they have not declared. Queries are built with Gather, a type-safe query engine filling the role Views did.</p>
-    format: filtered_html
+  body: |
+    <p class="front-hero__lede">A content management system written in Rust.</p>
+    <p>I have worked with Drupal since 2002. Drupal 6 got the mental model right: everything is a node, you add fields to any content type, you query it without writing SQL, and you extend it by implementing a few named functions. Trovato keeps the model and replaces the implementation. Content is one JSONB row instead of a join per field. Plugins are WebAssembly modules that run in their own sandbox and reach nothing they have not declared. Queries are built with Gather, a type-safe query engine filling the role Views did.</p>
+  proof: |
+    <section class="proof" aria-labelledby="proof-sandbox">
+      <h2 class="proof__title" id="proof-sandbox">A plugin that declares nothing gets nothing</h2>
+      <p>Every plugin is a WebAssembly module with a manifest, and the manifest is the whole of what it may reach. The kernel builds that plugin&#8217;s linker from the list and exposes those host interfaces and no others. This is the manifest of the plugin that renders the listing further down this page:</p>
+      <figure class="code">
+        <figcaption class="code__lang">toml</figcaption>
+        <pre class="code__body"><code>[capabilities]
+    host_interfaces = ["db", "logging", "variables"]
+    db_tables = ["item", "url_alias"]
+    raw_sql = true</code></pre>
+      </figure>
+      <p>It reads two tables and it says which two. There is no filesystem at all: the runtime hand-writes five WASI stubs and opens no directories, so a plugin that asks to write a file gets <code>ENOSYS</code>. There is no path from one plugin&#8217;s memory into another&#8217;s. A plugin that names no interfaces is handed an empty linker and can do arithmetic.</p>
+    </section>
+
+    <section class="proof" aria-labelledby="proof-storage">
+      <h2 class="proof__title" id="proof-storage">Twenty fields, one row</h2>
+      <p>In Drupal 6, CCK gave every field its own table, so a content type with twenty fields was twenty tables and loading one node was twenty joins. Trovato keeps the model and stores an item as one row with one JSONB column. Twenty fields is twenty keys, and loading the item is one read.</p>
+      <figure class="code">
+        <figcaption class="code__lang">sql</figcaption>
+        <pre class="code__body"><code>SELECT title, fields FROM item WHERE id = $1;</code></pre>
+      </figure>
+      <p>Revisions and staging belong to the migration that creates content rather than being added on top of it. Every save writes a revision, and every item carries a stage, so an editorial workflow is a property of the write path and not a plugin bolted onto it.</p>
+    </section>

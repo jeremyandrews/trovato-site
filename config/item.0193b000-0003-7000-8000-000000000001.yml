@@ -1,4 +1,3 @@
-# A basic page, using the kernel's own `page` type.
 id: '0193b000-0003-7000-8000-000000000001'
 type: page
 title: Why Trovato
@@ -9,5 +8,44 @@ changed: 1785542400
 fields:
   body:
     value: |
-      <p>Placeholder. The architecture argument at page length lands in Phase 5, along with the honesty section: no plugin registry, some administration through config import rather than forms, and forward-only migrations.</p>
+      <p>Drupal 6 got the mental model right. Everything is a node. You add fields to any content type without writing a schema. You query content through a builder instead of writing SQL. You extend the system by implementing a few named functions, and the system calls them for you. I have worked with Drupal since 2002 and that model has held up better than anything that replaced it.</p>
+      
+      <p>What did not hold up was the implementation. It ran on PHP and MySQL, and CCK gave every field its own table, so loading a node with twenty fields meant twenty joins. The abstraction was good and the cost of it was paid on every page view forever.</p>
+      
+      <p>Trovato keeps the model and replaces the implementation.</p>
+      
+      <h2>Content is one row</h2>
+      
+      <p>An item is a single row in one table, with its fields in one JSONB column. A content type with twenty fields is twenty keys in that column, and loading the item is one read. Adding a field to a type does not change the schema, because the schema does not describe the fields.</p>
+      
+      <p>Revisions and staging are in the write path rather than added on top of it. Every save writes a revision. Every item carries a stage. An editorial workflow is therefore a property of how content is stored, not a plugin that has to be told about every code path that writes.</p>
+      
+      <h2>Plugins run in a sandbox and reach what they declared</h2>
+      
+      <p>A plugin is a WebAssembly module with a manifest, and the manifest is the whole of what it may reach. The kernel reads the list of host interfaces and builds that plugin's linker from it: the plugin receives those imports and no others. A plugin that declares nothing is handed an empty linker.</p>
+      
+      <p>There is no filesystem. The runtime hand-writes five WASI stubs and opens no directories, so a plugin that asks to write a file gets <code>ENOSYS</code>. There is no path from one plugin's memory into another's. A plugin that wants the database also declares which tables it touches, and the kernel enforces that list on every structured call.</p>
+      
+      <p>This is the part of the design I am most confident about, and it is the part that is hardest to add later. It is a property of how plugins are loaded, not a policy applied to them.</p>
+      
+      <h2>Queries are built, not written</h2>
+      
+      <p>Gather fills the role Views did. A query is a definition: a base table, filters, sorts, relationships, and a display. It is stored as configuration, so it can be exported to a file, reviewed in a pull request, and imported into another environment. It has a visual builder for the people who want one and a YAML file for the people who do not.</p>
+      
+      <h2>What is not done</h2>
+      
+      <p>Trovato is at 0.101.0 and working toward 1.0. The plugin contract is frozen. The version number is below 1.0 because the CMS around that contract is not finished, and the honest list of what is missing is worth more than the list of what works.</p>
+      
+      <ul>
+      <li><strong>There is no plugin registry and no package format.</strong> A plugin is built from a directory on disk and installed from there. There is no way to publish one and no way to install somebody else's by name.</li>
+      <li><strong>Some administration happens through config import rather than through forms.</strong> Roles, permissions, stages and system configuration are edited as YAML and imported. That is a real workflow and it is not a replacement for the screens that are missing.</li>
+      <li><strong>Migrations only move forward.</strong> There is no rollback. An upgrade that goes wrong is restored from a backup, which is why the deployment documentation puts the backup drill before the upgrade procedure.</li>
+      <li><strong>Semantic search compares vectors exactly.</strong> There is no approximate index, so the cost of a semantic query grows with the size of the corpus.</li>
+      </ul>
+      
+      <p>The full list is in <a href="/learn/known-issues">Known issues</a>, and <a href="/learn/roadmap">the roadmap</a> says what happens to it.</p>
+      
+      <h2>What this site is</h2>
+      
+      <p>This website runs on a published Trovato release. It is an external application: a plugin, some templates, a configuration set and its own static files, layered on through the search paths the kernel already reads. It patches nothing in the kernel. Where it needed something the kernel does not have, that is written down rather than worked around, and the writing down is in the site's own repository.</p>
     format: filtered_html
