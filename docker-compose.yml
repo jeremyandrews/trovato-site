@@ -1,0 +1,104 @@
+# The trovato.rs website, local.
+#
+#   ./scripts/run.sh
+#
+# runs everything below and leaves a populated site on http://127.0.0.1:3080.
+#
+# The kernel image is pinned to an exact release. `latest` would make a rebuild
+# reproducible only until the next release, which is not reproducible.
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-trovato}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-trovato}
+      POSTGRES_DB: ${POSTGRES_DB:-trovato}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-trovato}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  # The site.
+  #
+  # PLUGINS_DIR, TEMPLATES_DIR and STATIC_DIR are colon-separated search paths.
+  # The image's own directory comes first and the site's overlay second, so the
+  # site wins every name collision and inherits everything it does not override.
+  # This is the whole mechanism by which the site is an external application.
+  site:
+    image: ghcr.io/jeremyandrews/trovato:${TROVATO_VERSION:-0.101.0}
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${SITE_PORT:-3080}:3000"
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-trovato}:${POSTGRES_PASSWORD:-trovato}@postgres:5432/${POSTGRES_DB:-trovato}
+      REDIS_URL: redis://redis:6379
+      PORT: "3000"
+      # The one place an absolute URL comes from. Canonicals, Open Graph URLs,
+      # sitemap entries and feed self-links are all resolved against it, so the
+      # local stack emits the production URLs by default and there is no second
+      # setting to forget. Override it in .env when that is not what you want.
+      SITE_URL: ${SITE_URL:-https://trovato.rs}
+      RUST_LOG: ${RUST_LOG:-info,tower_http=info,sqlx=warn}
+      CRON_KEY: ${CRON_KEY:-local-development-cron-key}
+      PLUGINS_DIR: /app/plugins:/site/plugins
+      TEMPLATES_DIR: /app/templates:/site/templates
+      STATIC_DIR: /app/static:/site/static
+      UPLOADS_DIR: /site-uploads
+    volumes:
+      - ./overlay/plugins:/site/plugins:ro
+      - ./templates:/site/templates:ro
+      - ./static:/site/static:ro
+      - ./config:/site/config:ro
+      - uploads:/site-uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 20s
+
+  # The site's clock.
+  #
+  # The kernel runs no internal scheduler: tap_cron fires only when something
+  # POSTs to /cron/{CRON_KEY}. Scheduled publishing, search index rebuilds and
+  # the moderation queue all hang off it, so without this container they never
+  # happen. It is not optional. `|| true` so one failed poke against a
+  # restarting server does not end the loop for good.
+  cron:
+    image: curlimages/curl:8.11.1
+    restart: unless-stopped
+    environment:
+      CRON_KEY: ${CRON_KEY:-local-development-cron-key}
+      CRON_INTERVAL: ${CRON_INTERVAL:-60}
+    command:
+      - /bin/sh
+      - -c
+      - 'while true; do curl -fsS -m 30 -X POST "http://site:3000/cron/$$CRON_KEY" >/dev/null || true; sleep "$$CRON_INTERVAL"; done'
+    depends_on:
+      site:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  redis_data:
+  uploads:

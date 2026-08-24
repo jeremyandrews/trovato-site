@@ -1,0 +1,15 @@
+# A blog post. `field_body`, not `body`: the blog content type is the kernel's
+# trovato_blog plugin and that is the field name it declares.
+id: '0193b000-0002-7000-8000-000000000001'
+type: blog
+title: Twenty fields, one row
+language: en
+status: 1
+created: 1753574400
+changed: 1753574400
+fields:
+  field_body:
+    value: |
+      <p>In Drupal 6, CCK gave every field its own table. A content type with twenty fields was twenty tables, and loading one node was twenty joins. The model was right and the storage was expensive.</p>
+      <p>Trovato keeps the model. An item is one row with one JSONB column, so twenty fields is twenty keys in that column and loading the item is one read. Revisions and staging are in the write path rather than bolted on: every save writes a revision, and every item carries a stage.</p>
+    format: full_html

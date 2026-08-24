@@ -1,0 +1,13 @@
+# A basic page, using the kernel's own `page` type.
+id: '0193b000-0003-7000-8000-000000000001'
+type: page
+title: Why Trovato
+language: en
+status: 1
+created: 1766000000
+changed: 1766000000
+fields:
+  body:
+    value: |
+      <p>Placeholder. The architecture argument at page length lands in Phase 5, along with the honesty section: no plugin registry, some administration through config import rather than forms, and forward-only migrations.</p>
+    format: full_html

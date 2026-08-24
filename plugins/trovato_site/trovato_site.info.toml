@@ -1,0 +1,34 @@
+name = "trovato_site"
+description = "The trovato.rs website: the news content type and the front-page listing"
+version = "0.1.0"
+api_version = "0.101"
+default_enabled = false
+dependencies = []
+
+[taps]
+implements = [
+    "tap_item_info",
+    "tap_item_access",
+    "tap_item_view",
+    "tap_perm",
+]
+weight = 0
+
+# `db` because the front page's listing of recent posts is a real query against
+# published content, run when the front page is viewed. `logging` because the
+# #[plugin_tap] macro reaches for the logging import on its error paths, and
+# because a query that fails should say so rather than render an empty page in
+# silence.
+#
+# `db_tables` is this plugin's entire database reach. It owns no migrations, so
+# the effective allowlist is exactly this list, and both are read-only in
+# practice: `item` for the posts, `url_alias` so a post links to its friendly
+# path rather than to /item/{uuid}.
+#
+# `raw_sql` is declared because the listing is one ORDER BY over two content
+# types joined to their aliases, with a LIMIT — not something the structured item
+# API can express in one call.
+[capabilities]
+host_interfaces = ["db", "logging"]
+db_tables = ["item", "url_alias"]
+raw_sql = true

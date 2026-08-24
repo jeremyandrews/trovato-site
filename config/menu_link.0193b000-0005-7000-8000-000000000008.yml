@@ -1,0 +1,11 @@
+# Footer menu.
+id: 0193b000-0005-7000-8000-000000000008
+menu_name: footer
+path: /blog
+title: Blog
+weight: 20
+hidden: false
+plugin: trovato_site
+stage_id: 0193a5a0-0000-7000-8000-000000000001
+created: 1766000000
+changed: 1766000000

@@ -1,0 +1,18 @@
+# The front page.
+#
+# The body carries the copy. The listing of recent posts below it is appended by
+# the trovato_site plugin, not written here — it is live.
+id: '0193b000-0000-7000-8000-000000000001'
+type: front_page
+title: trovato
+language: en
+status: 1
+created: 1766000000
+changed: 1766000000
+fields:
+  body:
+    value: |
+      <p class="front-hero__lede">A content management system written in Rust.</p>
+      <p>I have worked with Drupal since 2002. Drupal 6 got the mental model right: everything is a node, you add fields to any content type, you query it without writing SQL, and you extend it by implementing a few named functions. Trovato keeps the model and replaces the implementation. Content is one JSONB row instead of a join per field. Plugins are WebAssembly modules that run in their own sandbox and reach nothing they have not declared. Queries are built with Gather, a type-safe query engine filling the role Views did.</p>
+      <p class="front-hero__actions"><a class="button button--primary" href="/get-started">Get started</a> <a class="button button--secondary" href="/why">Why Trovato</a></p>
+    format: full_html

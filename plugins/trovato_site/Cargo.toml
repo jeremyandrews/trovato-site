@@ -1,0 +1,17 @@
+[package]
+name = "trovato_site"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "The trovato.rs website: the news content type and the front-page listing"
+
+[lints]
+workspace = true
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+trovato-sdk = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }

@@ -1,0 +1,16 @@
+id: '0193b000-0001-7000-8000-000000000001'
+type: news
+title: Trovato 0.101.0
+language: en
+status: 1
+created: 1755561600
+changed: 1755561600
+fields:
+  body:
+    value: |
+      <p>0.101.0 adds the contact form plugin, the first plugin to use the mail host interface, the <code>_token</code> form field and themed plugin pages. It also adds <code>trovato_book</code>, which gives a set of pages an ordered hierarchy with previous, next and up links.</p>
+      <p>The plugin contract is unchanged. A plugin built against 0.99 or 0.100 loads on 0.101 without rebuilding: the kernel accepts a plugin whose major version matches and whose minor version is no higher than its own.</p>
+    format: full_html
+  summary:
+    value: The contact form and book page trees, with no change to the plugin contract.
+    format: plain_text

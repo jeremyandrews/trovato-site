@@ -1,0 +1,63 @@
+/*
+ * Site styles.
+ *
+ * Phase 1: enough layout to see the structure and read the pages. The design
+ * system — scale, spacing, dark scheme, self-hosted faces — lands in Phase 2,
+ * and this file is rewritten against the token layer there.
+ */
+
+.site-header__bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 0;
+}
+
+.site-branding__lockup {
+    display: block;
+    height: 2.5rem;
+    width: auto;
+}
+
+.site-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.site-account {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-inline-start: auto;
+}
+
+.site-search {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.front-listing__items {
+    list-style: none;
+    padding: 0;
+}
+
+.front-listing__item {
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--brand-clay-light);
+}
+
+.front-listing__item:last-child {
+    border-bottom: none;
+}
+
+.site-footer {
+    padding: 2rem 0;
+}
+
+.footer-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+}

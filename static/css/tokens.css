@@ -1,0 +1,20 @@
+/*
+ * Trovato brand tokens.
+ *
+ * Derived from assets/brand/BRAND.md in the kernel repository at v0.101.0. The
+ * palette is fixed there; what this file adds is the mapping from those five
+ * colors onto the roles a page actually needs, in both color schemes.
+ *
+ * Phase 1 carries the palette only. The full token layer — type scale, spacing,
+ * the dark scheme, the contrast-checked pairings — lands in Phase 2.
+ */
+
+:root {
+    /* The brand palette, verbatim. Never redefined per scheme: these are the
+       colors themselves, not the roles they play. */
+    --brand-ink: #221B16;
+    --brand-clay: #B14B2E;
+    --brand-clay-light: #E08963;
+    --brand-peach: #FFD9A8;
+    --brand-cream: #FAF5EF;
+}

@@ -1,0 +1,30 @@
+# The /news listing. `canonical_url` does not register the route — it makes the
+# kernel redirect /gather/{query_id} to the friendly path and keeps pager links
+# on it. The path itself is served by the url_alias that points at this query.
+query_id: trovato_site.news_listing
+label: News
+description: Releases, milestones and changes worth knowing about.
+definition:
+  base_table: item
+  item_type: news
+  fields: []
+  filters: []
+  includes: {}
+  relationships: []
+  sorts:
+  - direction: desc
+    field: created
+    nulls: null
+  stage_aware: true
+display:
+  canonical_url: /news
+  empty_text: No news yet.
+  footer: null
+  format: list
+  header: null
+  items_per_page: 20
+  pager:
+    enabled: true
+    show_count: false
+    style: full
+plugin: trovato_site
