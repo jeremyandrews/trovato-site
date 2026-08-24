@@ -1,0 +1,55 @@
+/*
+ * Self-hosted faces.
+ *
+ * Served from this site's origin. No Google Fonts import, no external font host,
+ * no third party told who read which page. The files, their versions and their
+ * licenses are in static/fonts/.
+ *
+ * `font-display: swap` everywhere: the fallback stacks in tokens.css are real,
+ * and text that is readable in the wrong face beats text that is invisible in
+ * the right one.
+ *
+ * Only the weights the site actually sets are shipped. Nothing here declares a
+ * weight it has no file for, which is what makes a browser synthesise a bold and
+ * why a heading can look subtly wrong on one machine and fine on another.
+ */
+
+@font-face {
+    font-family: "Inter";
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url("/static/fonts/Inter-Regular.woff2") format("woff2");
+}
+
+@font-face {
+    font-family: "Inter";
+    font-style: italic;
+    font-weight: 400;
+    font-display: swap;
+    src: url("/static/fonts/Inter-Italic.woff2") format("woff2");
+}
+
+@font-face {
+    font-family: "Inter";
+    font-style: normal;
+    font-weight: 600;
+    font-display: swap;
+    src: url("/static/fonts/Inter-SemiBold.woff2") format("woff2");
+}
+
+@font-face {
+    font-family: "JetBrains Mono";
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url("/static/fonts/JetBrainsMono-Regular.woff2") format("woff2");
+}
+
+@font-face {
+    font-family: "JetBrains Mono";
+    font-style: normal;
+    font-weight: 700;
+    font-display: swap;
+    src: url("/static/fonts/JetBrainsMono-Bold.woff2") format("woff2");
+}

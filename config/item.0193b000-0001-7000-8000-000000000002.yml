@@ -3,14 +3,14 @@ type: news
 title: The plugin contract is frozen
 language: en
 status: 1
-created: 1752969600
-changed: 1752969600
+created: 1784505600
+changed: 1784505600
 fields:
   body:
     value: |
       <p>The set of taps a plugin implements, the manifest that declares what it may reach, and the host interfaces behind that declaration are now fixed. A plugin written today keeps working through 1.0.</p>
       <p>The version number stays below 1.0 because the CMS around the contract is not finished. <a href="https://github.com/jeremyandrews/trovato/blob/main/KNOWN-ISSUES.md">KNOWN-ISSUES.md</a> is the list of what is left.</p>
-    format: full_html
+    format: filtered_html
   summary:
     value: Taps, manifests and host interfaces are fixed. What is left is the CMS around them.
     format: plain_text

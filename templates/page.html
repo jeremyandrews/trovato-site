@@ -1,40 +1,55 @@
 {# The site's page layout.
 
    Overrides the kernel's templates/page.html by winning the TEMPLATES_DIR name
-   collision. It keeps the kernel's structure — skip link, labelled navs,
-   aria-current, breadcrumbs, tile regions — because that structure is already
-   correct, and adds what the site needs: its own stylesheet and a search box in
-   the header.
+   collision. It keeps the kernel's structure — labelled navs, aria-current,
+   breadcrumbs, tile regions — because that structure is already correct, and
+   adds what the site needs: a header that collapses on a narrow screen, a search
+   box that works without JavaScript, and a footer that says what the licence is.
 
-   Phase 1 markup. The theme lands in Phase 2. #}
+   The document itself is base.html, also overridden. #}
 {% extends "base.html" %}
-
-{% block head %}
-<link rel="stylesheet" href="/static/css/tokens.css">
-<link rel="stylesheet" href="/static/css/site.css">
-{% endblock %}
 
 {% block header %}
 <div class="site-header">
     <div class="container site-header__bar">
         <div class="site-branding">
-            <a href="/" class="site-branding__name">
-                <img src="/static/brand/trovato-lockup-horizontal.svg" alt="{{ site_name | default(value='Trovato') }}" class="site-branding__lockup" width="220" height="60">
+            {# Two files rather than one recolored: the wordmark is drawn as paths
+               with baked-in fills, so the scheme picks the file. #}
+            <a href="/" class="site-branding__link">
+                <img src="/static/brand/trovato-lockup-horizontal.svg"
+                     alt="{{ site_name | default(value='Trovato') }} home"
+                     class="site-branding__lockup site-branding__lockup--light" width="220" height="60">
+                <img src="/static/brand/trovato-lockup-horizontal-white.svg"
+                     alt="" aria-hidden="true"
+                     class="site-branding__lockup site-branding__lockup--dark" width="220" height="60">
             </a>
             {% if site_slogan %}
             <span class="site-branding__slogan">{{ site_slogan }}</span>
             {% endif %}
         </div>
 
-        <nav class="site-nav" aria-label="Main">
-            {% if main_menu is defined and main_menu %}
-            {% for link in main_menu %}
-            {% if not link.hidden %}
-            <a href="{{ link.path }}" class="site-nav__link{% if current_path is defined and current_path == link.path %} site-nav__link--active{% endif %}"{% if current_path is defined and current_path == link.path %} aria-current="page"{% endif %}>{{ link.title }}</a>
-            {% endif %}
-            {% endfor %}
-            {% endif %}
-        </nav>
+        {# A <details> disclosure rather than a scripted menu button. It opens by
+           click or keyboard, announces its own expanded state, and works with
+           JavaScript switched off. Above 48rem the toggle is hidden by CSS and
+           the list is always shown, open or not. #}
+        <details class="site-nav">
+            <summary class="site-nav__toggle">Menu</summary>
+            <nav aria-label="Main">
+                <ul class="site-nav__list">
+                    {% if main_menu is defined and main_menu %}
+                    {% for link in main_menu %}
+                    {% if not link.hidden %}
+                    <li>
+                        {# aria-current, not only the active class: the class is
+                           styling, and assistive technology cannot see it. #}
+                        <a href="{{ link.path }}" class="site-nav__link{% if current_path is defined and current_path == link.path %} site-nav__link--active{% endif %}"{% if current_path is defined and current_path == link.path %} aria-current="page"{% endif %}>{{ link.title }}</a>
+                    </li>
+                    {% endif %}
+                    {% endfor %}
+                    {% endif %}
+                </ul>
+            </nav>
+        </details>
 
         {# Search is a form, not a nav link: it is server-handled at /search and
            works with JavaScript switched off. #}
@@ -88,9 +103,7 @@
 </nav>
 {% endif %}
 
-{% block main %}
 {{ content | safe }} {# SAFE: kernel render pipeline output — sanitized via SAFE_TAGS and Tera autoescape #}
-{% endblock %}
 
 {% if sidebar_tiles is defined and sidebar_tiles %}
 <aside class="page-sidebar" aria-label="Sidebar">

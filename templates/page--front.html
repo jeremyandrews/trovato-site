@@ -1,13 +1,26 @@
 {# The front page.
 
-   `content` here is the front-page item's body followed by the site plugin's
-   recent-posts listing — the plugin appends it through tap_item_view, which the
-   front-page handler renders just as the item route does. The template's job is
-   the frame around it. #}
+   The heading is the wordmark. The rest of the page is content: the front page
+   item's body, then the site plugin's calls to action and its live listing of
+   recent posts.
+
+   This overrides `content`, which base.html defines, rather than a block nested
+   inside it. A first version defined `{% raw %}{% block main %}{% endraw %}` inside page.html's
+   `content` block and overrode that from here; the front page then rendered with
+   an empty `<header>` while every other page kept its own. Tera resolves a
+   nested block overridden from a grandchild by dropping its siblings in the
+   parent, and the failure is silent — the header element is there and empty. One
+   level of inheritance per block, and the problem does not arise. #}
 {% extends "page.html" %}
 
-{% block main %}
+{% block content %}
 <div class="front">
+    <h1 class="front__title">
+        <img src="/static/brand/trovato-wordmark.svg" alt="trovato"
+             class="front__wordmark front__wordmark--light" width="420" height="120">
+        <img src="/static/brand/trovato-wordmark-white.svg" alt="" aria-hidden="true"
+             class="front__wordmark front__wordmark--dark" width="420" height="120">
+    </h1>
     {{ content | safe }} {# SAFE: kernel render pipeline output plus tap_item_view output, both sanitized upstream #}
 </div>
 {% endblock %}

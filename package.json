@@ -1,0 +1,15 @@
+{
+  "name": "trovato-site-checks",
+  "private": true,
+  "type": "module",
+  "description": "Browser-driven checks against a running site: screenshots, accessibility, crawl.",
+  "scripts": {
+    "shoot": "node scripts/shoot.mjs",
+    "a11y": "node scripts/a11y.mjs",
+    "crawl": "node scripts/crawl.mjs"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.10.1",
+    "playwright": "^1.62.1"
+  }
+}

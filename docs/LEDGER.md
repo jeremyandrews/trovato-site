@@ -1,9 +1,10 @@
 # Build ledger
 
-**Status:** Phase 1 complete, Phase 2 next
+**Status:** Phase 2 complete, Phase 3 next
 **Last updated:** 2026-08-24
-**Where things stand:** The skeleton is up. `./scripts/run.sh` reaches a populated site on
-http://127.0.0.1:3080 from nothing, in one command. Gate 1 passed. Theme work is next.
+**Where things stand:** The site is themed in both color schemes, on self-hosted faces, with
+the contrast of every token pairing enforced by `cargo test`. Gates 0, 1 and 2 passed.
+Content architecture is next.
 
 This file is the run's memory. Each gate attempt is recorded below with its per-check
 result, the loop count, any blockers, and the commit that closed the phase. A session
@@ -143,3 +144,92 @@ Trovato tree.
 - `/news` rows render titles and dates but no summaries: the stock
   `gather/row.html` reads `row.summary`, and a news item's summary is in
   `fields.summary`. The listing template override lands in Phase 3.
+
+
+## Gate 2 — theme and brand
+
+**Attempt 1 — 2026-08-24 — PASS (3 fix loops)**
+
+| Check | Result |
+|---|---|
+| Key pages render at 360px and 1280px in both schemes | PASS — 28 screenshots (7 pages x 2 widths x 2 schemes), all 200 |
+| Layout intact, nav usable at both widths | PASS — at 360px the nav is a `<details>` disclosure that opens on Enter and exposes all 5 links; at 1280px the links are shown and the toggle is hidden |
+| No horizontal scroll at 360px | PASS — measured, `scrollWidth <= clientWidth` on all 28 |
+| Dark mode actually dark everywhere | PASS — body background `rgb(26, 21, 18)` on every dark shot, and an automated sweep of every visible element found nothing carrying a background from the wrong scheme |
+| Computed contrast of every token pairing passes WCAG AA | PASS — 7 tests in the `checks` crate over 24 declared pairings; the checker was verified to fail by breaking a token and by deleting a dark override |
+| Fonts load from the site's own origin | PASS — `200 http://127.0.0.1:3080/static/fonts/Inter-{Regular,SemiBold}.woff2`, and a request interceptor recorded zero off-origin requests across all 28 loads |
+
+### The three fix loops
+
+1. **The main menu vanished on a desktop.** `page--front.html` overrode a
+   `{% block main %}` nested inside `page.html`'s `content` block. Tera resolves a
+   nested block overridden from a grandchild by dropping its siblings in the
+   parent, so the front page rendered an empty `<header>` while every other page
+   kept its own — silently, with the element present. Fixed by keeping each block
+   one level of inheritance deep.
+
+2. **Content bodies rendered as escaped source.** The seed items were written
+   `format: full_html`. The item render path uses `FilterPipeline::for_format_safe`,
+   which permits `plain_text` and `filtered_html` and downgrades anything else to
+   `plain_text` — so the front page displayed its own markup as text. Fixed by
+   using `filtered_html`, which then turned up the constraint below.
+
+3. **Controls the site does not own were unthemed.** The contact form's submit was
+   a browser-default white box on a dark page, and the search widget's button was
+   navy `#1a3a5c` on cream. Both were found by the automated sweep rather than by
+   looking. Fixed by styling bare `button`/`input[type=submit]` and by mapping the
+   fourteen `--scolta-*` custom properties onto the site's tokens. The widget's
+   button text is hard-coded white, which measures 2.65:1 on the dark scheme's
+   Clay Light fill, so that one is overridden by id.
+
+### Findings
+
+- **Static assets are rate-limited as API calls, and the limits are not
+  configurable.** `categorize_path` puts every GET that is not login, register,
+  upload, search, comment or `/api/` into the `api` bucket — including
+  `/static/*`. The bucket is 100 per minute per IP, hard-coded in
+  `RateLimitConfig::default()` with no environment knob. Measured: the 101st
+  consecutive request for `/static/css/site.css` returns `429` with
+  `retry-after: 60`. A page of this site pulls about ten subresources, so a
+  visitor reading ten pages in a minute has their fonts throttled and the page
+  falls back to Times — which is exactly what happened here during a screenshot
+  run. *Trovato-side.* It also settles a Phase 8 decision: the production front
+  proxy serves `/static` itself, so static never reaches the kernel and never
+  counts against anybody's budget.
+- **The default CSP is looser than any page needs.** The kernel sends
+  `script-src 'self' 'wasm-unsafe-eval' https://cdn.jsdelivr.net`,
+  `style-src … https://fonts.googleapis.com` and
+  `font-src 'self' https://fonts.gstatic.com`. This site requests nothing
+  off-origin — verified across all 28 page loads — so three external origins are
+  permitted that nothing uses. *Trovato-side;* Phase 8's proxy tightens it for
+  this deployment.
+- **A content body cannot carry a styling hook.** `filtered_html` allows `href`,
+  `title` and `target` on a link, `src`/`alt`/`title`/`width`/`height` on an image
+  and `colspan`/`rowspan` on a cell. Everything else, `class` included, is
+  stripped. So the front page's lede is styled by position (`p:first-child`) and
+  its two calls to action are rendered by the site plugin, because a link written
+  in the body cannot be given a button class. Not a defect — it is what a
+  filtered format is for — but it decides how a themed site is built.
+- **Config import does not update an existing item's dates.** `save_item`'s
+  `ON CONFLICT` clause updates `title`, `fields`, `status` and `language` and
+  leaves `created` and `changed` as first written. Correcting a seed item's date
+  in config and re-importing therefore changes nothing; it took a `--fresh`
+  rebuild. *Trovato-side.* Consistent with the Gate 1 finding that import cannot
+  set `promote` either: the item importer writes a subset of the row.
+- **Clay on Cream measures 4.95:1, not the 3-to-4.5 the plan assumed.** It clears
+  AA for body text. Body text is still Ink at 15.67:1, because a page of
+  terracotta prose is unpleasant whatever it passes — but link color did not need
+  to be darkened for the page background. It was darkened anyway: on
+  `--surface-sunken` the lighter clay measures 4.42:1 and fails, and one link
+  color that passes everywhere beats two that each pass in one place.
+
+### What the theme is
+
+Palette and lockups from `assets/brand/BRAND.md`, unchanged. Inter and JetBrains
+Mono, self-hosted from `static/fonts/` with their licenses, five files and 548 KB
+in total, `font-display: swap` and real fallback stacks behind them. A minor-third
+type scale with the two largest steps fluid. Mobile-first, one breakpoint at 48rem.
+Motion is a chevron rotation and a button hover, both behind
+`prefers-reduced-motion`. No inline `<style>` anywhere: `templates/base.html` is
+overridden precisely because the kernel's carries 350 lines of blue-palette CSS
+that no block could reach.
