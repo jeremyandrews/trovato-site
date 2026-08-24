@@ -1,6 +1,6 @@
-# Main menu.
-id: 0193b000-0005-7000-8000-000000000005
-menu_name: main
+# Footer menu: every primary destination, plus the ones the header reaches another way.
+id: 0193b000-0005-7000-8000-000000000012
+menu_name: footer
 path: /blog
 title: Blog
 weight: 40

@@ -1,0 +1,7 @@
+# Written by hand because `config import` does not run pathauto.
+id: '0193b000-0004-7000-8000-000000000014'
+source: /item/0193b000-0002-7000-8000-000000000001
+alias: /blog/twenty-fields-one-row
+language: en
+stage_id: '0193a5a0-0000-7000-8000-000000000001'
+created: 1785542400

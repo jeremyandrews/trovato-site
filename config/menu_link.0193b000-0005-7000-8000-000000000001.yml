@@ -1,4 +1,4 @@
-# Main menu. Flat on purpose: every destination is one click from every page.
+# Main menu.
 id: 0193b000-0005-7000-8000-000000000001
 menu_name: main
 path: /why
@@ -7,5 +7,5 @@ weight: 0
 hidden: false
 plugin: trovato_site
 stage_id: 0193a5a0-0000-7000-8000-000000000001
-created: 1766000000
-changed: 1766000000
+created: 1785542400
+changed: 1785542400

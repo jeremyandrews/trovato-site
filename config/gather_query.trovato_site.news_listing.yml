@@ -18,6 +18,11 @@ definition:
   stage_aware: true
 display:
   canonical_url: /news
+  feed:
+    path: /rss/news.xml
+    title: Trovato news
+    description: Releases, milestones and changes worth knowing about.
+    items: 20
   empty_text: No news yet.
   footer: null
   format: list

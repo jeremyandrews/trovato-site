@@ -1,9 +1,9 @@
 # Footer menu: every primary destination, plus the ones the header reaches another way.
-id: 0193b000-0005-7000-8000-000000000008
+id: 0193b000-0005-7000-8000-000000000014
 menu_name: footer
-path: /why
-title: Why
-weight: 0
+path: /community
+title: Community
+weight: 60
 hidden: false
 plugin: trovato_site
 stage_id: 0193a5a0-0000-7000-8000-000000000001

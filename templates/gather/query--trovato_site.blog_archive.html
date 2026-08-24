@@ -1,0 +1,32 @@
+{# The blog archive, grouped by year.
+
+   Gather has no GROUP BY and no aggregates, so the grouping is done here. The
+   rows arrive newest-first, so tracking the previous row's year and emitting a
+   heading when it changes is enough — no sorting, no second pass. #}
+<div class="listing listing--archive">
+    <h1>{{ query.label }}</h1>
+
+    {% if query.description %}
+    <p class="listing__description">{{ query.description }}</p>
+    {% endif %}
+
+    {% if rows | length == 0 %}
+    <p class="listing__empty">{{ query.display.empty_text | default(value="Nothing archived yet.") }}</p>
+    {% else %}
+    {% set_global current_year = "" %}
+    {% for row in rows %}
+    {% set year = row.created | format_date(format="%Y") %}
+    {% if year != current_year %}
+    {% if not loop.first %}</ul>{% endif %}
+    <h2 class="archive__year" id="year-{{ year }}">{{ year }}</h2>
+    <ul class="archive__items">
+    {% set_global current_year = year %}
+    {% endif %}
+        <li class="archive__item">
+            <a href="/item/{{ row.id }}">{{ row.title }}</a>
+            <time class="archive__date" datetime="{{ row.created | format_date(format='%Y-%m-%d') }}">{{ row.created | format_date(format="%-d %B") }}</time>
+        </li>
+    {% if loop.last %}</ul>{% endif %}
+    {% endfor %}
+    {% endif %}
+</div>

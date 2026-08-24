@@ -1,0 +1,39 @@
+{# The blog listing.
+
+   Overrides the kernel's template of the same name. Two reasons: it reads
+   `row.fields.body`, and the blog plugin's field is `field_body`, so every
+   teaser on the kernel's own blog listing renders with no text; and its markup
+   predates this site's teaser styling.
+
+   On the `/item/{{ row.id }}` links, see the news listing template. #}
+<div class="listing listing--blog">
+    <h1>{{ query.label }}</h1>
+
+    {% if query.description %}
+    <p class="listing__description">{{ query.description }}</p>
+    {% endif %}
+
+    {% if rows | length == 0 %}
+    <p class="listing__empty">{{ query.display.empty_text | default(value="No posts yet.") }}</p>
+    {% else %}
+    <ul class="listing__items">
+        {% for row in rows %}
+        <li class="teaser">
+            <h2 class="teaser__title"><a href="/item/{{ row.id }}">{{ row.title }}</a></h2>
+            <p class="teaser__meta">
+                <time datetime="{{ row.created | format_date(format='%Y-%m-%d') }}">{{ row.created | format_date }}</time>
+            </p>
+            {% if row.fields is defined and row.fields.field_body is defined and row.fields.field_body.value is defined %}
+            <p class="teaser__summary">{{ row.fields.field_body.value | striptags | truncate(length=200) }}</p>
+            {% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+
+    <p class="listing__more"><a href="/blog/archive">Every post, by year</a></p>
+
+    {% if pager %}
+    {% include "gather/pager.html" %}
+    {% endif %}
+</div>

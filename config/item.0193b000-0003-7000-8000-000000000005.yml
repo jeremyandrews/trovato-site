@@ -1,0 +1,13 @@
+# Learn. Structure only — the copy is written in Phase 5.
+id: '0193b000-0003-7000-8000-000000000005'
+type: page
+title: Learn
+language: en
+status: 1
+created: 1785542400
+changed: 1785542400
+fields:
+  body:
+    value: |
+      <p>PLACEHOLDER-PHASE-5. The documentation, mirrored from the kernel repository.</p>
+    format: filtered_html

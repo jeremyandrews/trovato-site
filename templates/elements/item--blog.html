@@ -1,0 +1,25 @@
+{# A blog post.
+
+   A person's name, linked to their page, because a blog post is somebody's
+   argument and should say whose. The link is a fixed path rather than one
+   derived from `item.author_id`: the author's UUID is assigned by the installer,
+   so it differs between every install and cannot appear in a template or in
+   config. See docs/LEDGER.md, Gate 3. #}
+<article class="item item--blog">
+    <header class="item__header">
+        <h1 class="item__title">{{ item.title }}</h1>
+        <p class="item__meta">
+            <a class="item__author" rel="author" href="/authors/jeremy-andrews">Jeremy Andrews</a>
+            &middot;
+            <time datetime="{{ item.created | format_date(format='%Y-%m-%d') }}">{{ item.created | format_date }}</time>
+        </p>
+    </header>
+
+    <div class="item__content prose">
+        {{ children | safe }} {# SAFE: kernel field pipeline and tap output, both sanitized upstream #}
+    </div>
+
+    <footer class="item__footer">
+        <p><a href="/blog">All posts</a> &middot; <a href="/blog/archive">Archive</a> &middot; <a href="/rss/blog.xml">RSS</a></p>
+    </footer>
+</article>

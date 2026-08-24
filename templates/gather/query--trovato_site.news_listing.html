@@ -1,0 +1,44 @@
+{# The news listing.
+
+   The stock gather/row.html reads `row.summary`, which is a top-level key no
+   item has: a news item's summary is in `row.fields.summary`. That is why a
+   listing rendered by the kernel's own template shows titles and dates and no
+   text at all.
+
+   Links go to `/item/{{ row.id }}` and not to the item's alias. Gather cannot
+   reach `url_alias`: a relationship joins on column equality, and the alias join
+   is an expression (`source = '/item/' || id::text`). No Tera filter resolves an
+   alias either. Every page's canonical URL is still its alias, and so is every
+   entry in the site's sitemap, so what a crawler indexes is the friendly path —
+   it is the visible href in a listing that cannot be. #}
+<div class="listing listing--news">
+    <h1>{{ query.label }}</h1>
+
+    {% if query.description %}
+    <p class="listing__description">{{ query.description }}</p>
+    {% endif %}
+
+    {% if rows | length == 0 %}
+    <p class="listing__empty">{{ query.display.empty_text | default(value="Nothing here yet.") }}</p>
+    {% else %}
+    <ul class="listing__items">
+        {% for row in rows %}
+        <li class="teaser">
+            <h2 class="teaser__title"><a href="/item/{{ row.id }}">{{ row.title }}</a></h2>
+            <p class="teaser__meta">
+                <time datetime="{{ row.created | format_date(format='%Y-%m-%d') }}">{{ row.created | format_date }}</time>
+            </p>
+            {% if row.fields is defined and row.fields.summary is defined and row.fields.summary.value is defined %}
+            <p class="teaser__summary">{{ row.fields.summary.value }}</p>
+            {% elif row.fields is defined and row.fields.body is defined and row.fields.body.value is defined %}
+            <p class="teaser__summary">{{ row.fields.body.value | striptags | truncate(length=200) }}</p>
+            {% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+
+    {% if pager %}
+    {% include "gather/pager.html" %}
+    {% endif %}
+</div>

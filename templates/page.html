@@ -90,15 +90,47 @@
 {% endblock %}
 
 {% block content %}
+{# Breadcrumbs.
+
+   The kernel builds them as Home > Type Label > Title for an item and
+   Home > Query Label for a gather listing, and in both cases every crumb but the
+   first carries `path: null`. Rendering those as anchors produces `href=""`,
+   which is a link to the current page — the kernel's own page.html does exactly
+   that, and it is why the middle crumb on any item page is a link that reloads.
+
+   So a crumb links only when it has somewhere to go. The middle crumb names a
+   content type or a listing this site does have a page for, so the ones it knows
+   are mapped by name; anything else is plain text, which is correct rather than
+   merely safe.
+
+   The mapping is an if-chain and not a dictionary because Tera has no object
+   literal: `{% raw %}{% set m = {"News": "/news"} %}{% endraw %}` does not parse, and a template
+   that does not parse is not an error page — the kernel falls back to dumping
+   the item's fields into a bare document. That is how this was found. #}
 {% if breadcrumbs is defined and breadcrumbs %}
 <nav class="breadcrumb" aria-label="Breadcrumb">
     {% for crumb in breadcrumbs %}
-    {% if not loop.last %}
-    <a href="{{ crumb.path }}">{{ crumb.title }}</a>
-    <span class="breadcrumb__separator" aria-hidden="true">&rsaquo;</span>
-    {% else %}
+    {#- "Basic Page" is the kernel's label for the default content type. It is
+        the right label in an admin listing and meaningless in a breadcrumb: a
+        reader on /why does not need to be told the page is a page. -#}
+    {%- if crumb.title == "Basic Page" -%}
+    {%- elif loop.last -%}
     <span aria-current="page">{{ crumb.title }}</span>
-    {% endif %}
+    {%- else -%}
+    {%- set path = crumb.path | default(value="") -%}
+    {%- if not path and crumb.title == "News" -%}{%- set path = "/news" -%}{%- endif -%}
+    {%- if not path and crumb.title == "Blog Post" -%}{%- set path = "/blog" -%}{%- endif -%}
+    {%- if not path and crumb.title == "Blog" -%}{%- set path = "/blog" -%}{%- endif -%}
+    {%- if not path and crumb.title == "Archive" -%}{%- set path = "/blog/archive" -%}{%- endif -%}
+    {%- if path -%}
+    {# SAFE: a kernel-built path or one of the literals above. Escaping renders
+       every slash as `&#x2F;` — legal, and unreadable in a view-source. #}
+    <a href="{{ path | safe }}">{{ crumb.title }}</a>
+    {%- else -%}
+    <span>{{ crumb.title }}</span>
+    {%- endif -%}
+    <span class="breadcrumb__separator" aria-hidden="true"> &rsaquo; </span>
+    {%- endif -%}
     {% endfor %}
 </nav>
 {% endif %}

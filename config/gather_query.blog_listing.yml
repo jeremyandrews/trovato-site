@@ -1,0 +1,43 @@
+# The blog listing.
+#
+# `blog_listing` is created by the kernel's trovato_blog plugin, in its own
+# migration. This file is not a second query — it is the same one, re-imported
+# with a feed and a canonical URL the plugin does not set. Config import upserts
+# on `query_id`, so importing this updates the plugin's row rather than adding a
+# row beside it, and re-exporting reproduces this file.
+#
+# `plugin: trovato_blog` is kept: the query still belongs to the plugin that
+# declares the content type. Claiming it for trovato_site would make an export
+# filtered by plugin miss it.
+query_id: blog_listing
+label: Blog
+description: Longer pieces about how Trovato works and why it is built this way.
+definition:
+  base_table: item
+  item_type: blog
+  fields: []
+  filters: []
+  includes: {}
+  relationships: []
+  sorts:
+  - direction: desc
+    field: created
+    nulls: null
+  stage_aware: true
+display:
+  canonical_url: /blog
+  empty_text: No posts yet.
+  footer: null
+  format: list
+  header: null
+  items_per_page: 10
+  pager:
+    enabled: true
+    show_count: false
+    style: full
+  feed:
+    path: /rss/blog.xml
+    title: Trovato blog
+    description: Longer pieces about how Trovato works and why it is built this way.
+    items: 20
+plugin: trovato_blog

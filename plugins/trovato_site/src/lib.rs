@@ -34,6 +34,7 @@
 
 use trovato_sdk::host;
 use trovato_sdk::prelude::*;
+use trovato_sdk::types::{ApiRequest, ApiResponse, MenuRoute};
 
 /// Plugin name, for logging.
 const PLUGIN_NAME: &str = "trovato_site";
@@ -53,6 +54,21 @@ const FRONT_LISTING_LIMIT: i64 = 5;
 
 /// The live stage. Every published page on this site is in it.
 const LIVE_STAGE: &str = "0193a5a0-0000-7000-8000-000000000001";
+
+/// The site variable holding the base every absolute URL is built from.
+///
+/// The same value the kernel takes as `SITE_URL`, declared a second time as
+/// config because a plugin can read a site variable and cannot read the
+/// process's environment. `checks` has a test that fails if the two defaults
+/// drift apart.
+const BASE_URL_VARIABLE: &str = "site_base_url";
+
+/// Where the site's own sitemap is served.
+///
+/// Not `/sitemap.xml`: the kernel registers that route itself, and axum panics
+/// on a duplicate — a plugin declaring it would take the process down at
+/// startup. See `sitemap()` for why the site serves one at all.
+const SITEMAP_PATH: &str = "/sitemap/pages.xml";
 
 // ─── Content types ───────────────────────────────────────────────────
 
@@ -313,6 +329,151 @@ pub fn escape_html(raw: &str) -> String {
             '>' => out.push_str("&gt;"),
             '"' => out.push_str("&quot;"),
             '\'' => out.push_str("&#39;"),
+            _ => out.push(c),
+        }
+    }
+    out
+}
+
+// ─── The sitemap ─────────────────────────────────────────────────────
+
+/// Register the site's own sitemap.
+#[plugin_tap]
+pub fn tap_menu() -> Vec<MenuRoute> {
+    vec![
+        MenuRoute::api("GET", SITEMAP_PATH, "sitemap")
+            .title("Sitemap")
+            .permission("access content"),
+    ]
+}
+
+/// Serve whichever route was asked for.
+#[plugin_tap]
+pub fn tap_api(request: ApiRequest) -> ApiResponse {
+    match request.callback.as_str() {
+        "sitemap" => {
+            ApiResponse::with_status(200, sitemap()).content_type("application/xml; charset=utf-8")
+        }
+        other => {
+            host::log("warn", PLUGIN_NAME, &format!("unknown callback: {other}"));
+            ApiResponse::error(404, "not found")
+        }
+    }
+}
+
+/// The site's non-item routes.
+///
+/// A listing is not an item, so nothing in the `item` table describes `/news` or
+/// `/blog`. They are named here because a sitemap that omits a site's listings
+/// omits the pages most likely to be a crawler's way in.
+const ROUTE_PATHS: [&str; 4] = ["/", "/news", "/blog", "/blog/archive"];
+
+/// Every public URL on this site, as a sitemap.
+///
+/// # Why the site serves one at all
+///
+/// The kernel serves `/sitemap.xml`, and it has two problems this site cannot
+/// live with. It emits `<loc>/news</loc>` — a path, where the sitemap protocol
+/// requires an absolute URL, so the document is invalid as written. And it lists
+/// items only, so every listing route is missing.
+///
+/// Both are kernel-side and neither is fixed here. What the site does instead is
+/// serve a correct sitemap of its own at a path the kernel has not taken, and
+/// the production proxy maps `/sitemap.xml` onto it. See `docs/DEPLOY.md`.
+pub fn sitemap() -> String {
+    let base = base_url();
+    let mut xml = String::from("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
+    xml.push_str("<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">\n");
+
+    for path in ROUTE_PATHS {
+        xml.push_str(&sitemap_entry(&absolute(&base, path), None));
+    }
+
+    for row in rows(SITEMAP_SQL, &[serde_json::json!(LIVE_STAGE)]).iter() {
+        let Some(post) = post_from_row(row) else {
+            continue;
+        };
+        let changed = row.get("changed").and_then(serde_json::Value::as_i64);
+        xml.push_str(&sitemap_entry(
+            &absolute(&base, &post.path),
+            changed.map(iso_date),
+        ));
+    }
+
+    xml.push_str("</urlset>\n");
+    xml
+}
+
+/// Every published item in the live stage, with its alias when it has one.
+///
+/// The same shape `LISTING_SQL` returns — `post_from_row` reads both — with
+/// `changed` added for `<lastmod>`.
+///
+/// The front page is excluded. It has no alias, because its address is `/` and
+/// `/` cannot be aliased, so it would otherwise appear a second time as
+/// `/item/{uuid}` — the same page at two URLs, in the document whose whole
+/// purpose is telling a crawler which URLs exist. `/` is listed once, from
+/// `ROUTE_PATHS`.
+const SITEMAP_SQL: &str = "SELECT i.id, i.title, i.type AS kind, i.created, i.changed, a.alias \
+     FROM item i \
+     LEFT JOIN url_alias a \
+       ON a.source = '/item/' || i.id::text \
+      AND a.language = COALESCE(i.language, 'en') \
+      AND a.stage_id = $1::uuid \
+     WHERE i.status = 1 \
+       AND i.stage_id = $1::uuid \
+       AND i.type <> 'front_page' \
+     ORDER BY i.changed DESC";
+
+/// The site's base URL, without a trailing slash.
+pub fn base_url() -> String {
+    let raw = host::variables_get(BASE_URL_VARIABLE, DEFAULT_BASE_URL)
+        .unwrap_or_else(|_| DEFAULT_BASE_URL.to_string());
+    raw.trim().trim_end_matches('/').to_string()
+}
+
+/// What the base URL is when the site has not been told otherwise.
+const DEFAULT_BASE_URL: &str = "https://trovato.rs";
+
+/// Join a base and a local path into one absolute URL.
+///
+/// The path always starts with `/` here — it is either a literal from
+/// `ROUTE_PATHS` or an alias the kernel wrote — but a missing separator would
+/// produce `https://trovato.rsnews`, which is the kind of thing that is only
+/// noticed by whoever submits the sitemap.
+pub fn absolute(base: &str, path: &str) -> String {
+    let base = base.trim_end_matches('/');
+    if path.starts_with('/') {
+        format!("{base}{path}")
+    } else {
+        format!("{base}/{path}")
+    }
+}
+
+/// One `<url>` entry.
+fn sitemap_entry(loc: &str, lastmod: Option<String>) -> String {
+    let mut entry = format!("  <url>\n    <loc>{}</loc>\n", escape_xml(loc));
+    if let Some(date) = lastmod {
+        entry.push_str(&format!("    <lastmod>{}</lastmod>\n", escape_xml(&date)));
+    }
+    entry.push_str("  </url>\n");
+    entry
+}
+
+/// Escape text for XML.
+///
+/// Separate from `escape_html` because the two are not the same job even where
+/// they overlap: `&#39;` is an HTML entity that an XML parser does not know, so
+/// an apostrophe has to be `&apos;` here.
+pub fn escape_xml(raw: &str) -> String {
+    let mut out = String::with_capacity(raw.len());
+    for c in raw.chars() {
+        match c {
+            '&' => out.push_str("&amp;"),
+            '<' => out.push_str("&lt;"),
+            '>' => out.push_str("&gt;"),
+            '"' => out.push_str("&quot;"),
+            '\'' => out.push_str("&apos;"),
             _ => out.push(c),
         }
     }
@@ -586,6 +747,111 @@ mod tests {
                 "the listing reads {table}, which the manifest does not declare"
             );
         }
+    }
+
+    // ─── The sitemap ─────────────────────────────────────────────────
+
+    #[test]
+    fn the_sitemap_route_is_not_the_kernels() {
+        // The kernel registers /sitemap.xml, and axum panics on a duplicate
+        // route: declaring it here would take the server down at startup rather
+        // than override anything.
+        assert_ne!(SITEMAP_PATH, "/sitemap.xml");
+        assert!(SITEMAP_PATH.starts_with('/'));
+        let routes = __inner_tap_menu();
+        assert_eq!(routes.len(), 1);
+        assert_eq!(routes[0].path, SITEMAP_PATH);
+    }
+
+    #[test]
+    fn absolute_joins_exactly_one_slash() {
+        assert_eq!(
+            absolute("https://trovato.rs", "/news"),
+            "https://trovato.rs/news"
+        );
+        assert_eq!(
+            absolute("https://trovato.rs/", "/news"),
+            "https://trovato.rs/news"
+        );
+        assert_eq!(
+            absolute("https://trovato.rs", "news"),
+            "https://trovato.rs/news"
+        );
+        assert_eq!(absolute("https://trovato.rs", "/"), "https://trovato.rs/");
+    }
+
+    #[test]
+    fn the_sitemap_route_answers_its_callback() {
+        let response = __inner_tap_api(ApiRequest::new(
+            "sitemap",
+            "GET",
+            SITEMAP_PATH,
+            Uuid::nil().to_string(),
+            false,
+        ));
+        assert_eq!(response.status, 200);
+        assert!(response.content_type.starts_with("application/xml"));
+        assert!(response.body.contains("<urlset"));
+    }
+
+    #[test]
+    fn the_sitemap_is_well_formed_and_absolute() {
+        // No database in a unit test, so this is the route half of the document:
+        // the declaration, the namespace, and every listing route as an absolute
+        // URL. The item half is covered by the crawl in scripts/crawl.mjs.
+        let xml = sitemap();
+        assert!(xml.starts_with("<?xml version=\"1.0\" encoding=\"UTF-8\"?>"));
+        assert!(xml.contains("xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\""));
+        assert!(xml.trim_end().ends_with("</urlset>"));
+
+        for path in ROUTE_PATHS {
+            let expected = format!("<loc>{}{}</loc>", DEFAULT_BASE_URL, path);
+            assert!(xml.contains(&expected), "missing {expected}");
+        }
+    }
+
+    #[test]
+    fn every_sitemap_loc_is_absolute() {
+        // The kernel's own sitemap emits `<loc>/news</loc>`, which the sitemap
+        // protocol does not permit. That defect is the reason this one exists,
+        // so it is the one thing worth asserting outright.
+        for line in sitemap().lines() {
+            if let Some(rest) = line.trim().strip_prefix("<loc>") {
+                assert!(
+                    rest.starts_with("https://") || rest.starts_with("http://"),
+                    "relative loc: {line}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn the_sitemap_excludes_the_front_page_item() {
+        // `/` is listed once, from ROUTE_PATHS. The front page item has no alias
+        // — `/` cannot be aliased — so without this it appears a second time as
+        // /item/{uuid}: the same page at two URLs, in the one document whose job
+        // is to say which URLs exist.
+        assert!(SITEMAP_SQL.contains("i.type <> 'front_page'"));
+    }
+
+    #[test]
+    fn xml_escaping_is_xml_not_html() {
+        // &#39; is an HTML entity. An XML parser does not know it.
+        assert_eq!(escape_xml("it's"), "it&apos;s");
+        assert_eq!(escape_html("it's"), "it&#39;s");
+        assert_eq!(escape_xml("a&b<c>"), "a&amp;b&lt;c&gt;");
+    }
+
+    #[test]
+    fn an_unknown_callback_is_a_404_not_a_500() {
+        let response = __inner_tap_api(ApiRequest::new(
+            "no-such-thing",
+            "GET",
+            "/whatever",
+            Uuid::nil().to_string(),
+            false,
+        ));
+        assert_eq!(response.status, 404);
     }
 
     // ─── Dates ───────────────────────────────────────────────────────
