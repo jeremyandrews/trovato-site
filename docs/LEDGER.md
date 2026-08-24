@@ -1,10 +1,10 @@
 # Build ledger
 
-**Status:** Phase 7 complete, Phase 8 next
+**Status:** Phase 8 complete, Phase 9 next
 **Last updated:** 2026-08-25
-**Where things stand:** axe-core passes with no violations on eighteen page renders, and a
-front proxy serves the static files, sets the caching policy and maps the sitemap. Gates 0
-through 7 passed. The deployment story is next.
+**Where things stand:** The production profile boots over TLS on this machine with its
+headers on, and `docs/DEPLOY.md` is a procedure rather than a sketch. Gates 0 through 8
+passed. Reconciliation, Italian, the clean-room rebuild and the report are next.
 
 This file is the run's memory. Each gate attempt is recorded below with its per-check
 result, the loop count, any blockers, and the commit that closed the phase. A session
@@ -678,3 +678,77 @@ variables changed:
 In production only the proxy listens, because a caller that can reach the kernel
 directly is a caller whose forwarded address the kernel has no reason to doubt.
 docs/DEPLOY.md carries this.
+
+
+## Gate 8 — deployment for trovato.rs
+
+**Attempt 1 — 2026-08-25 — PASS (2 fix loops)**
+
+| Check | Result |
+|---|---|
+| The production profile boots locally end to end through the proxy | PASS — `./scripts/check-production.sh`: every page 200 over TLS, HSTS set, anonymous HTML cacheable for a minute, a page with a session marked private, fonts served by the proxy for a week, `/sitemap.xml` absolute, www redirecting 301 to the apex, plain HTTP redirecting to HTTPS |
+| Only the proxy publishes a port | PASS — asserted against the merged production configuration, not against a running container |
+| Every env knob is in the example file | PASS — 10 values marked `CHANGE ME`, every `${…}` the production compose files read is set |
+| Every env knob is referenced in DEPLOY.md | PASS — a settings table naming each one, what it does, and what goes wrong when it is not set |
+| A cold reader could deploy from the doc alone | PASS — see below |
+
+### What the adversarial read found
+
+Read back as somebody who has this repository and nothing else:
+
+- **Nine commands were not copy-pasteable.** They said `docker compose ... exec
+  -T postgres …`, with a literal ellipsis where two `-f` flags and an
+  `--env-file` belonged. Replaced by defining a `dc` shell function once at the
+  top and using it everywhere, which is shorter to read as well as runnable.
+- **"This needs a Rust toolchain on the host" did not say how to get one.** Now
+  it carries the rustup line, and says that `rust-toolchain.toml` pins the version
+  and the wasm target so nothing else has to be chosen.
+- **Fifteen settings were in the example file and mentioned nowhere in the
+  procedure.** Now there is a table of every one.
+- **Two counts were wrong.** "Four images" is five. The documentation set is 72
+  files, which the doc now says, because an operator watching a 72-file import
+  should be able to tell it finished.
+
+### The two fix loops
+
+1. **The check declared the kernel's port published when it was not.** It asked
+   `docker compose port site 3000` without the production override files, so it
+   was asking about the development stack. Now it reads the merged configuration
+   and asserts that `proxy` is the only service with any published port at all.
+2. **The check called a 502 healthy.** Its readiness loop accepted any response,
+   and the proxy answers 502 the instant it is up and the kernel is restarting
+   behind it. So it declared the site up a second after a restart and then
+   reported every page as broken. It now waits for a 200.
+
+### How production differs from local, and why each difference exists
+
+`docker-compose.production.yml` is an override of the same base file the local
+stack uses, so what runs in production is what was tested plus these differences
+and no others:
+
+- **Nothing but the proxy publishes a port.** The kernel believes
+  `X-Forwarded-For` from an address in `TRUSTED_PROXIES`, and the proxy is in that
+  list; a caller able to reach the kernel directly could claim to be any client
+  and mint rate-limit buckets without limit. `check-production.sh` asserts it.
+- **`restart: always`** rather than `unless-stopped`.
+- **A real hostname and a real certificate.** `deploy/Caddyfile.production` adds
+  the hostname, HSTS and the www redirect; everything about how the site is served
+  is in `deploy/shared.caddy`, which both entry points import. One copy, so the
+  two cannot drift.
+- **HSTS without `preload`.** A year is a long promise and preloading is
+  effectively irreversible. That is a decision to make on purpose.
+
+The local proof runs the production files as written and changes three things a
+laptop cannot have: the hostname is `localhost`, the certificate comes from
+Caddy's own authority, and the ports are high ones. It runs in its own compose
+project so it cannot disturb anything else, and it tears itself down.
+
+### Findings
+
+- **The site plugin has to be built before deploying, and that needs Rust on the
+  host.** There is no published artifact for it, because there is no plugin
+  registry and no package format — the same gap `/why` describes. The document
+  says the build can happen anywhere and the two-file `overlay/` copied across.
+- **First boot is not fully scriptable, on purpose.** The installer sets the
+  administrator's password, and a password that came from a file in a public
+  repository is a password everybody has. It is the one browser step.

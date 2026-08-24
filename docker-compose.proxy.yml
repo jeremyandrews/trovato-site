@@ -19,9 +19,9 @@ services:
       # `{$SITE_ADDRESS}` placeholder in the Caddyfile.
       SITE_ADDRESS: ${SITE_ADDRESS:-:8081}
       AUTO_HTTPS: ${AUTO_HTTPS:-off}
-      HSTS: ${HSTS:-}
     volumes:
       - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./deploy/shared.caddy:/etc/caddy/shared.caddy:ro
       # The site's own static files, served without touching the kernel.
       - ./static:/srv/public/static:ro
       - caddy_data:/data

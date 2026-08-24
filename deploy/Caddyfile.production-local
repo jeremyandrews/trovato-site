@@ -1,0 +1,24 @@
+# The production entry point, with a certificate this machine can actually get.
+#
+# Identical to Caddyfile.production except for `tls internal`, which asks Caddy
+# for a certificate from its own authority rather than from Let's Encrypt. Kept
+# as a separate file rather than a conditional, because the production file
+# should have nothing in it that only matters somewhere else.
+
+{
+	admin off
+}
+
+import /etc/caddy/shared.caddy
+
+{$SITE_HOST} {
+	tls internal
+	import site
+
+	header Strict-Transport-Security "max-age=31536000; includeSubDomains"
+}
+
+www.{$SITE_HOST} {
+	tls internal
+	redir https://{$SITE_HOST}{uri} permanent
+}

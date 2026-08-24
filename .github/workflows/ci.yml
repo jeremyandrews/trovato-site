@@ -87,6 +87,13 @@ jobs:
       - name: Config round-trip
         run: ./scripts/check-roundtrip.sh
 
+      # The production profile as written, on a runner: the same compose files
+      # and the same proxy configuration, with a certificate from Caddy's own
+      # authority standing in for a public one. It runs in its own compose
+      # project, so it does not disturb the stack the checks above used.
+      - name: Production profile
+        run: ./scripts/check-production.sh
+
       - name: What the server said
         if: failure()
         run: docker compose -p trovato-site logs --tail=200 site

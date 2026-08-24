@@ -31,7 +31,40 @@ docs/                   LEDGER.md (build log), DEPLOY.md (production)
 
 ## Running it
 
-See `docs/LEDGER.md` for build status and `docs/DEPLOY.md` for production.
+```
+./scripts/run.sh            # http://127.0.0.1:3080
+./scripts/run.sh --proxy    # and through the front proxy on :8081
+```
+
+From nothing: it builds the site plugin, brings up PostgreSQL, Redis, the pinned
+kernel and the cron poker, runs the installer, imports the config and the
+mirrored documentation, and restarts so both are live. `--fresh` destroys this
+project's volumes first and starts over.
+
+## Checking it
+
+Each of these is a gate, and all of them run in CI on every push.
+
+```
+cargo test --all                  # the plugin, the contrast of every token pairing, the content set
+npm run crawl                     # every page reachable from the front page
+npm run a11y                      # axe-core, both colour schemes, nothing allowlisted
+npm run shoot                     # both widths, both schemes, no overflow, no off-origin requests
+./scripts/check-moderation.sh     # comment moderation fails closed
+./scripts/check-roundtrip.sh      # every declared config entity survives an export
+./scripts/check-production.sh     # the production profile, over TLS, on this machine
+cargo run -p tools --bin docs-import -- --check   # the documentation mirror matches the pinned tag
+```
+
+## Production
+
+```
+./scripts/check-production.sh     # the production profile, locally, end to end
+```
+
+[docs/DEPLOY.md](docs/DEPLOY.md) is the procedure for a real host: DNS, first
+boot, backups and the restore drill, and the upgrade. `docs/LEDGER.md` is the
+build log, gate by gate, including everything that did not work and why.
 
 ## Brand assets
 
