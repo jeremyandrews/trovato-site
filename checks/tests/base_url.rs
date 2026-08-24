@@ -34,8 +34,11 @@ fn compose_default() -> String {
 }
 
 /// The `value:` in the site_base_url config file.
+///
+/// The file is named for the namespaced key, because `variables_get` prefixes
+/// every lookup with the calling plugin's name.
 fn config_value() -> String {
-    let config = read("config/variable.site_base_url.yml");
+    let config = read("config/variable.plugin.trovato_site.site_base_url.yml");
     config
         .lines()
         .map(str::trim)

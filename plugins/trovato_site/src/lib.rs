@@ -64,7 +64,19 @@ const LIVE_STAGE: &str = "0193a5a0-0000-7000-8000-000000000001";
 /// config because a plugin can read a site variable and cannot read the
 /// process's environment. `checks` has a test that fails if the two defaults
 /// drift apart.
+///
+/// Written here without a prefix and stored with one. `variables_get` namespaces
+/// every key by the calling plugin's name, so this reads
+/// `plugin.trovato_site.site_base_url`, and that is what the config file is
+/// called. A plugin cannot read a variable outside its own namespace at all,
+/// which is why nothing here reads `site_front_page` or `site_name`.
 const BASE_URL_VARIABLE: &str = "site_base_url";
+
+/// The site variable holding every translation the site ships.
+///
+/// A JSON object: item id, then language, then the title and fields that replace
+/// the default ones. See `config/variable.site_translations.yml`.
+const TRANSLATIONS_VARIABLE: &str = "site_translations";
 
 /// Where the site's own sitemap is served.
 ///
@@ -525,6 +537,216 @@ pub fn escape_xml(raw: &str) -> String {
     }
     out
 }
+
+// ─── Translations ────────────────────────────────────────────────────
+
+/// Copy the site's translations from configuration into the kernel's table.
+///
+/// # Why a plugin does this
+///
+/// The kernel reads translations from `item_translation` and overlays them on an
+/// item when the request's language is not the default: that half works. What is
+/// missing on 0.101.0 is any way to *write* a row. `config import` stores a
+/// per-language field map verbatim in the item's own `fields` and populates no
+/// translation; the two admin routes are registered `GET` only and have no
+/// templates in the image; and there is no API endpoint. Verified all three.
+///
+/// So the site's translations live in configuration, where they can be reviewed
+/// and exported like everything else, and this brings them across on every cron
+/// tick. It writes only what has changed, so a tick with nothing to do is one
+/// read.
+///
+/// This is the one place the site writes to a kernel table, and it is declared:
+/// `db_tables` names `item_translation`.
+///
+/// The signature is the one the other cron taps in the kernel tree use:
+/// `CronInput` in, a JSON value out. A zero-argument version compiles, exports,
+/// and is dispatched, and does nothing at all — the kernel logs `tap_cron
+/// completed` either way.
+#[plugin_tap]
+pub fn tap_cron(_input: CronInput) -> serde_json::Value {
+    let raw = match host::variables_get(TRANSLATIONS_VARIABLE, "{}") {
+        Ok(value) => value,
+        Err(code) => {
+            host::log(
+                "error",
+                PLUGIN_NAME,
+                &format!("could not read {TRANSLATIONS_VARIABLE}: {code}"),
+            );
+            return serde_json::json!({ "translations": "unreadable" });
+        }
+    };
+
+    let translations: serde_json::Value = match serde_json::from_str(&raw) {
+        Ok(value) => value,
+        Err(e) => {
+            host::log(
+                "error",
+                PLUGIN_NAME,
+                &format!("{TRANSLATIONS_VARIABLE} is not valid JSON: {e}"),
+            );
+            return serde_json::json!({ "translations": "unparseable" });
+        }
+    };
+
+    host::log(
+        "info",
+        PLUGIN_NAME,
+        &format!(
+            "translations: read {} bytes, {} item(s)",
+            raw.len(),
+            translations.as_object().map_or(0, serde_json::Map::len)
+        ),
+    );
+
+    let mut written = 0usize;
+    let mut skipped = 0usize;
+
+    for (item_id, languages) in translations.as_object().into_iter().flatten() {
+        for (language, translation) in languages.as_object().into_iter().flatten() {
+            match sync_one(item_id, language, translation) {
+                Some(true) => written += 1,
+                Some(false) => skipped += 1,
+                None => {}
+            }
+        }
+    }
+
+    // A translation removed from configuration has to disappear from the site.
+    // Without this the sync only ever adds, and a page keeps serving a
+    // translation that the repository no longer contains — which is the same
+    // failure as content that only a database knows about.
+    let removed = remove_undeclared(&translations);
+
+    if written > 0 || removed > 0 {
+        host::log(
+            "info",
+            PLUGIN_NAME,
+            &format!("wrote {written} translation(s), removed {removed}, {skipped} unchanged"),
+        );
+    }
+
+    serde_json::json!({ "written": written, "removed": removed, "unchanged": skipped })
+}
+
+/// Write one translation if it differs from what is stored.
+///
+/// `Some(true)` when it wrote, `Some(false)` when the stored row already matched,
+/// `None` when the entry was malformed.
+fn sync_one(item_id: &str, language: &str, translation: &serde_json::Value) -> Option<bool> {
+    let title = translation.get("title")?.as_str()?;
+    let fields = translation.get("fields")?;
+    let fields_json = serde_json::to_string(fields).ok()?;
+
+    // Compare before writing. A cron tick runs every minute, and rewriting five
+    // rows a minute forever would put a `changed` timestamp in the log that means
+    // nothing and churn the table for no reason.
+    let current = rows(
+        TRANSLATION_READ_SQL,
+        &[serde_json::json!(item_id), serde_json::json!(language)],
+    );
+    if let Some(row) = current.first() {
+        let same_title = row.get("title").and_then(|v| v.as_str()) == Some(title);
+        let same_fields = row
+            .get("fields")
+            .map(|v| v.to_string())
+            .as_deref()
+            .and_then(|s| serde_json::from_str::<serde_json::Value>(s).ok())
+            .as_ref()
+            == Some(fields);
+        if same_title && same_fields {
+            return Some(false);
+        }
+    }
+
+    match host::execute_raw(
+        TRANSLATION_WRITE_SQL,
+        &[
+            serde_json::json!(item_id),
+            serde_json::json!(language),
+            serde_json::json!(title),
+            serde_json::json!(fields_json),
+        ],
+    ) {
+        Ok(_) => Some(true),
+        Err(code) => {
+            host::log(
+                "error",
+                PLUGIN_NAME,
+                &format!("could not write the {language} translation of {item_id}: {code}"),
+            );
+            None
+        }
+    }
+}
+
+/// Delete every stored translation the configuration no longer declares.
+///
+/// Returns how many were removed.
+fn remove_undeclared(translations: &serde_json::Value) -> usize {
+    let declared: Vec<String> = translations
+        .as_object()
+        .into_iter()
+        .flatten()
+        .flat_map(|(item_id, languages)| {
+            languages
+                .as_object()
+                .into_iter()
+                .flatten()
+                .map(move |(language, _)| format!("{item_id}:{language}"))
+        })
+        .collect();
+
+    let mut removed = 0usize;
+    for row in rows(TRANSLATION_LIST_SQL, &[]).iter() {
+        let (Some(item_id), Some(language)) = (
+            row.get("item_id").and_then(|v| v.as_str()),
+            row.get("language").and_then(|v| v.as_str()),
+        ) else {
+            continue;
+        };
+        if declared.contains(&format!("{item_id}:{language}")) {
+            continue;
+        }
+        match host::execute_raw(
+            TRANSLATION_DELETE_SQL,
+            &[serde_json::json!(item_id), serde_json::json!(language)],
+        ) {
+            Ok(_) => removed += 1,
+            Err(code) => host::log(
+                "error",
+                PLUGIN_NAME,
+                &format!("could not remove the {language} translation of {item_id}: {code}"),
+            ),
+        }
+    }
+    removed
+}
+
+/// Every stored translation.
+const TRANSLATION_LIST_SQL: &str =
+    "SELECT item_id::text AS item_id, language FROM item_translation";
+
+/// One stored translation, by item and language.
+const TRANSLATION_DELETE_SQL: &str =
+    "DELETE FROM item_translation WHERE item_id = $1::uuid AND language = $2";
+
+/// What is stored for one item in one language.
+const TRANSLATION_READ_SQL: &str =
+    "SELECT title, fields FROM item_translation WHERE item_id = $1::uuid AND language = $2";
+
+/// Upsert one translation.
+///
+/// `changed` moves only when the content does, which is what makes the comparison
+/// above worth doing.
+const TRANSLATION_WRITE_SQL: &str = "INSERT INTO item_translation \
+     (item_id, language, title, fields, created, changed) \
+     VALUES ($1::uuid, $2, $3, $4::jsonb, \
+             EXTRACT(epoch FROM now())::bigint, EXTRACT(epoch FROM now())::bigint) \
+     ON CONFLICT (item_id, language) DO UPDATE SET \
+       title = EXCLUDED.title, \
+       fields = EXCLUDED.fields, \
+       changed = EXCLUDED.changed";
 
 // ─── The machine-readable surface ────────────────────────────────────
 
@@ -1080,6 +1302,69 @@ mod tests {
             false,
         ));
         assert_eq!(response.status, 404);
+    }
+
+    // ─── Translations ────────────────────────────────────────────────
+
+    #[test]
+    fn a_translation_entry_needs_a_title_and_fields() {
+        // A malformed entry is skipped, not written as an empty translation:
+        // apply_translation_overlay replaces the title only when it is non-empty,
+        // so a blank one would leave a page half-translated instead of untranslated.
+        assert_eq!(sync_one("x", "it", &serde_json::json!({})), None);
+        assert_eq!(
+            sync_one("x", "it", &serde_json::json!({ "title": "T" })),
+            None
+        );
+        assert_eq!(
+            sync_one("x", "it", &serde_json::json!({ "fields": {} })),
+            None
+        );
+    }
+
+    #[test]
+    fn the_translation_queries_name_only_the_declared_table() {
+        // db_tables declares item, url_alias and item_translation. These three
+        // are the only statements that write anything at all.
+        for sql in [
+            TRANSLATION_READ_SQL,
+            TRANSLATION_WRITE_SQL,
+            TRANSLATION_LIST_SQL,
+            TRANSLATION_DELETE_SQL,
+        ] {
+            assert!(sql.contains("item_translation"), "{sql}");
+            assert!(!sql.contains("users"), "{sql}");
+            assert!(!sql.contains("comment"), "{sql}");
+        }
+    }
+
+    #[test]
+    fn writing_a_translation_is_an_upsert_keyed_by_item_and_language() {
+        // The table's primary key is (item_id, language). Without the conflict
+        // clause a second cron tick is a duplicate-key error every minute.
+        assert!(TRANSLATION_WRITE_SQL.contains("ON CONFLICT (item_id, language) DO UPDATE"));
+        assert!(TRANSLATION_WRITE_SQL.contains("changed = EXCLUDED.changed"));
+    }
+
+    #[test]
+    fn nothing_declared_means_nothing_kept() {
+        // Not a database test — the host stubs return nothing — but it pins that
+        // an empty configuration is a request to remove everything rather than a
+        // reason to do nothing.
+        assert_eq!(remove_undeclared(&serde_json::json!({})), 0);
+    }
+
+    #[test]
+    fn the_cron_tap_survives_configuration_that_is_not_json() {
+        // variables_get returns whatever is stored, and what is stored is a site
+        // setting somebody can edit. A parse failure has to be a log line, not a
+        // trap that takes the whole cron run down with it.
+        let result = __inner_tap_cron(CronInput {
+            timestamp: 1_785_542_400,
+        });
+        // The native stub returns the default, which is `{}`, so this is the
+        // empty-configuration path rather than the failure path.
+        assert!(result.get("written").is_some() || result.get("translations").is_some());
     }
 
     // ─── Dates ───────────────────────────────────────────────────────

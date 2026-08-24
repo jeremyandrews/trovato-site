@@ -249,3 +249,82 @@ fn the_copy_uses_no_dash_punctuation() {
     }
     assert!(found.is_empty(), "\n{}\n", found.join("\n"));
 }
+
+#[test]
+fn every_translation_names_an_item_that_exists() {
+    // The translations are a config variable keyed by item id, so nothing checks
+    // the reference. A typo produces a row in `item_translation` that overlays
+    // nothing and is never noticed.
+    let path = config_dir().join("variable.plugin.trovato_site.site_translations.yml");
+    let text = std::fs::read_to_string(&path).expect("the translations file is readable");
+    let json = text
+        .split_once("value: ")
+        .map(|(_, v)| v.to_string())
+        .expect("the file has a value");
+    let value: serde_json::Value = serde_json::from_str(&json).expect("the value is valid JSON");
+
+    let c = content();
+    let mut unknown = Vec::new();
+    for item_id in value.as_object().into_iter().flatten().map(|(k, _)| k) {
+        if !c.items.contains_key(item_id) {
+            unknown.push(item_id.clone());
+        }
+    }
+    assert!(
+        unknown.is_empty(),
+        "translations for items that do not exist: {unknown:?}"
+    );
+}
+
+#[test]
+fn a_translated_field_has_the_shape_the_item_stores() {
+    // apply_translation_overlay merges the translation's fields into the item's,
+    // key for key. A translation that stores a bare string where the item stores
+    // `{value, format}` replaces a renderable field with one the renderer skips,
+    // and the page loses that field in that language only. Silent, and only
+    // visible to somebody reading the translated page.
+    let path = config_dir().join("variable.plugin.trovato_site.site_translations.yml");
+    let text = std::fs::read_to_string(&path).expect("the translations file is readable");
+    let json = text.split_once("value: ").expect("the file has a value").1;
+    let value: serde_json::Value = serde_json::from_str(json).expect("the value is valid JSON");
+
+    let mut wrong = Vec::new();
+    for (item_id, languages) in value.as_object().into_iter().flatten() {
+        for (language, translation) in languages.as_object().into_iter().flatten() {
+            let Some(fields) = translation.get("fields").and_then(|f| f.as_object()) else {
+                wrong.push(format!("{item_id}/{language}: no fields"));
+                continue;
+            };
+            for (name, field) in fields {
+                let ok = field.get("value").and_then(|v| v.as_str()).is_some()
+                    && field.get("format").and_then(|v| v.as_str()).is_some();
+                if !ok {
+                    wrong.push(format!(
+                        "{item_id}/{language}/{name}: not {{value, format}}"
+                    ));
+                }
+            }
+        }
+    }
+    assert!(wrong.is_empty(), "\n{}\n", wrong.join("\n"));
+}
+
+#[test]
+fn the_translated_pages_are_the_ones_that_were_promised() {
+    // Four core pages. The front page is deliberately absent: routes/front.rs
+    // renders the configured front-page item without applying a translation
+    // overlay, so a front-page translation would be configuration nothing reads.
+    let path = config_dir().join("variable.plugin.trovato_site.site_translations.yml");
+    let text = std::fs::read_to_string(&path).expect("the translations file is readable");
+    let json = text.split_once("value: ").expect("the file has a value").1;
+    let value: serde_json::Value = serde_json::from_str(json).expect("the value is valid JSON");
+
+    let count = value.as_object().map_or(0, serde_json::Map::len);
+    assert_eq!(count, 4, "expected four translated pages, found {count}");
+
+    let front = "0193b000-0000-7000-8000-000000000001";
+    assert!(
+        value.get(front).is_none(),
+        "the front page cannot be translated on this kernel; see docs/LEDGER.md"
+    );
+}

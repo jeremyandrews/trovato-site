@@ -1,0 +1,10 @@
+# Italian.
+#
+# Trovato is Italian for "found", the project is written in Italy, and a CMS
+# whose own site cannot show a second language is not demonstrating its
+# translation stack. Reached at /it/.
+id: it
+label: Italiano
+direction: ltr
+is_default: false
+weight: 10
