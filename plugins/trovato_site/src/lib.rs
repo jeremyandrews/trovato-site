@@ -49,6 +49,9 @@ const FRONT_PAGE_TYPE: &str = "front_page";
 /// The site's news content type.
 const NEWS_TYPE: &str = "news";
 
+/// A page of the Trovato documentation, mirrored from the kernel repository.
+const DOCS_TYPE: &str = "docs";
+
 /// How many recent posts the front page lists.
 const FRONT_LISTING_LIMIT: i64 = 5;
 
@@ -95,6 +98,39 @@ pub fn tap_item_info() -> Vec<ContentTypeDefinition> {
             ],
         },
         ContentTypeDefinition {
+            machine_name: DOCS_TYPE.into(),
+            label: "Documentation".into(),
+            description: "A page of the Trovato documentation, mirrored from the kernel repository. Generated — edit the source there, not here.".into(),
+            title_label: None,
+            // `html` and not `body`: the field holds markdown already rendered
+            // and syntax-highlighted, and every rendering path the kernel offers
+            // for a `body` would strip the token classes back out. The template
+            // for this type reads the field directly and ignores `children`,
+            // which is why none of these render as ordinary fields.
+            fields: vec![
+                FieldDefinition::new("html", FieldType::TextLong)
+                    .required()
+                    .label("Rendered HTML"),
+                FieldDefinition::new("source_path", FieldType::Text { max_length: Some(255) })
+                    .label("Path in the kernel repository"),
+                FieldDefinition::new("edit_url", FieldType::Text { max_length: Some(512) })
+                    .label("Edit on GitHub"),
+                FieldDefinition::new("raw_url", FieldType::Text { max_length: Some(255) })
+                    .label("Raw markdown"),
+                FieldDefinition::new("section", FieldType::Text { max_length: Some(128) })
+                    .label("Section"),
+                FieldDefinition::new("weight", FieldType::Integer).label("Reading order"),
+                FieldDefinition::new("prev_path", FieldType::Text { max_length: Some(255) })
+                    .label("Previous path"),
+                FieldDefinition::new("prev_title", FieldType::Text { max_length: Some(255) })
+                    .label("Previous title"),
+                FieldDefinition::new("next_path", FieldType::Text { max_length: Some(255) })
+                    .label("Next path"),
+                FieldDefinition::new("next_title", FieldType::Text { max_length: Some(255) })
+                    .label("Next title"),
+            ],
+        },
+        ContentTypeDefinition {
             machine_name: FRONT_PAGE_TYPE.into(),
             label: "Front Page".into(),
             description: "The site front page. Its body carries the copy; the listing of recent posts is appended by the site plugin.".into(),
@@ -113,6 +149,7 @@ pub fn tap_item_info() -> Vec<ContentTypeDefinition> {
 pub fn tap_perm() -> Vec<PermissionDefinition> {
     let mut perms = PermissionDefinition::crud_for_type(NEWS_TYPE);
     perms.extend(PermissionDefinition::crud_for_type(FRONT_PAGE_TYPE));
+    perms.extend(PermissionDefinition::crud_for_type(DOCS_TYPE));
     perms
 }
 
@@ -123,7 +160,10 @@ pub fn tap_perm() -> Vec<PermissionDefinition> {
 /// permission fallback (`edit news content`, and so on).
 #[plugin_tap]
 pub fn tap_item_access(input: ItemAccessInput) -> AccessResult {
-    if input.item_type != NEWS_TYPE && input.item_type != FRONT_PAGE_TYPE {
+    if input.item_type != NEWS_TYPE
+        && input.item_type != FRONT_PAGE_TYPE
+        && input.item_type != DOCS_TYPE
+    {
         return AccessResult::Neutral;
     }
 
@@ -337,12 +377,32 @@ pub fn escape_html(raw: &str) -> String {
 
 // ─── The sitemap ─────────────────────────────────────────────────────
 
-/// Register the site's own sitemap.
+/// Where a documentation page's markdown source is served.
+///
+/// A `.md` suffix would be the obvious spelling and does not work: the kernel's
+/// static-file handler maps `.md` to `application/octet-stream`, and a plugin
+/// route pattern cannot carry a literal extension after a parameter. So the
+/// format is a path segment.
+const RAW_DOC_PATH: &str = "/learn/raw/:slug";
+
+/// The machine-readable description of the site.
+///
+/// Not `static/llms.txt` for the same reason: `mime_from_path` has no case for
+/// `.txt` either, so a static one downloads instead of opening.
+const LLMS_PATH: &str = "/llms.txt";
+
+/// Register the routes the site serves itself.
 #[plugin_tap]
 pub fn tap_menu() -> Vec<MenuRoute> {
     vec![
         MenuRoute::api("GET", SITEMAP_PATH, "sitemap")
             .title("Sitemap")
+            .permission("access content"),
+        MenuRoute::api("GET", RAW_DOC_PATH, "doc_raw")
+            .title("Markdown source")
+            .permission("access content"),
+        MenuRoute::api("GET", LLMS_PATH, "llms")
+            .title("llms.txt")
             .permission("access content"),
     ]
 }
@@ -353,6 +413,17 @@ pub fn tap_api(request: ApiRequest) -> ApiResponse {
     match request.callback.as_str() {
         "sitemap" => {
             ApiResponse::with_status(200, sitemap()).content_type("application/xml; charset=utf-8")
+        }
+        "doc_raw" => match request.params.get("slug").map(String::as_str) {
+            Some(slug) => match doc_markdown(slug) {
+                Some(markdown) => ApiResponse::with_status(200, markdown)
+                    .content_type("text/markdown; charset=utf-8"),
+                None => ApiResponse::error(404, "no such document"),
+            },
+            None => ApiResponse::error(404, "no such document"),
+        },
+        "llms" => {
+            ApiResponse::with_status(200, llms_txt()).content_type("text/plain; charset=utf-8")
         }
         other => {
             host::log("warn", PLUGIN_NAME, &format!("unknown callback: {other}"));
@@ -480,6 +551,152 @@ pub fn escape_xml(raw: &str) -> String {
     out
 }
 
+// ─── The machine-readable surface ────────────────────────────────────
+
+/// The markdown a documentation page was rendered from.
+///
+/// The item carries both: the rendered HTML that the page shows, and the source
+/// it was rendered from. Storing the source in the same row rather than as a
+/// file beside it means one thing to import, one thing to keep in step, and no
+/// way for the two to describe different releases.
+///
+/// The `docs` item template ignores `children` and reads the fields it wants
+/// directly, so neither of these renders as an ordinary field on the page.
+fn doc_markdown(slug: &str) -> Option<String> {
+    if !is_safe_slug(slug) {
+        return None;
+    }
+
+    let alias = format!("/learn/{slug}");
+    rows(
+        DOC_MARKDOWN_SQL,
+        &[serde_json::json!(LIVE_STAGE), serde_json::json!(alias)],
+    )
+    .first()?
+    .get("markdown")?
+    .as_str()
+    .map(str::to_string)
+}
+
+/// One documentation page's source, found by the alias it is served at.
+const DOC_MARKDOWN_SQL: &str = "SELECT i.fields->>'markdown' AS markdown \
+     FROM item i \
+     JOIN url_alias a \
+       ON a.source = '/item/' || i.id::text \
+      AND a.language = COALESCE(i.language, 'en') \
+      AND a.stage_id = $1::uuid \
+     WHERE i.status = 1 \
+       AND i.type = 'docs' \
+       AND i.stage_id = $1::uuid \
+       AND a.alias = $2 \
+     LIMIT 1";
+
+/// Whether a slug can only ever name a document.
+///
+/// It is bound as a parameter rather than interpolated, so this is not what
+/// stands between the route and an injection. It is what stands between the
+/// route and a lookup that was never going to match: lowercase letters, digits
+/// and hyphens are what the generator produces and all it will ever produce, and
+/// anything else is a request for a document that does not exist.
+pub fn is_safe_slug(slug: &str) -> bool {
+    !slug.is_empty()
+        && slug.len() <= 128
+        && slug
+            .chars()
+            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
+}
+
+/// The site, described for something that reads rather than browses.
+///
+/// The format is the llms.txt convention: a title, a summary, then linked
+/// sections. What makes it worth serving here rather than writing by hand is the
+/// document list, which comes from the same rows the site renders — so it cannot
+/// list a page that does not exist or miss one that does.
+pub fn llms_txt() -> String {
+    let base = base_url();
+    let mut out = String::from("# Trovato\n\n");
+    out.push_str(
+        "> A content management system written in Rust. Content is one JSONB row per item \
+         rather than a join per field; plugins are WebAssembly modules that reach only what \
+         they declare; queries are built with Gather, a type-safe query engine.\n\n",
+    );
+    out.push_str(
+        "This file lists the site's documentation and the markdown each page was rendered \
+         from. Every `.md` link below is the source text, unrendered.\n\n",
+    );
+
+    out.push_str("## Documentation\n\n");
+    let docs = rows(DOCS_SQL, &[serde_json::json!(LIVE_STAGE)]);
+    if docs.is_empty() {
+        out.push_str("The documentation has not been imported yet.\n\n");
+    }
+    for row in docs.iter() {
+        let Some(title) = row.get("title").and_then(|v| v.as_str()) else {
+            continue;
+        };
+        let Some(alias) = row.get("alias").and_then(|v| v.as_str()) else {
+            continue;
+        };
+        let slug = alias.rsplit('/').next().unwrap_or_default();
+        out.push_str(&format!(
+            "- [{}]({}): markdown at {}\n",
+            title,
+            absolute(&base, alias),
+            absolute(&base, &format!("/learn/raw/{slug}")),
+        ));
+    }
+
+    out.push_str("\n## The site\n\n");
+    for (path, description) in [
+        (
+            "/why",
+            "The architecture argument, at length, including what is not done.",
+        ),
+        (
+            "/get-started",
+            "Running Trovato, with Docker or from source.",
+        ),
+        (
+            "/rust",
+            "The stack by name, the pinned toolchain, and how to write a plugin.",
+        ),
+        (
+            "/community",
+            "Contributing, the code of conduct, and how this is built.",
+        ),
+        (
+            "/accessibility",
+            "What is tested, how, and what is known to be missing.",
+        ),
+        ("/blog", "Longer pieces about how Trovato works."),
+        ("/news", "Releases and changes."),
+    ] {
+        out.push_str(&format!(
+            "- [{}]({}): {}\n",
+            path,
+            absolute(&base, path),
+            description
+        ));
+    }
+
+    out.push_str("\n## Source\n\n");
+    out.push_str("- [The kernel](https://github.com/jeremyandrews/trovato)\n");
+    out.push_str("- [This website](https://github.com/jeremyandrews/trovato-site)\n");
+    out
+}
+
+/// Every documentation page, in reading order, with its alias.
+const DOCS_SQL: &str = "SELECT i.title, a.alias, i.fields->>'weight' AS weight \
+     FROM item i \
+     JOIN url_alias a \
+       ON a.source = '/item/' || i.id::text \
+      AND a.language = COALESCE(i.language, 'en') \
+      AND a.stage_id = $1::uuid \
+     WHERE i.status = 1 \
+       AND i.type = 'docs' \
+       AND i.stage_id = $1::uuid \
+     ORDER BY (i.fields->>'weight')::int NULLS LAST, i.title";
+
 /// Run a query and return its rows, or an empty list and a log line on failure.
 fn rows(sql: &str, params: &[serde_json::Value]) -> Vec<serde_json::Value> {
     match host::query_raw(sql, params) {
@@ -503,7 +720,7 @@ mod tests {
     fn declares_news_and_front_page() {
         let types = __inner_tap_item_info();
         let names: Vec<&str> = types.iter().map(|t| t.machine_name.as_str()).collect();
-        assert_eq!(names, vec!["news", "front_page"]);
+        assert_eq!(names, vec!["news", "docs", "front_page"]);
     }
 
     #[test]
@@ -521,8 +738,8 @@ mod tests {
     #[test]
     fn permissions_cover_both_types() {
         let perms = __inner_tap_perm();
-        // Four CRUD permissions per type.
-        assert_eq!(perms.len(), 8);
+        // Four CRUD permissions per type, three types.
+        assert_eq!(perms.len(), 12);
         assert!(perms.iter().any(|p| p.name == "edit news content"));
         assert!(perms.iter().any(|p| p.name == "edit front_page content"));
     }
@@ -759,8 +976,62 @@ mod tests {
         assert_ne!(SITEMAP_PATH, "/sitemap.xml");
         assert!(SITEMAP_PATH.starts_with('/'));
         let routes = __inner_tap_menu();
-        assert_eq!(routes.len(), 1);
-        assert_eq!(routes[0].path, SITEMAP_PATH);
+        assert!(routes.iter().any(|r| r.path == SITEMAP_PATH));
+    }
+
+    #[test]
+    fn the_site_registers_the_three_routes_it_serves() {
+        let routes = __inner_tap_menu();
+        let paths: Vec<&str> = routes.iter().map(|r| r.path.as_str()).collect();
+        assert_eq!(paths, vec![SITEMAP_PATH, RAW_DOC_PATH, LLMS_PATH]);
+    }
+
+    #[test]
+    fn a_slug_that_is_not_a_slug_is_refused() {
+        for bad in [
+            "",
+            "../../etc/passwd",
+            "a/b",
+            "Plugin-Development",
+            "doc.md",
+            "doc%2e%2e",
+            "doc:1",
+        ] {
+            assert!(!is_safe_slug(bad), "{bad} was accepted");
+        }
+        for good in ["readme", "plugin-development", "tutorial-01-hello-trovato"] {
+            assert!(is_safe_slug(good), "{good} was refused");
+        }
+    }
+
+    #[test]
+    fn a_document_request_for_a_bad_slug_is_a_404() {
+        let mut request = ApiRequest::new(
+            "doc_raw",
+            "GET",
+            "/learn/raw/x",
+            Uuid::nil().to_string(),
+            false,
+        );
+        request.params.insert("slug".into(), "../secrets".into());
+        assert_eq!(__inner_tap_api(request).status, 404);
+    }
+
+    #[test]
+    fn the_queries_are_written_as_one_line_each() {
+        // A `\\` where a `\` belongs turns a Rust line continuation into a
+        // literal backslash in the SQL, and Postgres answers `syntax error at or
+        // near "\"`. It is silent: the tap logs, returns nothing, and the page
+        // renders as though there were no rows.
+        for (name, sql) in [
+            ("LISTING_SQL", LISTING_SQL),
+            ("SITEMAP_SQL", SITEMAP_SQL),
+            ("DOCS_SQL", DOCS_SQL),
+            ("DOC_MARKDOWN_SQL", DOC_MARKDOWN_SQL),
+        ] {
+            assert!(!sql.contains('\\'), "{name} carries a literal backslash");
+            assert!(!sql.contains('\n'), "{name} carries a newline");
+        }
     }
 
     #[test]

@@ -98,6 +98,13 @@ curl -fsS -b "$cookies" -o /dev/null -X POST "${BASE}/install/site" \
 echo "==> Importing the site config"
 in_site ./trovato config import /site/config
 
+# `config import` reads one directory and does not recurse, so the generated
+# documentation set is its own import. Same precedent as the kernel tutorial's
+# seed-italian/ directory, and it keeps 36 machine-written files out of the
+# directory a person edits by hand.
+echo "==> Importing the mirrored documentation"
+in_site ./trovato config import /site/config/docs
+
 # Gather queries and menu links are read into their registries when the kernel
 # starts, so a query imported into a running server is in the database but not
 # yet routable: /news answers `{"error":"query not found"}` and the main menu

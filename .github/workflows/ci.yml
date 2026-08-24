@@ -26,5 +26,15 @@ jobs:
         run: cargo clippy --all-targets -- -D warnings
       - name: Test
         run: cargo test --all
+      - name: Documentation mirror is current
+        # Re-runs the import against the pinned tag and fails if anything would
+        # change. What it catches: a manifest edited without regenerating, and a
+        # tag bumped without re-importing. It reaches raw.githubusercontent.com,
+        # so it is a network test and will fail if GitHub is down — that is the
+        # cost of checking against the real source rather than a copy.
+        run: cargo run -p tools --bin docs-import -- --check
+
       - name: Build wasm
-        run: cargo build --release --target wasm32-wasip1
+        # Only the plugin. `tools` is a native binary and its dependency tree
+        # reaches C that does not cross-compile to wasm.
+        run: cargo build --release --target wasm32-wasip1 -p trovato_site

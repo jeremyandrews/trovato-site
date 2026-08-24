@@ -78,6 +78,24 @@
     /* @contrast --focus on --surface-sunken UI */
     --focus: #96421F;
 
+    /* ── Code ────────────────────────────────────────────────────────────── */
+    /* Six roles for six kinds of token. Each is checked against the surface a
+       code block actually sits on, which is `--surface-sunken`, not the page. */
+    /* @contrast --code-comment on --surface-sunken AA */
+    --code-comment: #6B5B4E;
+    /* @contrast --code-string on --surface-sunken AA */
+    --code-string: #4A6B3D;
+    /* @contrast --code-constant on --surface-sunken AA */
+    --code-constant: #7A4B7A;
+    /* @contrast --code-keyword on --surface-sunken AA */
+    --code-keyword: #96421F;
+    /* @contrast --code-function on --surface-sunken AA */
+    --code-function: #2F5F73;
+    /* @contrast --code-type on --surface-sunken AA */
+    --code-type: #7A5A1F;
+    /* @contrast --code-variable on --surface-sunken AA */
+    --code-variable: #8A3A46;
+
     /* ── Type ────────────────────────────────────────────────────────────── */
     /* Self-hosted, declared in fonts.css. The fallbacks are real stacks, not
        decoration: a font file that fails to load must leave a readable page. */
@@ -159,6 +177,21 @@
         /* A light-clay button takes dark text, not white. */
         /* @contrast --on-accent on --accent AA */
         --on-accent: #221B16;
+
+        /* @contrast --code-comment on --surface-sunken AA */
+        --code-comment: #A2917F;
+        /* @contrast --code-string on --surface-sunken AA */
+        --code-string: #A8C48F;
+        /* @contrast --code-constant on --surface-sunken AA */
+        --code-constant: #D5A3D5;
+        /* @contrast --code-keyword on --surface-sunken AA */
+        --code-keyword: #E08963;
+        /* @contrast --code-function on --surface-sunken AA */
+        --code-function: #8FBFD4;
+        /* @contrast --code-type on --surface-sunken AA */
+        --code-type: #DFC085;
+        /* @contrast --code-variable on --surface-sunken AA */
+        --code-variable: #E39AA4;
 
         --border: #3A2E26;
         /* @contrast --border-control on --surface UI */

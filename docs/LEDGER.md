@@ -1,10 +1,11 @@
 # Build ledger
 
-**Status:** Phase 3 complete, Phase 4 next
+**Status:** Phase 4 complete, Phase 5 next
 **Last updated:** 2026-08-24
-**Where things stand:** Every destination in the information architecture serves, with menus,
-breadcrumbs, feeds and a sitemap. A crawl of 37 pages is clean and the config round-trips.
-Gates 0 through 3 passed. The documentation import is next.
+**Where things stand:** 36 documentation pages are mirrored from the kernel repository at
+v0.101.0, syntax-highlighted, with markdown sources and an llms.txt. A crawl of 181 pages is
+clean. Gates 0 through 4 passed. Copy is next — every page still carries a
+`PLACEHOLDER-PHASE-5` marker.
 
 This file is the run's memory. Each gate attempt is recorded below with its per-check
 result, the loop count, any blockers, and the commit that closed the phase. A session
@@ -330,3 +331,99 @@ that no block could reach.
 - Page copy is `PLACEHOLDER-PHASE-5` on `/get-started`, `/learn`, `/rust`,
   `/community`, `/accessibility`, `/comment-policy`, `/authors/jeremy-andrews`
   and `/why`. Gate 5 greps for that marker.
+
+
+## Gate 4 — documentation import and the machine-readable surface
+
+**Attempt 1 — 2026-08-24 — PASS (2 fix loops)**
+
+| Check | Result |
+|---|---|
+| All documentation pages render with highlighting | PASS — 36 pages; `bash`, `rust`, `json`, `sql`, `toml` and `yaml` all tokenised, an unknown language renders as plain code |
+| Internal links between documentation pages resolve | PASS — a crawl of 181 pages found zero 404s; 62 links were rewritten to site paths and 54 left pointing at GitHub, and the crawl followed every one of the 62 |
+| Raw-markdown URLs serve | PASS — `/learn/raw/{slug}` returns `text/markdown; charset=utf-8` for all 36 |
+| The refresh job re-run produces no spurious diff | PASS — `docs-import --check` reports 0 files written, 0 stale; `git status config/docs` is clean after a second run |
+| llms.txt serves and its links resolve | PASS — `text/plain; charset=utf-8`, 59 lines, 79 site URLs, all reached by the crawl |
+| JSON-LD still emitted | PASS — the SEO plugin's `Article` block is unchanged on item pages |
+| Config round-trip, including the generated set | PASS — 51 hand-written and 72 generated entities, every declared key unchanged |
+
+### The two fix loops
+
+1. **Two queries had a literal backslash where a line continuation belonged.**
+   Postgres answered `syntax error at or near "\"`, the tap logged and returned
+   nothing, and `/llms.txt` rendered "The documentation has not been imported
+   yet" over a database holding 36 documents. Silent, and it looked like an empty
+   result rather than a broken query. There is now a test asserting no query
+   string contains a backslash or a newline.
+
+2. **One paragraph pushed the page sideways at 360px.** A mirrored tutorial had a
+   long unbreakable token in prose — an inline `code` holding a path — measuring
+   455px inside a 328px column. `overflow-wrap: break-word` on the body and
+   `anywhere` on inline code; code blocks keep `normal` and scroll inside their
+   own box, so the source stays copyable.
+
+### How the mirror works, and why
+
+The mirror is a native Rust binary, `tools/src/docs_import.rs`, run by CI and by
+hand. It fetches each document from `raw.githubusercontent.com` at the pinned tag,
+renders it, and writes items and aliases into `config/docs/`, which is committed.
+A deploy imports them like any other config. Production therefore depends on
+nothing that runs on this machine, and `--check` in CI fails the build if the
+mirror has drifted from the tag.
+
+Three designs were tried and abandoned first, each for a concrete reason:
+
+- **A `tap_cron` job in the site plugin.** The natural answer, and it needs to
+  write items. The `item-api` host interface declares `get-item` and `save-item`,
+  but the SDK ships no bindings for either and no plugin in the kernel tree uses
+  them, so this would have meant hand-writing the ABI against a documented but
+  unexercised surface. *Trovato-side finding.*
+- **Rendering markdown in a template with the kernel's `markdown` filter.** The
+  filter runs pulldown-cmark and then `ammonia::clean` with ammonia's defaults,
+  which strip `class` from `<code>` and from every `<span>`. Verified directly
+  against ammonia 4: `<pre><code class="language-rust">` comes back as
+  `<pre><code>`. So the filter cannot produce highlighted code and cannot even
+  preserve the language hint a client-side highlighter would need.
+  *Trovato-side finding.*
+- **Storing pre-rendered HTML in an item body.** `full_html` on the item render
+  path is downgraded to `plain_text` and escaped; `filtered_html` strips the
+  classes. And a field holding raw markdown cannot simply be ignored, because
+  `routes/item.rs` renders *every* field, a bare string included, as
+  `<div class="field"><strong>label</strong>: …`.
+
+What works is that a template receives `item` and can read `item.fields` directly.
+`elements/item--docs.html` ignores `children` entirely and renders
+`item.fields.html | safe`. The consequence, worth knowing: a `tap_item_view`
+output would not appear on a documentation page either.
+
+Highlighting is syntect used as a lexer with its themes discarded —
+`ClassedHTMLGenerator` emits `tok-`-prefixed scope classes and `static/css/code.css`
+colors them from the site's tokens. So code follows the reader's color scheme, and
+the seven code colors in each scheme are checked by the same `cargo test` as the
+rest of the palette. A syntect theme baked into the HTML could do neither.
+
+### Findings
+
+- **`mime_from_path` has no case for `.md`, `.txt`, `.xml` or `.webp`.** They are
+  served as `application/octet-stream`, which a browser downloads rather than
+  opens. So a site cannot serve markdown, plain text or a feed from `static/` with
+  a usable content type. *Trovato-side.* Both the raw-markdown URLs and `llms.txt`
+  are plugin routes for this reason, not static files.
+- **`item-api` has no SDK binding.** `get-item` and `save-item` are documented in
+  `crates/plugin-sdk/src/host_errors.rs` and registered by
+  `crates/kernel/src/host/item.rs`, and nothing in the SDK or in any shipped
+  plugin calls them. *Trovato-side.*
+- **The rate limiter makes the site hard to verify.** A 181-page crawl and a
+  36-screenshot pass both tripped the 100-per-minute limit repeatedly, because
+  static assets count. The crawler now fetches documents only and aborts every
+  subresource, and both it and the screenshot pass honour `retry-after`. That is a
+  reasonable thing for a crawler to do anyway; it is a workaround here.
+
+### Decision reversed
+
+**`/learn` does not use `trovato_book`.** Phase 3 chose it for the ordered
+hierarchy. Once the documentation became generated items whose order is known at
+generation time, the book bought nothing: the generator writes each page's
+previous, next and up links into its own fields, so navigation is static, needs no
+query, and — unlike `book_page` — round-trips through `config export`. The
+hierarchy trovato_book would have provided is one level deep here, which is a list.

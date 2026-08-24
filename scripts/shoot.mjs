@@ -42,7 +42,17 @@ for (const scheme of SCHEMES) {
     });
 
     for (const { path, name, family } of PAGES) {
-      const response = await page.goto(BASE + path, { waitUntil: "networkidle" });
+      // The kernel rate-limits every GET at 100 a minute per IP, static assets
+      // included, and a screenshot pass is nine pages of real rendering in four
+      // configurations. A 429 is answered the way the header asks rather than
+      // counted as a broken page. See docs/LEDGER.md, Gate 2.
+      let response = await page.goto(BASE + path, { waitUntil: "networkidle" });
+      for (let attempt = 0; attempt < 3 && response?.status() === 429; attempt++) {
+        const wait = Number(response.headers()["retry-after"] ?? 60);
+        console.log(`      429, waiting ${wait}s before retrying ${path}`);
+        await new Promise((r) => setTimeout(r, (wait + 1) * 1000));
+        response = await page.goto(BASE + path, { waitUntil: "networkidle" });
+      }
       const status = response?.status() ?? 0;
 
       // A page that did not render is not a page to measure. Repeated runs

@@ -28,6 +28,11 @@ body {
     line-height: var(--leading-normal);
     -webkit-text-size-adjust: 100%;
     text-rendering: optimizeLegibility;
+    /* Prose containing a long unbreakable token — an inline `code` holding a
+       path, a bare URL — pushes the whole page sideways on a narrow screen.
+       Found at 360px on a mirrored tutorial page, where one paragraph measured
+       455px inside a 328px column. */
+    overflow-wrap: break-word;
 }
 
 img,
@@ -78,6 +83,9 @@ code {
     background: var(--surface-sunken);
     border-radius: var(--radius);
     padding: 0.1em 0.35em;
+    /* An inline code span breaks anywhere it has to. A code block does not: it
+       scrolls inside its own box instead, which keeps the source copyable. */
+    overflow-wrap: anywhere;
 }
 
 pre {
@@ -92,6 +100,7 @@ pre {
 pre code {
     background: none;
     padding: 0;
+    overflow-wrap: normal;
 }
 
 blockquote {
@@ -558,6 +567,96 @@ button.site-nav__logout {
 
 .breadcrumb__separator {
     margin-inline: var(--space-2);
+}
+
+/* ── Documentation ───────────────────────────────────────────────────────── */
+
+.docs__section {
+    margin: 0 0 var(--space-1);
+    color: var(--text-muted);
+    font-size: var(--text-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.docs__provenance code {
+    font-size: 0.85em;
+}
+
+/* A mirrored document is wider than an essay: it carries tables and code that a
+   68-character measure would force into a scrollbar. */
+.docs__body {
+    max-width: 78ch;
+}
+
+.docs__body h2 {
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--border);
+}
+
+.docs__body table {
+    display: block;
+    overflow-x: auto;
+    max-width: 100%;
+}
+
+.docs__nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    margin-top: var(--space-8);
+    padding-top: var(--space-5);
+    border-top: 1px solid var(--border);
+}
+
+.docs__nav-link {
+    flex: 1 1 12rem;
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    text-decoration: none;
+}
+
+.docs__nav-link:hover {
+    border-color: var(--border-control);
+}
+
+.docs__nav-link--next {
+    text-align: end;
+}
+
+.docs__nav-label {
+    display: block;
+    color: var(--text-muted);
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.docs__nav-title {
+    display: block;
+    font-weight: var(--weight-semibold);
+}
+
+.docs-index__section {
+    font-size: var(--text-xl);
+    margin-top: var(--space-8);
+}
+
+.docs-index__blurb {
+    color: var(--text-muted);
+    margin-top: calc(var(--space-2) * -1);
+}
+
+.docs-index__items {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.docs-index__item {
+    padding-block: var(--space-2);
+    border-bottom: 1px solid var(--border);
 }
 
 /* ── Forms ───────────────────────────────────────────────────────────────── */
