@@ -20,7 +20,7 @@ fields:
     <figure class="code"><figcaption class="code__lang">bash</figcaption><pre class="code__body" tabindex="0" aria-label="bash code"><code class="language-bash"><span class="tok-source tok-shell tok-bash"><span class="tok-meta tok-function-call tok-shell"><span class="tok-variable tok-function tok-shell">curl</span></span><span class="tok-meta tok-function-call tok-arguments tok-shell"><span class="tok-variable tok-parameter tok-option tok-shell"><span class="tok-punctuation tok-definition tok-parameter tok-shell"> -</span>s</span> http://localhost:3000/health</span>
     <span class="tok-comment tok-line tok-number-sign tok-shell"><span class="tok-punctuation tok-definition tok-comment tok-begin tok-shell">#</span></span><span class="tok-comment tok-line tok-number-sign tok-shell"> {&quot;status&quot;:&quot;healthy&quot;,&quot;postgres&quot;:true,&quot;redis&quot;:true}</span><span class="tok-comment tok-line tok-number-sign tok-shell">
     </span></span></code></pre></figure><p>Check the admin plugins page — <code>trovato_ai</code> should show as "Enabled":</p>
-    <p><a href="https://github.com/jeremyandrews/trovato/blob/v0.101.0/images/part-ai/plugins-ai-enabled.png"><img src="images/part-ai/plugins-ai-enabled.png" width="600" alt="Plugins admin page showing trovato_ai as enabled"></a></p>
+    <p><a href="/static/docs/images/part-ai/plugins-ai-enabled.png"><img src="/static/docs/images/part-ai/plugins-ai-enabled.png" width="600" alt="Plugins admin page showing trovato_ai as enabled"></a></p>
     <hr />
     <h2>Step 2: Configure an AI Provider</h2>
     <p>Trovato supports OpenAI-compatible and Anthropic providers. API keys are stored as <strong>environment variable references</strong> — the database stores the variable name (e.g., <code>ANTHROPIC_API_KEY</code>), never the key itself. The kernel resolves the key from the environment at runtime. WASM plugins never see the key.</p>
@@ -33,7 +33,7 @@ fields:
     </span><span class="tok-meta tok-function-call tok-shell"><span class="tok-storage tok-modifier tok-shell">export</span> <span class="tok-variable tok-other tok-readwrite tok-assignment tok-shell">ANTHROPIC_API_KEY</span><span class="tok-keyword tok-operator tok-assignment tok-shell">=</span><span class="tok-string tok-unquoted tok-shell">sk-ant-...</span></span>
     </span></code></pre></figure><h3>Configure the Provider</h3>
     <p>Navigate to <strong>Admin &gt; AI Providers</strong> (<code>/admin/system/ai-providers</code>):</p>
-    <p><a href="https://github.com/jeremyandrews/trovato/blob/v0.101.0/images/part-ai/ai-config-providers.png"><img src="images/part-ai/ai-config-providers.png" width="600" alt="AI Providers admin showing Anthropic configured with masked API key and Chat as the default operation"></a></p>
+    <p><a href="/static/docs/images/part-ai/ai-config-providers.png"><img src="/static/docs/images/part-ai/ai-config-providers.png" width="600" alt="AI Providers admin showing Anthropic configured with masked API key and Chat as the default operation"></a></p>
     <p>Add a provider:</p>
     <ul>
     <li><strong>Label:</strong> Anthropic</li>
@@ -49,7 +49,7 @@ fields:
     <hr />
     <h2>Step 3: Token Budgets &amp; Usage</h2>
     <p>Monitor AI costs and set per-role limits at <strong>Admin &gt; AI Budgets</strong> (<code>/admin/system/ai-budgets</code>):</p>
-    <p><a href="https://github.com/jeremyandrews/trovato/blob/v0.101.0/images/part-ai/ai-budgets.png"><img src="images/part-ai/ai-budgets.png" width="600" alt="AI Token Budgets dashboard showing usage by provider, top users, and per-role budget configuration"></a></p>
+    <p><a href="/static/docs/images/part-ai/ai-budgets.png"><img src="/static/docs/images/part-ai/ai-budgets.png" width="600" alt="AI Token Budgets dashboard showing usage by provider, top users, and per-role budget configuration"></a></p>
     <p>The dashboard shows:</p>
     <ul>
     <li><strong>Usage this month</strong> — total tokens by provider and total requests</li>
@@ -65,7 +65,7 @@ fields:
     <hr />
     <h2>Step 4: AI Assist on Content Forms</h2>
     <p>With <code>trovato_ai</code> enabled, content editing forms gain <strong>AI Assist</strong> buttons next to text fields. These appear on the admin content forms at <code>/admin/content/add/{type}</code> and <code>/admin/content/{id}/edit</code>.</p>
-    <p><a href="https://github.com/jeremyandrews/trovato/blob/v0.101.0/images/part-ai/content-form-ai-assist.png"><img src="images/part-ai/content-form-ai-assist.png" width="600" alt="Content creation form showing AI Assist buttons next to text input fields"></a></p>
+    <p><a href="/static/docs/images/part-ai/content-form-ai-assist.png"><img src="/static/docs/images/part-ai/content-form-ai-assist.png" width="600" alt="Content creation form showing AI Assist buttons next to text input fields"></a></p>
     <p>Click "AI Assist" to open a popover with five operations:</p>
     <table><thead><tr><th>Operation</th><th>What It Does</th></tr></thead><tbody>
     <tr><th><strong>Rewrite</strong></th><th>Improve clarity and flow while preserving meaning</th></tr>
@@ -91,7 +91,7 @@ fields:
     </span></span></code></pre></figure><hr />
     <h2>Step 5: Chat Configuration</h2>
     <p>Configure the chatbot at <strong>Admin &gt; AI Chat</strong> (<code>/admin/system/ai-chat</code>):</p>
-    <p><a href="https://github.com/jeremyandrews/trovato/blob/v0.101.0/images/part-ai/ai-chat-settings.png"><img src="images/part-ai/ai-chat-settings.png" width="600" alt="AI Chat Configuration showing system prompt editor, RAG toggle, model settings, and rate limiting"></a></p>
+    <p><a href="/static/docs/images/part-ai/ai-chat-settings.png"><img src="/static/docs/images/part-ai/ai-chat-settings.png" width="600" alt="AI Chat Configuration showing system prompt editor, RAG toggle, model settings, and rate limiting"></a></p>
     <p>Settings include:</p>
     <ul>
     <li><strong>System prompt</strong> — The chatbot's personality and instructions</li>
@@ -101,7 +101,7 @@ fields:
     <li><strong>Rate limiting</strong> — Requests per hour per user</li>
     </ul>
     <p>The chatbot is accessible at <code>POST /api/v1/chat</code> and renders as a Tile that can be placed in any Slot. Here it is in the sidebar of the conferences page, answering a question about Rust conferences:</p>
-    <p><a href="https://github.com/jeremyandrews/trovato/blob/v0.101.0/images/part-ai/chatbot-conversation.png"><img src="images/part-ai/chatbot-conversation.png" width="600" alt="Conferences page with AI chatbot in the sidebar showing a conversation about Rust conferences in 2026"></a></p>
+    <p><a href="/static/docs/images/part-ai/chatbot-conversation.png"><img src="/static/docs/images/part-ai/chatbot-conversation.png" width="600" alt="Conferences page with AI chatbot in the sidebar showing a conversation about Rust conferences in 2026"></a></p>
     <hr />
     <h2>Step 6: Field Rules (Automatic Content Enrichment)</h2>
     <p>Field rules automate content enrichment — when a conference description changes, AI auto-generates a summary. Rules are configured in site config under <code>trovato_ai.field_rules</code> and fire via <code>tap_item_presave</code>.</p>
@@ -139,7 +139,7 @@ fields:
     </span><span class="tok-meta tok-function-call tok-shell"><span class="tok-variable tok-function tok-shell">curl</span></span><span class="tok-meta tok-function-call tok-arguments tok-shell"><span class="tok-variable tok-parameter tok-option tok-shell"><span class="tok-punctuation tok-definition tok-parameter tok-shell"> -</span>s</span><span class="tok-variable tok-parameter tok-option tok-shell"><span class="tok-punctuation tok-definition tok-parameter tok-shell"> -</span>X</span> POST http://localhost:3000/cron/default-cron-key</span> <span class="tok-keyword tok-operator tok-logical tok-pipe tok-shell">|</span> <span class="tok-meta tok-function-call tok-shell"><span class="tok-variable tok-function tok-shell">jq</span></span><span class="tok-meta tok-function-call tok-arguments tok-shell"> <span class="tok-string tok-quoted tok-single tok-shell"><span class="tok-punctuation tok-definition tok-string tok-begin tok-shell">&#39;</span>.status<span class="tok-punctuation tok-definition tok-string tok-end tok-shell">&#39;</span></span></span>
     </span></code></pre></figure><h3>Search Page</h3>
     <p>Visit <code>/search</code> to see the Scolta search UI:</p>
-    <p><a href="https://github.com/jeremyandrews/trovato/blob/v0.101.0/images/part-ai/search-scolta.png"><img src="images/part-ai/search-scolta.png" width="600" alt="Scolta search showing AI-expanded terms (Rust programming, Rust language, systems programming, Mozilla Rust), an AI Overview summary citing RustConf and EuroRust, and results with yellow-highlighted matching terms"></a></p>
+    <p><a href="/static/docs/images/part-ai/search-scolta.png"><img src="/static/docs/images/part-ai/search-scolta.png" width="600" alt="Scolta search showing AI-expanded terms (Rust programming, Rust language, systems programming, Mozilla Rust), an AI Overview summary citing RustConf and EuroRust, and results with yellow-highlighted matching terms"></a></p>
     <h3>Why No Vector Database?</h3>
     <p>Most sites don't need embeddings for good search. Scolta's approach:</p>
     <table><thead><tr><th></th><th>Scolta (Pagefind + AI)</th><th>Vector Database (pgvector)</th></tr></thead><tbody>

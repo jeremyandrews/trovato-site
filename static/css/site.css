@@ -588,10 +588,20 @@ button.site-nav__logout {
     }
 }
 
+/* The gallery shows the tutorial's real screenshots, and real screenshots
+   come at real sizes — one is a full-page capture eight screens tall. Each
+   card crops to the same ratio from the top, which is where every admin
+   screen keeps its identity; the anchor around the image opens the whole
+   file. */
 .front-gallery__grid img {
     display: block;
     width: 100%;
     height: auto;
+    aspect-ratio: 16 / 11;
+    object-fit: cover;
+    object-position: top;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
 }
 
 .front-gallery__grid figcaption {
@@ -885,9 +895,12 @@ button.site-nav__logout {
 }
 
 /* A figure inside a filtered body carries no class — the text format strips
-   them — so the element is the hook. The plinth behind the art is the sunken
-   surface, which keeps a light-scheme illustration from floating on bare
-   cream and gives a dark-scheme one its own warm ground. */
+   them — so the element and the file type are the hooks. A line drawing gets
+   the sunken plinth, which keeps it from floating on bare cream and gives it
+   a warm ground in dark mode. A real screenshot gets a hairline frame
+   instead, and the tall ones — an admin capture can run several screens —
+   crop from the top rather than swallowing the page; the caption links to
+   the full file where it matters. */
 .item__content figure {
     margin: var(--space-6) 0;
 }
@@ -896,9 +909,27 @@ button.site-nav__logout {
     display: block;
     width: 100%;
     height: auto;
-    background: var(--surface-sunken);
     border-radius: var(--radius-lg);
+}
+
+.item__content figure img[src$=".svg"] {
+    background: var(--surface-sunken);
     padding: var(--space-4);
+}
+
+.item__content figure img[src$=".png"] {
+    border: 1px solid var(--border);
+    max-height: 30rem;
+    object-fit: cover;
+    object-position: top;
+}
+
+/* The mirrored documentation's own screenshots, framed the same way. They
+   are content, not decoration, so nothing crops them. */
+.docs__body img {
+    display: block;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
 }
 
 .item__content figcaption {

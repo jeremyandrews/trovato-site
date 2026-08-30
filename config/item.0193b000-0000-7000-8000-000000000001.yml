@@ -53,22 +53,28 @@ fields:
 
     <section class="front-gallery" aria-labelledby="front-gallery-heading">
       <h2 id="front-gallery-heading">What it looks like</h2>
-      <p class="front-gallery__blurb">Three sketches of the three screens you will live in. <a href="/learn/tutorial-01-hello-trovato">The tutorial</a> has the real pixels, from an empty database to a deployed site.</p>
+      <p class="front-gallery__blurb">Real screens from Ritrovo, the conference directory <a href="/learn/tutorial-01-hello-trovato">the tutorial</a> builds in nine parts from an empty database. The screenshots are the tutorial&#8217;s own, mirrored at the pinned release.</p>
       <div class="front-gallery__grid">
         <figure>
-          <img src="/static/art/shot-admin-content.svg" width="800" height="520"
-               alt="A sketch of the admin content list: a sidebar, rows of titles with stage chips and dates, and an add button.">
-          <figcaption>The content list: every item, its stage, its date.</figcaption>
+          <a href="/static/docs/images/part-04/admin-content-list.png">
+          <img src="/static/docs/images/part-04/admin-content-list.png" width="1280" height="10569"
+               alt="The Trovato admin content list: a dark sidebar, filters, and a table of items with type, author, status and updated columns.">
+          </a>
+          <figcaption>The content list: every item, its status, its date.</figcaption>
         </figure>
         <figure>
-          <img src="/static/art/shot-gather-builder.svg" width="800" height="520"
-               alt="A sketch of the Gather builder: filter cards on the left, a live preview listing on the right.">
-          <figcaption>The Gather builder: the query on the left, its results already on the right.</figcaption>
+          <a href="/static/docs/images/part-03/gather-queries-admin.png">
+          <img src="/static/docs/images/part-03/gather-queries-admin.png" width="1280" height="2046"
+               alt="The Gather queries admin: a table of queries with their labels, base tables, owning plugins and operations.">
+          </a>
+          <figcaption>Gather: every listing on a site is a query you can open.</figcaption>
         </figure>
         <figure>
-          <img src="/static/art/shot-installer.svg" width="800" height="520"
-               alt="A sketch of the installer: the tile mark, two form fields and a single button.">
-          <figcaption>The installer: an administrator account, a site name, done.</figcaption>
+          <a href="/static/docs/images/part-03/front-page.png">
+          <img src="/static/docs/images/part-03/front-page.png" width="1280" height="1586"
+               alt="Ritrovo&#8217;s themed front page: a hero reading Discover Tech Conferences Worldwide, with stat tiles below it.">
+          </a>
+          <figcaption>Ritrovo itself, themed, by part three.</figcaption>
         </figure>
       </div>
     </section>

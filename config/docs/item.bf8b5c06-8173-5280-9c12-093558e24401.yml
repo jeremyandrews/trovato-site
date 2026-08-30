@@ -286,8 +286,8 @@ fields:
     <tr><th><em>(from queue payload)</em></th><th><code>field_topics</code></th><th>accumulated across topic files</th></tr>
     </tbody></table>
     <p>Newly inserted conferences are created as <strong>published</strong> (<code>status = 1</code>) on the live stage, so they appear immediately in the public browse pages without requiring a manual publish step.</p>
-    <p><a href="https://github.com/jeremyandrews/trovato/blob/v0.101.0/images/part-02/conferences-imported.png"><img src="images/part-02/conferences-imported.png" width="600" alt="Conferences listing after import showing imported conference cards"></a></p>
-    <p><a href="https://github.com/jeremyandrews/trovato/blob/v0.101.0/images/part-02/admin-content-list.png"><img src="images/part-02/admin-content-list.png" width="600" alt="Admin content list showing imported conferences in the management interface"></a></p>
+    <p><a href="/static/docs/images/part-02/conferences-imported.png"><img src="/static/docs/images/part-02/conferences-imported.png" width="600" alt="Conferences listing after import showing imported conference cards"></a></p>
+    <p><a href="/static/docs/images/part-02/admin-content-list.png"><img src="/static/docs/images/part-02/admin-content-list.png" width="600" alt="Admin content list showing imported conferences in the management interface"></a></p>
     <h3>Historical Import: tap_install</h3>
     <p>When the plugin is first enabled, <code>tap_install</code> first discovers category tag UUIDs from the config-imported <code>category_tag</code> rows (caching them in <code>ritrovo_state</code> for the queue worker), then runs a full historical backfill. It fetches every topic file for every year from 2015 to the current year, stores ETags, and pushes each successful response onto the queue:</p>
     <figure class="code"><figcaption class="code__lang">rust</figcaption><pre class="code__body" tabindex="0" aria-label="rust code"><code class="language-rust"><span class="tok-source tok-rust"><span class="tok-keyword tok-control tok-rust">for</span> year <span class="tok-keyword tok-operator tok-rust">in</span> <span class="tok-constant tok-other tok-rust">FIRST_IMPORT_YEAR</span><span class="tok-keyword tok-operator tok-rust">..</span><span class="tok-keyword tok-operator tok-rust">=</span>current_year <span class="tok-meta tok-block tok-rust"><span class="tok-punctuation tok-section tok-block tok-begin tok-rust">{</span>   <span class="tok-comment tok-line tok-double-slash tok-rust"><span class="tok-punctuation tok-definition tok-comment tok-rust">//</span> 2015..=now
@@ -470,7 +470,7 @@ fields:
     <blockquote>
     <p><strong>URL design choice:</strong> <code>/topics/rust</code> renders the gather query inline. The raw gather URL (<code>/gather/ritrovo.by_topic?topic=&lt;uuid&gt;</code>) is also bookmarkable and works independently of the slug route, but the 301 canonical redirect (see §2.4) sends users back to the pretty URL.</p>
     </blockquote>
-    <p><a href="https://github.com/jeremyandrews/trovato/blob/v0.101.0/images/part-02/topics-listing.png"><img src="images/part-02/topics-listing.png" width="600" alt="Topics listing page showing the hierarchical topic category with browsable tags"></a></p>
+    <p><a href="/static/docs/images/part-02/topics-listing.png"><img src="/static/docs/images/part-02/topics-listing.png" width="600" alt="Topics listing page showing the hierarchical topic category with browsable tags"></a></p>
     <hr />
     <h2>2.4 Advanced Gathers</h2>
     <p>Trovato's gather system converts a declarative JSON query definition into a paginated, optionally-filtered SQL query. In this section you'll see how the importer seeds its five gather queries, and how two kinds of dynamic filter values — contextual values and exposed filters — allow a single query definition to serve both public browse pages and editor search forms.</p>
@@ -546,7 +546,7 @@ fields:
                     field_cfp_url is_not_null
     Sort:           field_cfp_end_date ASC (nulls last)
     </code></pre></figure><p>The <code>is_not_null</code> filter on <code>field_cfp_url</code> ensures only conferences with a submission link are shown — no CFP URL means there's nothing to link to.</p>
-    <p><a href="https://github.com/jeremyandrews/trovato/blob/v0.101.0/images/part-02/open-cfps.png"><img src="images/part-02/open-cfps.png" width="600" alt="Open CFPs listing showing conferences with active calls for papers sorted by deadline"></a></p>
+    <p><a href="/static/docs/images/part-02/open-cfps.png"><img src="/static/docs/images/part-02/open-cfps.png" width="600" alt="Open CFPs listing showing conferences with active calls for papers sorted by deadline"></a></p>
     <h4>ritrovo.by_topic</h4>
     <p>Upcoming conferences filtered by a single topic UUID, including all descendant topics via recursive CTE.</p>
     <figure class="code"><pre class="code__body" tabindex="0" aria-label="Example code"><code>Hard filters:   field_start_date ≥ current_date
@@ -687,7 +687,7 @@ fields:
     <li>Find open CFPs at <code>/cfps</code></li>
     <li>Filter by country at <code>/location/Germany</code> and by city at <code>/location/Germany/Berlin</code></li>
     </ul>
-    <p><a href="https://github.com/jeremyandrews/trovato/blob/v0.101.0/images/part-02/search-results.png"><img src="images/part-02/search-results.png" width="600" alt="Search results page showing conferences matching a search query with relevance ranking"></a></p>
+    <p><a href="/static/docs/images/part-02/search-results.png"><img src="/static/docs/images/part-02/search-results.png" width="600" alt="Search results page showing conferences matching a search query with relevance ranking"></a></p>
     <p>The gather engine handles filtering, pagination, widget data loading, and rendering. The query definitions, category, and URL aliases are all managed as configuration — the plugin's only job is discovering category tag UUIDs and importing conference data from the external API.</p>
   markdown: |
     # Part 2: The Ritrovo Importer Plugin

@@ -8,6 +8,16 @@
 //! output is committed, so a deploy imports it like any other config and
 //! production needs nothing from the machine that ran this.
 //!
+//! Images too: a document that shows a screenshot references it relative to its
+//! own directory (`images/part-01/installer-welcome.png`), and the mirror is
+//! not a mirror if those pixels stay behind in the kernel repository. Every
+//! image a mirrored document references is fetched from the same pinned tag
+//! and written under `static/docs/images/`, and both the `<img src>` and the
+//! anchor wrapping it are rewritten to that path. Before this existed, every
+//! tutorial page rendered its screenshots broken, and each one's wrapping link
+//! pointed at a GitHub path that does not exist — `blob/{tag}/images/…`,
+//! missing the `docs/tutorial/` the file actually lives under.
+//!
 //! **Never from a local checkout.** The source is `raw.githubusercontent.com` at
 //! an exact tag. A generator that reads the working tree next door produces a
 //! site that matches whatever that tree happened to contain, which is how a
@@ -76,6 +86,11 @@ fn main() -> std::process::ExitCode {
     let mut internal_links = 0usize;
     let mut outbound_links = 0usize;
 
+    // Every image any document references, as `part/file.png` mapped to the
+    // repository path it is fetched from. A BTreeMap so the fetch order, and
+    // therefore the log, is stable across runs.
+    let mut image_sources: BTreeMap<String, String> = BTreeMap::new();
+
     for (index, doc) in ordered.iter().enumerate() {
         let Some(markdown) = fetched.get(doc.slug) else {
             continue;
@@ -84,22 +99,65 @@ fn main() -> std::process::ExitCode {
         let rendered = render::render(markdown, &|link| resolve_link(link));
         for link in &rendered.links {
             match resolve_link(link) {
-                Some(target) if target.starts_with("/learn/") => internal_links += 1,
+                Some(target)
+                    if target.starts_with("/learn/") || target.starts_with("/static/") =>
+                {
+                    internal_links += 1;
+                }
                 Some(_) => outbound_links += 1,
                 None => {}
             }
         }
+
+        // The references are relative to the document's own directory. Two
+        // documents in different directories claiming the same relative name
+        // would collide in the flat mirror, so that is an error, not a guess.
+        let dir = doc.source.rsplit_once('/').map(|(d, _)| d).unwrap_or("");
+        for rest in image_refs(&rendered.html) {
+            let repo_path = if dir.is_empty() {
+                format!("images/{rest}")
+            } else {
+                format!("{dir}/images/{rest}")
+            };
+            if let Some(existing) = image_sources.get(&rest) {
+                if existing != &repo_path {
+                    eprintln!(
+                        "image {rest} is referenced from two places: {existing} and {repo_path}"
+                    );
+                    return std::process::ExitCode::FAILURE;
+                }
+            }
+            image_sources.insert(rest, repo_path);
+        }
+
+        let html = rewrite_image_srcs(&rendered.html);
         let previous = index.checked_sub(1).and_then(|i| ordered.get(i)).copied();
         let next = ordered.get(index + 1).copied();
 
         files.insert(
             config_dir.join(format!("item.{}.yml", item_id(doc.slug))),
-            item_yaml(doc, &rendered.html, markdown, previous, next),
+            item_yaml(doc, &html, markdown, previous, next),
         );
         files.insert(
             config_dir.join(format!("url_alias.{}.yml", alias_id(doc.slug))),
             alias_yaml(doc),
         );
+    }
+
+    let images_dir = root.join("static/docs/images");
+    let mut images: BTreeMap<PathBuf, Vec<u8>> = BTreeMap::new();
+    for (rest, repo_path) in &image_sources {
+        let url = raw_url(repo_path);
+        match fetch_bytes(&url) {
+            Ok(bytes) => {
+                println!("  fetched {repo_path} ({} bytes)", bytes.len());
+                images.insert(images_dir.join(rest), bytes);
+            }
+            Err(e) => {
+                eprintln!("could not fetch {url}: {e}");
+                return std::process::ExitCode::FAILURE;
+            }
+        }
     }
 
     files.insert(
@@ -115,12 +173,17 @@ fn main() -> std::process::ExitCode {
         index_alias(),
     );
 
-    let changed = write_all(&files, check_only);
+    let mut changed = write_all(&files, check_only);
+    changed.extend(write_all_bytes(&images, check_only));
 
     // Anything left over from a document that used to be mirrored and is not any
     // more. A generator that only writes leaves the site serving pages that its
-    // own manifest no longer lists.
-    let stale = find_stale(&config_dir, &files);
+    // own manifest no longer lists. The image directory gets the same sweep,
+    // recursively, so a screenshot the documentation stopped showing does not
+    // stay published.
+    let mut stale = find_stale(&config_dir, &files);
+    stale.extend(find_stale_images(&images_dir, &images));
+    stale.sort();
     for path in &stale {
         println!("  stale: {}", relative(&root, path));
         if !check_only {
@@ -129,10 +192,11 @@ fn main() -> std::process::ExitCode {
     }
 
     println!(
-        "\n{} documents from {REPO} at {TAG}\n\
+        "\n{} documents and {} image(s) from {REPO} at {TAG}\n\
          {} link(s) rewritten to this site, {} left pointing at GitHub\n\
          {} file(s) written, {} stale file(s)",
         ordered.len(),
+        images.len(),
         internal_links,
         outbound_links,
         changed.len(),
@@ -148,6 +212,31 @@ fn main() -> std::process::ExitCode {
     }
 
     std::process::ExitCode::SUCCESS
+}
+
+/// Every `part/file.png` the rendered HTML references as `src="images/…"`.
+///
+/// The references are raw HTML in the markdown, passed through the renderer
+/// verbatim, so the reliable place to read them is the output.
+fn image_refs(html: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut rest = html;
+    while let Some(at) = rest.find("src=\"images/") {
+        let tail = &rest[at + "src=\"images/".len()..];
+        match tail.find('"') {
+            Some(end) => {
+                out.push(tail[..end].to_string());
+                rest = &tail[end..];
+            }
+            None => break,
+        }
+    }
+    out
+}
+
+/// Point every relative `<img>` at the mirrored copy.
+fn rewrite_image_srcs(html: &str) -> String {
+    html.replace("src=\"images/", "src=\"/static/docs/images/")
 }
 
 /// Where a document's markdown is fetched from.
@@ -168,6 +257,11 @@ fn fetch(url: &str) -> Result<String, String> {
         .map_err(|e| e.to_string())
 }
 
+fn fetch_bytes(url: &str) -> Result<Vec<u8>, String> {
+    let mut response = ureq::get(url).call().map_err(|e| e.to_string())?;
+    response.body_mut().read_to_vec().map_err(|e| e.to_string())
+}
+
 /// Rewrite a link written for the kernel repository into one for this site.
 ///
 /// A link to a document the site mirrors becomes the site's path. A link to
@@ -183,6 +277,14 @@ fn resolve_link(link: &str) -> Option<String> {
         Some((p, f)) => (p, Some(f)),
         None => (link, None),
     };
+
+    // A link to an image lands on the mirrored copy, exactly where the
+    // rewritten <img> inside it points. Before this branch existed the
+    // fallback below sent it to `blob/{tag}/images/…`, which is not a path
+    // the kernel repository has.
+    if let Some(rest) = path.trim_start_matches("./").strip_prefix("images/") {
+        return Some(format!("/static/docs/images/{rest}"));
+    }
 
     let normalized = normalize(path);
 
@@ -417,6 +519,49 @@ fn write_all(files: &BTreeMap<PathBuf, String>, check_only: bool) -> Vec<PathBuf
         }
     }
     changed
+}
+
+/// Write every image whose bytes would change, and return those paths.
+fn write_all_bytes(files: &BTreeMap<PathBuf, Vec<u8>>, check_only: bool) -> Vec<PathBuf> {
+    let mut changed = Vec::new();
+    for (path, content) in files {
+        let current = std::fs::read(path).ok();
+        if current.as_deref() == Some(content.as_slice()) {
+            continue;
+        }
+        changed.push(path.clone());
+        if check_only {
+            continue;
+        }
+        if let Some(parent) = path.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+        if let Err(e) = std::fs::write(path, content) {
+            eprintln!("could not write {}: {e}", path.display());
+        }
+    }
+    changed
+}
+
+/// Mirrored images this run did not produce, walking the per-part directories.
+fn find_stale_images(images_dir: &Path, written: &BTreeMap<PathBuf, Vec<u8>>) -> Vec<PathBuf> {
+    let mut stale = Vec::new();
+    let mut dirs = vec![images_dir.to_path_buf()];
+    while let Some(dir) = dirs.pop() {
+        let Ok(entries) = std::fs::read_dir(&dir) else {
+            continue;
+        };
+        for entry in entries.filter_map(Result::ok) {
+            let path = entry.path();
+            if path.is_dir() {
+                dirs.push(path);
+            } else if path.is_file() && !written.contains_key(&path) {
+                stale.push(path);
+            }
+        }
+    }
+    stale.sort();
+    stale
 }
 
 /// Files in the generated directories that this run did not produce.

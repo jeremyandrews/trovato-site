@@ -67,7 +67,7 @@ fields:
     </span></code></pre></figure><h3>How the Content Edit Form Works Today</h3>
     <p>The current admin content edit form at <code>/item/{id}/edit</code> uses the temporary <code>FormBuilder</code> in <code>content/form.rs</code>, which generates HTML strings directly from <code>ContentTypeDefinition</code> field definitions. This works but bypasses the Form API pipeline -- plugins cannot alter these forms via <code>tap_form_alter</code>.</p>
     <p>The Form API exists alongside this temporary system. As the Form API matures, content forms will migrate to it, enabling plugin-driven form customization. The conference submission form you will build in Step 4 uses the Form API directly.</p>
-    <p><a href="https://github.com/jeremyandrews/trovato/blob/v0.101.0/images/part-05/content-form-full.png"><img src="images/part-05/content-form-full.png" width="600" alt="The full content edit form showing all fields including title, dates, location, and description"></a></p>
+    <p><a href="/static/docs/images/part-05/content-form-full.png"><img src="/static/docs/images/part-05/content-form-full.png" width="600" alt="The full content edit form showing all fields including title, dates, location, and description"></a></p>
     <h3>Verify</h3>
     <figure class="code"><figcaption class="code__lang">bash</figcaption><pre class="code__body" tabindex="0" aria-label="bash code"><code class="language-bash"><span class="tok-source tok-shell tok-bash"><span class="tok-comment tok-line tok-number-sign tok-shell"><span class="tok-punctuation tok-definition tok-comment tok-begin tok-shell">#</span></span><span class="tok-comment tok-line tok-number-sign tok-shell"> The form_state_cache table exists (used for multi-step and AJAX state)</span><span class="tok-comment tok-line tok-number-sign tok-shell">
     </span><span class="tok-meta tok-function-call tok-shell"><span class="tok-variable tok-function tok-shell"><span class="tok-meta tok-group tok-expansion tok-command tok-parens tok-shell"><span class="tok-punctuation tok-definition tok-variable tok-shell">$</span><span class="tok-punctuation tok-section tok-parens tok-begin tok-shell">(</span><span class="tok-meta tok-function-call tok-shell"><span class="tok-variable tok-function tok-shell">brew</span></span><span class="tok-meta tok-function-call tok-arguments tok-shell"><span class="tok-variable tok-parameter tok-option tok-shell"><span class="tok-punctuation tok-definition tok-parameter tok-shell"> --</span>prefix</span> libpq</span><span class="tok-punctuation tok-section tok-parens tok-end tok-shell">)</span></span>/bin/psql</span></span><span class="tok-meta tok-function-call tok-arguments tok-shell"> postgres://trovato:trovato@localhost:5432/trovato <span class="tok-punctuation tok-separator tok-continuation tok-line tok-shell">\
@@ -137,7 +137,7 @@ fields:
     <figure class="code"><figcaption class="code__lang">yaml</figcaption><pre class="code__body" tabindex="0" aria-label="yaml code"><code class="language-yaml"><span class="tok-source tok-yaml">    <span class="tok-punctuation tok-definition tok-block tok-sequence tok-item tok-yaml">-</span> <span class="tok-string tok-unquoted tok-plain tok-out tok-yaml"><span class="tok-entity tok-name tok-tag tok-yaml">field_name</span></span><span class="tok-punctuation tok-separator tok-key-value tok-mapping tok-yaml">:</span> <span class="tok-string tok-unquoted tok-plain tok-out tok-yaml">field_description</span>
           <span class="tok-string tok-unquoted tok-plain tok-out tok-yaml"><span class="tok-entity tok-name tok-tag tok-yaml">field_type</span></span><span class="tok-punctuation tok-separator tok-key-value tok-mapping tok-yaml">:</span> <span class="tok-string tok-unquoted tok-plain tok-out tok-yaml">Blocks</span>
           <span class="tok-string tok-unquoted tok-plain tok-out tok-yaml"><span class="tok-entity tok-name tok-tag tok-yaml">label</span></span><span class="tok-punctuation tok-separator tok-key-value tok-mapping tok-yaml">:</span> <span class="tok-string tok-unquoted tok-plain tok-out tok-yaml">Description</span>
-    </span></code></pre></figure><p><a href="https://github.com/jeremyandrews/trovato/blob/v0.101.0/images/part-05/fields-with-blocks.png"><img src="images/part-05/fields-with-blocks.png" width="600" alt="Field management showing the Blocks field type configured for the description field"></a></p>
+    </span></code></pre></figure><p><a href="/static/docs/images/part-05/fields-with-blocks.png"><img src="/static/docs/images/part-05/fields-with-blocks.png" width="600" alt="Field management showing the Blocks field type configured for the description field"></a></p>
     <h3>2.4: Enabling the <code>trovato_block_editor</code> Plugin</h3>
     <p>The block editor's client-side functionality is gated behind the <code>trovato_block_editor</code> plugin. The kernel provides all the infrastructure (block types, rendering, validation), but the plugin activates the Editor.js widget and its API routes.</p>
     <p>The plugin source is minimal -- it lives at <code>plugins/trovato_block_editor/src/lib.rs</code> and declares a single permission:</p>
@@ -201,7 +201,7 @@ fields:
     </ol>
     <p>The script maps between Trovato's block format (<code>{type, weight, data}</code>) and Editor.js's format (<code>{id, type, data}</code>). On form submission, it intercepts the submit event, calls <code>editor.save()</code> on every active editor, converts the output back to Trovato format, serializes it into the hidden inputs, and then submits the form.</p>
     <p>If Editor.js fails to load (CDN unavailable, JavaScript disabled), the script falls back to a plain <code>&lt;textarea&gt;</code> where the user can edit the JSON directly.</p>
-    <p><a href="https://github.com/jeremyandrews/trovato/blob/v0.101.0/images/part-05/block-editor-form.png"><img src="images/part-05/block-editor-form.png" width="600" alt="The block editor interface in the admin content form with paragraph, heading, and image blocks"></a></p>
+    <p><a href="/static/docs/images/part-05/block-editor-form.png"><img src="/static/docs/images/part-05/block-editor-form.png" width="600" alt="The block editor interface in the admin content form with paragraph, heading, and image blocks"></a></p>
     <h3>2.6: Image Upload via Blocks</h3>
     <p>The image block tool uses the <code>/api/block-editor/upload</code> endpoint. When a user adds an image block and selects a file:</p>
     <ol>
@@ -229,7 +229,7 @@ fields:
     <hr />
     <h2>Step 3: Block Rendering on Display</h2>
     <p>When a visitor views a conference at <code>/item/{id}</code> or its pathauto alias, the item handler detects Blocks fields and renders them with the server-side block renderer.</p>
-    <p><a href="https://github.com/jeremyandrews/trovato/blob/v0.101.0/images/part-05/pathauto-config.png"><img src="images/part-05/pathauto-config.png" width="600" alt="The pathauto configuration page showing URL alias patterns for content types"></a></p>
+    <p><a href="/static/docs/images/part-05/pathauto-config.png"><img src="/static/docs/images/part-05/pathauto-config.png" width="600" alt="The pathauto configuration page showing URL alias patterns for content types"></a></p>
     <h3>3.1: The <code>render_blocks()</code> Pipeline</h3>
     <p>The rendering pipeline in <code>crates/kernel/src/content/block_render.rs</code>:</p>
     <ol>
@@ -440,7 +440,7 @@ fields:
     <li><p><strong>Store</strong> -- The file is written to the configured upload directory and a <code>file_managed</code> row is created with <code>status = 0</code> (temporary). When the parent item is saved, the file is promoted to <code>status = 1</code> (permanent).</p>
     </li>
     </ol>
-    <p><a href="https://github.com/jeremyandrews/trovato/blob/v0.101.0/images/part-05/files-admin.png"><img src="images/part-05/files-admin.png" width="600" alt="The file management admin page showing uploaded files with metadata"></a></p>
+    <p><a href="/static/docs/images/part-05/files-admin.png"><img src="/static/docs/images/part-05/files-admin.png" width="600" alt="The file management admin page showing uploaded files with metadata"></a></p>
     <h3>File Cleanup</h3>
     <p>Orphaned temporary files (uploaded but never attached to an item) are cleaned up by a cron task. The task runs periodically and deletes <code>file_managed</code> rows with <code>status = 0</code> that are older than the configured TTL, along with their physical files.</p>
     <h3>Security Summary</h3>

@@ -62,7 +62,7 @@ fields:
     </span></span>  <span class="tok-keyword tok-operator tok-logical tok-pipe tok-shell">|</span> <span class="tok-meta tok-function-call tok-shell"><span class="tok-variable tok-function tok-shell">grep</span></span><span class="tok-meta tok-function-call tok-arguments tok-shell"><span class="tok-variable tok-parameter tok-option tok-shell"><span class="tok-punctuation tok-definition tok-parameter tok-shell"> -</span>o</span> <span class="tok-string tok-quoted tok-single tok-shell"><span class="tok-punctuation tok-definition tok-string tok-begin tok-shell">&#39;</span>Registration successful<span class="tok-punctuation tok-definition tok-string tok-end tok-shell">&#39;</span></span></span>
     <span class="tok-comment tok-line tok-number-sign tok-shell"><span class="tok-punctuation tok-definition tok-comment tok-begin tok-shell">#</span></span><span class="tok-comment tok-line tok-number-sign tok-shell"> Expect: Registration successful</span><span class="tok-comment tok-line tok-number-sign tok-shell">
     </span></span></code></pre></figure><p>Repeat for <code>publisher_bob</code> and <code>viewer_carol</code>, fetching a fresh CSRF token each time. Note: the registration endpoint has a rate limit of 3 per hour per IP — clear the Redis key <code>rate:register:unknown</code> between registrations if needed.</p>
-    <p><a href="https://github.com/jeremyandrews/trovato/blob/v0.101.0/images/part-04/registration-page.png"><img src="images/part-04/registration-page.png" width="600" alt="The user registration form with username, email, and password fields"></a></p>
+    <p><a href="/static/docs/images/part-04/registration-page.png"><img src="/static/docs/images/part-04/registration-page.png" width="600" alt="The user registration form with username, email, and password fields"></a></p>
     <p>Users are created in <strong>inactive</strong> status pending email verification. Since there is no mail server in the tutorial, activate them via SQL:</p>
     <figure class="code"><figcaption class="code__lang">bash</figcaption><pre class="code__body" tabindex="0" aria-label="bash code"><code class="language-bash"><span class="tok-source tok-shell tok-bash"><span class="tok-meta tok-function-call tok-shell"><span class="tok-variable tok-function tok-shell"><span class="tok-meta tok-group tok-expansion tok-command tok-parens tok-shell"><span class="tok-punctuation tok-definition tok-variable tok-shell">$</span><span class="tok-punctuation tok-section tok-parens tok-begin tok-shell">(</span><span class="tok-meta tok-function-call tok-shell"><span class="tok-variable tok-function tok-shell">brew</span></span><span class="tok-meta tok-function-call tok-arguments tok-shell"><span class="tok-variable tok-parameter tok-option tok-shell"><span class="tok-punctuation tok-definition tok-parameter tok-shell"> --</span>prefix</span> libpq</span><span class="tok-punctuation tok-section tok-parens tok-end tok-shell">)</span></span>/bin/psql</span></span><span class="tok-meta tok-function-call tok-arguments tok-shell"> postgres://trovato:trovato@localhost:5432/trovato <span class="tok-punctuation tok-separator tok-continuation tok-line tok-shell">\
     </span><span class="tok-variable tok-parameter tok-option tok-shell"><span class="tok-punctuation tok-definition tok-parameter tok-shell">  -</span>c</span> <span class="tok-string tok-quoted tok-double tok-shell"><span class="tok-punctuation tok-definition tok-string tok-begin tok-shell">&quot;</span>UPDATE users SET status = 1 WHERE name IN (&#39;editor_alice&#39;, &#39;publisher_bob&#39;, &#39;viewer_carol&#39;);<span class="tok-punctuation tok-definition tok-string tok-end tok-shell">&quot;</span></span></span>
@@ -78,7 +78,7 @@ fields:
     </span><span class="tok-variable tok-parameter tok-option tok-shell"><span class="tok-punctuation tok-definition tok-parameter tok-shell">  -</span>o</span> /dev/null<span class="tok-variable tok-parameter tok-option tok-shell"><span class="tok-punctuation tok-definition tok-parameter tok-shell"> -</span>w</span> <span class="tok-string tok-quoted tok-double tok-shell"><span class="tok-punctuation tok-definition tok-string tok-begin tok-shell">&quot;</span>%{http_code}<span class="tok-punctuation tok-definition tok-string tok-end tok-shell">&quot;</span></span></span>
     <span class="tok-comment tok-line tok-number-sign tok-shell"><span class="tok-punctuation tok-definition tok-comment tok-begin tok-shell">#</span></span><span class="tok-comment tok-line tok-number-sign tok-shell"> Expect: 303 (redirect to homepage or dashboard)</span><span class="tok-comment tok-line tok-number-sign tok-shell">
     </span></span></code></pre></figure><p>The page template's user menu now shows the username, "My Account", and a "Logout" button (which submits a POST form with CSRF token).</p>
-    <p><a href="https://github.com/jeremyandrews/trovato/blob/v0.101.0/images/part-04/login-page.png"><img src="images/part-04/login-page.png" width="600" alt="The Trovato login page with username and password fields"></a></p>
+    <p><a href="/static/docs/images/part-04/login-page.png"><img src="/static/docs/images/part-04/login-page.png" width="600" alt="The Trovato login page with username and password fields"></a></p>
     <h3>User Profile</h3>
     <p>Logged-in users can manage their account at <code>/user/profile</code>. This page shows the profile edit form (name, email, timezone) and a password change form. It requires authentication -- unauthenticated requests redirect to <code>/user/login</code>.</p>
     <h3>Verify</h3>
@@ -116,7 +116,7 @@ fields:
     <tr><th><strong>publisher</strong></th><th>Publishes content to Live</th><th>Editor permissions + <code>delete any content</code>, <code>administer files</code>, <code>use full_html</code>, <code>publish conferences</code></th></tr>
     </tbody></table>
     <p>The role definitions live in <code>docs/tutorial/config/</code>, one <code>role.{uuid}.yml</code> file each; <code>docs/tutorial/config/README.md</code> maps the UUIDs to <code>viewer</code>, <code>editor</code> and <code>publisher</code>. <code>config import</code> creates the roles <strong>and grants their permissions</strong>: each file declares a <code>permissions</code> list, and the import applies exactly that set. The one exception is a permission a plugin declares, such as <code>ritrovo_access</code>'s <code>view incoming conferences</code> in Part 5: the kernel cannot enumerate a plugin's permissions, so those are granted at <code>/admin/people/permissions</code> once the plugin is enabled. Each role file names which of its permissions are in that position.</p>
-    <p><a href="https://github.com/jeremyandrews/trovato/blob/v0.101.0/images/part-04/roles-admin.png"><img src="images/part-04/roles-admin.png" width="600" alt="The roles administration page showing the list of defined roles"></a></p>
+    <p><a href="/static/docs/images/part-04/roles-admin.png"><img src="/static/docs/images/part-04/roles-admin.png" width="600" alt="The roles administration page showing the list of defined roles"></a></p>
     <p>Note that the <code>view incoming conferences</code>, <code>view curated conferences</code>, <code>edit conferences</code>, and <code>publish conferences</code> permissions are declared by the <code>ritrovo_access</code> plugin (installed in Part 5). They must be added to role permissions after that plugin is installed. The role YAML files document the final intended state including these permissions.</p>
     <h3>Assigning Roles to Test Users</h3>
     <p>There is no admin UI for assigning roles to users — the <code>/admin/people</code> list does not have an Edit action with role checkboxes. Instead, assign roles directly via SQL:</p>
@@ -139,7 +139,7 @@ fields:
     </blockquote>
     <h3>Permission Model</h3>
     <p>Permissions in Trovato are strings like <code>"access content"</code>, <code>"edit any content"</code>, <code>"use filtered_html"</code>. Plugins declare permissions via the <code>tap_perm</code> tap. The kernel aggregates permissions from all enabled plugins and maps them to roles.</p>
-    <p><a href="https://github.com/jeremyandrews/trovato/blob/v0.101.0/images/part-04/permissions-matrix.png"><img src="images/part-04/permissions-matrix.png" width="600" alt="The permissions matrix showing roles across columns and permissions down rows"></a></p>
+    <p><a href="/static/docs/images/part-04/permissions-matrix.png"><img src="/static/docs/images/part-04/permissions-matrix.png" width="600" alt="The permissions matrix showing roles across columns and permissions down rows"></a></p>
     <p>When the kernel checks whether a user can perform an action:</p>
     <ol>
     <li>It loads the user's roles (implicit + assigned).</li>
@@ -309,7 +309,7 @@ fields:
     <li>A <strong>Revert</strong> button on older revisions</li>
     </ul>
     <p>Navigate to any conference and click the <strong>Revisions</strong> link in the admin operations column on the content list page.</p>
-    <p><a href="https://github.com/jeremyandrews/trovato/blob/v0.101.0/images/part-04/revision-history.png"><img src="images/part-04/revision-history.png" width="600" alt="The revision history page showing a table of revisions with timestamps, titles, and revert buttons"></a></p>
+    <p><a href="/static/docs/images/part-04/revision-history.png"><img src="/static/docs/images/part-04/revision-history.png" width="600" alt="The revision history page showing a table of revisions with timestamps, titles, and revert buttons"></a></p>
     <h3>Revert</h3>
     <p>Reverting creates a <strong>new</strong> revision with the content from the selected historical revision. It never deletes old revisions. After a revert, the revision history shows:</p>
     <ol>
@@ -356,7 +356,7 @@ fields:
     <li><strong>Publishing status</strong> -- Published, Unpublished, or all</li>
     </ul>
     <p>Filter controls appear above the content table. Selecting a filter and clicking <strong>Filter</strong> reloads the list with the matching items.</p>
-    <p><a href="https://github.com/jeremyandrews/trovato/blob/v0.101.0/images/part-04/admin-content-list.png"><img src="images/part-04/admin-content-list.png" width="600" alt="The admin content list with type and status filter controls"></a></p>
+    <p><a href="/static/docs/images/part-04/admin-content-list.png"><img src="/static/docs/images/part-04/admin-content-list.png" width="600" alt="The admin content list with type and status filter controls"></a></p>
     <h3>Content Table</h3>
     <p>Each row in the content table shows:</p>
     <table><thead><tr><th>Column</th><th>Content</th></tr></thead><tbody>

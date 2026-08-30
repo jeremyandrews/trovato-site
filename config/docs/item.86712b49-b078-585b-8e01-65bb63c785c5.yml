@@ -73,8 +73,8 @@ fields:
     <li><strong>Site Configuration</strong> -- set site name, slogan, and contact email.</li>
     <li><strong>Complete</strong> -- links to the site and admin dashboard.</li>
     </ol>
-    <p><a href="https://github.com/jeremyandrews/trovato/blob/v0.101.0/images/part-01/installer-welcome.png"><img src="images/part-01/installer-welcome.png" width="600" alt="Installer welcome screen showing PostgreSQL and Redis connection status"></a></p>
-    <p><a href="https://github.com/jeremyandrews/trovato/blob/v0.101.0/images/part-01/installer-admin.png"><img src="images/part-01/installer-admin.png" width="600" alt="Installer admin account creation form with username, email, and password fields"></a></p>
+    <p><a href="/static/docs/images/part-01/installer-welcome.png"><img src="/static/docs/images/part-01/installer-welcome.png" width="600" alt="Installer welcome screen showing PostgreSQL and Redis connection status"></a></p>
+    <p><a href="/static/docs/images/part-01/installer-admin.png"><img src="/static/docs/images/part-01/installer-admin.png" width="600" alt="Installer admin account creation form with username, email, and password fields"></a></p>
     <h3>Verify the Health Check</h3>
     <p>After the installer finishes, verify everything is healthy:</p>
     <figure class="code"><figcaption class="code__lang">bash</figcaption><pre class="code__body" tabindex="0" aria-label="bash code"><code class="language-bash"><span class="tok-source tok-shell tok-bash"><span class="tok-meta tok-function-call tok-shell"><span class="tok-variable tok-function tok-shell">curl</span></span><span class="tok-meta tok-function-call tok-arguments tok-shell"> http://localhost:3000/health</span>
@@ -126,7 +126,7 @@ fields:
     <tr><th>Editor Notes</th><th><code>field_editor_notes</code></th><th>Text (long)</th></tr>
     </tbody></table>
     <p>That is 12 fields. The machine name auto-generates from the label (prefixed with <code>field_</code>), but you can edit it before clicking <strong>Add field</strong>. Make sure the machine names match the table above -- they are the keys used in the JSON field storage and by the importer plugin in Part 2.</p>
-    <p><a href="https://github.com/jeremyandrews/trovato/blob/v0.101.0/images/part-01/field-management.png"><img src="images/part-01/field-management.png" width="600" alt="Field management screen showing the 12 conference fields with their labels, machine names, and types"></a></p>
+    <p><a href="/static/docs/images/part-01/field-management.png"><img src="/static/docs/images/part-01/field-management.png" width="600" alt="Field management screen showing the 12 conference fields with their labels, machine names, and types"></a></p>
     <blockquote>
     <p><strong>Important:</strong> For "Website URL", the auto-generated machine name will be <code>field_website_url</code>. Edit it to <code>field_url</code> before clicking <strong>Add field</strong> -- the importer plugin in Part 2 expects this shorter name.</p>
     </blockquote>
@@ -205,7 +205,7 @@ fields:
     <li><strong>TextLong</strong> fields (<code>field_description</code>, <code>field_editor_notes</code>) render as multi-line textareas.</li>
     </ul>
     <p>The title field at the top uses the custom label "Conference Name" (from <code>title_label</code> in the Item Type definition).</p>
-    <p><a href="https://github.com/jeremyandrews/trovato/blob/v0.101.0/images/part-01/content-add-form.png"><img src="images/part-01/content-add-form.png" width="600" alt="Content creation form for a conference showing date pickers, text inputs, and checkbox fields"></a></p>
+    <p><a href="/static/docs/images/part-01/content-add-form.png"><img src="/static/docs/images/part-01/content-add-form.png" width="600" alt="Content creation form for a conference showing date pickers, text inputs, and checkbox fields"></a></p>
     <h3>Conference 1: RustConf 2026</h3>
     <p>This first conference gets a detailed field-by-field walkthrough. Fill in the form with these values:</p>
     <table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody>
@@ -267,7 +267,7 @@ fields:
     <li><code>templates/elements/item.html</code> (default fallback)</li>
     </ol>
     <p>The default template renders all fields with their labels. In Part 3 we will create a custom <code>item--conference.html</code> template with proper layout, but for now the default rendering shows that content creation works end to end.</p>
-    <p><a href="https://github.com/jeremyandrews/trovato/blob/v0.101.0/images/part-01/conference-detail.png"><img src="images/part-01/conference-detail.png" width="600" alt="Conference detail page showing the default field rendering for a conference item"></a></p>
+    <p><a href="/static/docs/images/part-01/conference-detail.png"><img src="/static/docs/images/part-01/conference-detail.png" width="600" alt="Conference detail page showing the default field rendering for a conference item"></a></p>
     <p>There is also a JSON API at <code>/api/item/{id}</code> for programmatic access:</p>
     <figure class="code"><figcaption class="code__lang">bash</figcaption><pre class="code__body" tabindex="0" aria-label="bash code"><code class="language-bash"><span class="tok-source tok-shell tok-bash"><span class="tok-meta tok-function-call tok-shell"><span class="tok-variable tok-function tok-shell">curl</span></span><span class="tok-meta tok-function-call tok-arguments tok-shell"> http://localhost:3000/api/item/YOUR-ITEM-UUID</span> <span class="tok-keyword tok-operator tok-logical tok-pipe tok-shell">|</span> <span class="tok-meta tok-function-call tok-shell"><span class="tok-variable tok-function tok-shell">jq</span></span><span class="tok-meta tok-function-call tok-arguments tok-shell"> .</span>
     </span></code></pre></figure><h3>Inspecting the Database Row</h3>
@@ -396,7 +396,7 @@ fields:
     <li>A "View details" link and an external "Website" link</li>
     </ul>
     <p>Click a title through to confirm the detail page renders correctly before moving on to Step 5.</p>
-    <p><a href="https://github.com/jeremyandrews/trovato/blob/v0.101.0/images/part-01/conferences-listing.png"><img src="images/part-01/conferences-listing.png" width="600" alt="Conferences listing page showing three conference cards sorted by start date"></a></p>
+    <p><a href="/static/docs/images/part-01/conferences-listing.png"><img src="/static/docs/images/part-01/conferences-listing.png" width="600" alt="Conferences listing page showing three conference cards sorted by start date"></a></p>
     <p>The Gather is also available as JSON via the REST API:</p>
     <figure class="code"><figcaption class="code__lang">bash</figcaption><pre class="code__body" tabindex="0" aria-label="bash code"><code class="language-bash"><span class="tok-source tok-shell tok-bash"><span class="tok-meta tok-function-call tok-shell"><span class="tok-variable tok-function tok-shell">curl</span></span><span class="tok-meta tok-function-call tok-arguments tok-shell"> http://localhost:3000/api/query/upcoming_conferences/execute</span>
     </span></code></pre></figure><p>This returns a JSON response with the query results, pagination info, and total count -- useful for building custom front ends or feeding data to other services.</p>

@@ -950,3 +950,40 @@ full set must run against a real build: `cargo test --all`, `npm run crawl`,
 docs-import check. Nothing in this rework touches the plugin, the config
 entities' shapes, or any route, so the risk concentrates in the two browser
 gates — which is where the checking above concentrated too.
+
+### Gate 10, revised: real screenshots, and the bug behind them
+
+The sketch "screenshots" did not survive review: drawn screens read as fluff
+where real ones would carry weight. Chasing the replacement surfaced two real
+defects in the documentation mirror, both older than this gate:
+
+1. **The tutorial's images were never mirrored.** Every tutorial part
+   references its screenshots as `images/part-NN/…`, relative to
+   `docs/tutorial/` in the kernel repository, and nothing here ever fetched
+   them — so all nine parts have been serving broken images since the mirror
+   existed. `docs-import` now fetches every image a mirrored document
+   references from the same pinned tag, writes it under
+   `static/docs/images/`, rewrites the `<img src>` to match, and sweeps that
+   directory for stale files like it sweeps `config/docs/`. Forty-one images,
+   14 MB, committed like the rest of the mirror.
+2. **The links wrapping those images pointed at a GitHub path that does not
+   exist.** `resolve_link`'s fallback rewrote `images/part-01/foo.png` to
+   `blob/{tag}/images/part-01/foo.png` — missing the `docs/tutorial/` the
+   files actually live under — so every screenshot's click-through was a 404.
+   An image link now resolves to the mirrored copy, the same place its
+   `<img>` points.
+
+The config under `config/docs/` was regenerated to match by applying the
+identical rewrite to the committed files; `docs-import -- --check` against a
+real toolchain must confirm the tool reproduces them byte for byte before
+this gate closes.
+
+With real pixels available, the sketches came out everywhere they pretended
+to be screenshots: the front-page gallery now shows the tutorial's admin
+content list, the Gather queries admin, and Ritrovo's themed front page,
+cropped to card ratio from the top with the full capture a click away; Get
+started shows the installer's actual welcome step where its copy describes
+it; Why shows the real Gather admin. The line drawings that never claimed to
+be screenshots — the hero, the three diagrams, the three banners, the three
+icons — stay, and the four browser-and-terminal sketches are gone from the
+generator and the tree.

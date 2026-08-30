@@ -38,8 +38,8 @@ fields:
       <p>Gather fills the role Views did. A query is a definition: a base table, filters, sorts, relationships, and a display. It is stored as configuration, so it can be exported to a file, reviewed in a pull request, and imported into another environment. It has a visual builder for the people who want one and a YAML file for the people who do not.</p>
 
       <figure>
-      <img src="/static/art/shot-gather-builder.svg" width="800" height="520" alt="A sketch of the Gather builder: filter cards on the left, a live preview listing on the right.">
-      <figcaption>The builder: the definition on the left, its results already on the right.</figcaption>
+      <img src="/static/docs/images/part-03/gather-queries-admin.png" width="1280" height="2046" alt="The Gather queries admin on the tutorial's site: a table of queries with labels, base tables, owning plugins and operations.">
+      <figcaption>Every listing the tutorial&#8217;s site serves, in one admin table. Each row is a definition you can open, export and review.</figcaption>
       </figure>
       
       <h2>What is not done</h2>
