@@ -95,7 +95,7 @@ fields:
   section: Start here
   section_blurb: Getting a site running and putting content in it.
   source_path: README.md
-  weight: 0
+  weight: 100
 id: f31a0f5e-a47f-59b1-99d6-7beef4ca5c59
 language: en
 status: 1

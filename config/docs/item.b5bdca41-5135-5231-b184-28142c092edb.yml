@@ -1601,7 +1601,7 @@ fields:
   section: The tutorial
   section_blurb: Nine parts, building one real site from an empty database.
   source_path: docs/tutorial/part-05-forms-and-input.md
-  weight: 80
+  weight: 180
 id: b5bdca41-5135-5231-b184-28142c092edb
 language: en
 status: 1

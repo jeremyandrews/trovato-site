@@ -1323,7 +1323,7 @@ fields:
   section: The tutorial
   section_blurb: Nine parts, building one real site from an empty database.
   source_path: docs/tutorial/part-03-look-and-feel.md
-  weight: 60
+  weight: 160
 id: '98ddd3ca-3a41-5e75-9d72-050790da93fe'
 language: en
 status: 1

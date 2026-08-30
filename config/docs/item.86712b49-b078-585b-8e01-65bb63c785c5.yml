@@ -1223,7 +1223,7 @@ fields:
   section: The tutorial
   section_blurb: Nine parts, building one real site from an empty database.
   source_path: docs/tutorial/part-01-hello-trovato.md
-  weight: 40
+  weight: 140
 id: '86712b49-b078-585b-8e01-65bb63c785c5'
 language: en
 status: 1

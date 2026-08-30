@@ -450,7 +450,7 @@ fields:
   section: The tutorial
   section_blurb: Nine parts, building one real site from an empty database.
   source_path: docs/tutorial/part-09-ai-and-search.md
-  weight: 120
+  weight: 220
 id: a212c4b3-0fab-577e-b654-77838459a47e
 language: en
 status: 1

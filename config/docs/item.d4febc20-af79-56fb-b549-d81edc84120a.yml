@@ -296,7 +296,7 @@ fields:
   section: The project
   section_blurb: Standards, known problems, and how the work is organised.
   source_path: CONTRIBUTING.md
-  weight: 330
+  weight: 430
 id: d4febc20-af79-56fb-b549-d81edc84120a
 language: en
 status: 1

@@ -1060,7 +1060,7 @@ fields:
   section: The tutorial
   section_blurb: Nine parts, building one real site from an empty database.
   source_path: docs/tutorial/part-04-editorial-engine.md
-  weight: 70
+  weight: 170
 id: '558e175d-5902-56f0-889e-60a2363b9902'
 language: en
 status: 1

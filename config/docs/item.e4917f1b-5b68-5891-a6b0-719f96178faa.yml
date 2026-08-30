@@ -919,7 +919,7 @@ fields:
   section: How it works
   section_blurb: 'The design documents: what each part does and why it is shaped that way.'
   source_path: docs/design/ai-integration.md
-  weight: 290
+  weight: 390
 id: e4917f1b-5b68-5891-a6b0-719f96178faa
 language: en
 status: 1

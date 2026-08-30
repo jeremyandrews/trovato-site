@@ -307,7 +307,7 @@ fields:
   section: Start here
   section_blurb: Getting a site running and putting content in it.
   source_path: docs/docker-development.md
-  weight: 30
+  weight: 130
 id: f9d932c6-8f94-591a-9e23-5231930ff3a6
 language: en
 status: 1

@@ -908,7 +908,7 @@ fields:
   section: The tutorial
   section_blurb: Nine parts, building one real site from an empty database.
   source_path: docs/tutorial/part-06-community.md
-  weight: 90
+  weight: 190
 id: '552d0df8-04a5-50ac-9b97-a95584269b05'
 language: en
 status: 1

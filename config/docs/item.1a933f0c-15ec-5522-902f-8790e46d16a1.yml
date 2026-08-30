@@ -182,7 +182,7 @@ fields:
   section: How it works
   section_blurb: 'The design documents: what each part does and why it is shaped that way.'
   source_path: docs/design/Overview.md
-  weight: 180
+  weight: 280
 id: '1a933f0c-15ec-5522-902f-8790e46d16a1'
 language: en
 status: 1

@@ -1694,7 +1694,7 @@ fields:
   section: The tutorial
   section_blurb: Nine parts, building one real site from an empty database.
   source_path: docs/tutorial/part-02-ritrovo-importer.md
-  weight: 50
+  weight: 150
 id: bf8b5c06-8173-5280-9c12-093558e24401
 language: en
 status: 1

@@ -1760,7 +1760,7 @@ fields:
   section: How it works
   section_blurb: 'The design documents: what each part does and why it is shaped that way.'
   source_path: docs/design/Design-Plugin-SDK.md
-  weight: 240
+  weight: 340
 id: ceba81ab-5f04-52c3-8975-c9bb53e1f191
 language: en
 status: 1

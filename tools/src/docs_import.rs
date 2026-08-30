@@ -491,12 +491,20 @@ fn index_alias() -> String {
 }
 
 /// A document's position in the reading order, which is its sort weight.
+///
+/// Offset so every weight has the same number of digits. Gather sorts
+/// `fields.weight` through a JSONB text extraction, so what the index gets is
+/// string order — and under string order `100` sorts before `20`, which is
+/// how `/learn` opened its tutorial section at Part 7 with Parts 1 through 6
+/// filed at the bottom of the page. Equal-width numbers make string order and
+/// numeric order the same order. The property holds up to 90 documents
+/// (weight 990); the test suite checks it rather than trusting this comment.
 fn order_of(slug: &str) -> usize {
-    docs::all()
+    let position = docs::all()
         .iter()
         .position(|d| d.slug == slug)
-        .unwrap_or(usize::MAX)
-        * 10
+        .unwrap_or(usize::MAX / 20);
+    100 + position * 10
 }
 
 /// Write every file whose content would change, and return those paths.

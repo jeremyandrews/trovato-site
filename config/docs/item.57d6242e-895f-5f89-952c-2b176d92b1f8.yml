@@ -783,7 +783,7 @@ fields:
   section: How it works
   section_blurb: 'The design documents: what each part does and why it is shaped that way.'
   source_path: docs/design/Design-Web-Layer.md
-  weight: 260
+  weight: 360
 id: '57d6242e-895f-5f89-952c-2b176d92b1f8'
 language: en
 status: 1

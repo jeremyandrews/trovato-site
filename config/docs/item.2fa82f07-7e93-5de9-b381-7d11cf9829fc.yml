@@ -1030,7 +1030,7 @@ fields:
   section: The tutorial
   section_blurb: Nine parts, building one real site from an empty database.
   source_path: docs/tutorial/part-07-going-global.md
-  weight: 100
+  weight: 200
 id: '2fa82f07-7e93-5de9-b381-7d11cf9829fc'
 language: en
 status: 1

@@ -987,3 +987,19 @@ it; Why shows the real Gather admin. The line drawings that never claimed to
 be screenshots — the hero, the three diagrams, the three banners, the three
 icons — stay, and the four browser-and-terminal sketches are gone from the
 generator and the tree.
+
+### Gate 10, third finding: the index sorted its weights as strings
+
+Reviewing the rework live surfaced a bug older than it: `/learn` opened its
+tutorial section at Part 7, with Parts 1 through 6 filed at the bottom under
+repeated section headings. Gather sorts `fields.weight` through a JSONB text
+extraction, so the index renders in string order, and in string order `100`
+(Part 7) sorts before `20` (Building your first site) sorts before `90`
+(Part 6). The importer had been assigning `position * 10` — 0 through 350 —
+since the mirror existed; the scramble was simply never looked at.
+
+Fixed where the site can fix it: the importer now assigns `100 + position *
+10`, so every weight is three digits and string order and numeric order are
+the same order. A new test in `checks/tests/content.rs` pins the property,
+because it silently breaks the day the manifest grows past ninety documents,
+and a loud test beats a quietly shuffled index.

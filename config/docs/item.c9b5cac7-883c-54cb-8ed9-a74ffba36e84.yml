@@ -497,7 +497,7 @@ fields:
   section: How it works
   section_blurb: 'The design documents: what each part does and why it is shaped that way.'
   source_path: docs/design/Design-Render-Theme.md
-  weight: 250
+  weight: 350
 id: c9b5cac7-883c-54cb-8ed9-a74ffba36e84
 language: en
 status: 1
