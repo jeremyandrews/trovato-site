@@ -26,11 +26,21 @@ fields:
       
       <p>There is no filesystem. The runtime hand-writes five WASI stubs and opens no directories, so a plugin that asks to write a file gets <code>ENOSYS</code>. There is no path from one plugin's memory into another's. A plugin that wants the database also declares which tables it touches, and the kernel enforces that list on every structured call.</p>
       
+      <figure>
+      <img src="/static/art/diagram-sandbox.svg" width="720" height="400" alt="A plugin's two declared interfaces pass through gates in the kernel wall; an undeclared call stops at the wall.">
+      <figcaption>The manifest, drawn: the declared interfaces pass the wall, the undeclared call stops at it.</figcaption>
+      </figure>
+
       <p>This is the part of the design I am most confident about, and it is the part that is hardest to add later. It is a property of how plugins are loaded, not a policy applied to them.</p>
-      
+
       <h2>Queries are built, not written</h2>
-      
+
       <p>Gather fills the role Views did. A query is a definition: a base table, filters, sorts, relationships, and a display. It is stored as configuration, so it can be exported to a file, reviewed in a pull request, and imported into another environment. It has a visual builder for the people who want one and a YAML file for the people who do not.</p>
+
+      <figure>
+      <img src="/static/art/shot-gather-builder.svg" width="800" height="520" alt="A sketch of the Gather builder: filter cards on the left, a live preview listing on the right.">
+      <figcaption>The builder: the definition on the left, its results already on the right.</figcaption>
+      </figure>
       
       <h2>What is not done</h2>
       

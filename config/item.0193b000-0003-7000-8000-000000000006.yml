@@ -8,23 +8,25 @@ changed: 1785542400
 fields:
   body:
     value: |
-      <p>Trovato is written in Rust. This page is the stack by name, the rules the project holds itself to, and enough of the plugin contract to see whether you want to write one.</p>
-      
+      <p>Trovato is written in Rust. This page is the stack by name, the rules the project holds itself to, and enough of the plugin contract to see whether you want to write one. Every component in the table links to its home: a project that stands on other people&#8217;s work should say so right where the names are.</p>
+
       <h2>The stack</h2>
-      
+
       <table>
       <thead><tr><th>What</th><th>Which</th><th>Doing what</th></tr></thead>
       <tbody>
-      <tr><td>HTTP</td><td>axum 0.8, on tower 0.5</td><td>Routing, middleware, extractors</td></tr>
-      <tr><td>Runtime</td><td>tokio 1</td><td>Everything asynchronous</td></tr>
-      <tr><td>Database</td><td>sqlx 0.8, PostgreSQL</td><td>Queries checked against a real schema</td></tr>
-      <tr><td>Templates</td><td>tera 1</td><td>The theme layer, with template suggestions</td></tr>
-      <tr><td>Cache</td><td>moka 0.12 in process, redis 0.27 shared</td><td>Two tiers, deliberately</td></tr>
-      <tr><td>Plugins</td><td>wasmtime 47</td><td>One sandbox per plugin per request</td></tr>
-      <tr><td>Passwords</td><td>argon2 0.5</td><td>Hashing</td></tr>
-      <tr><td>Sanitising</td><td>ammonia 4</td><td>The filtered HTML text format</td></tr>
+      <tr><td>HTTP</td><td><a href="https://github.com/tokio-rs/axum">axum</a> 0.8, on <a href="https://github.com/tower-rs/tower">tower</a> 0.5</td><td>Routing, middleware, extractors</td></tr>
+      <tr><td>Runtime</td><td><a href="https://tokio.rs/">tokio</a> 1</td><td>Everything asynchronous</td></tr>
+      <tr><td>Database</td><td><a href="https://github.com/launchbadge/sqlx">sqlx</a> 0.8, <a href="https://www.postgresql.org/">PostgreSQL</a></td><td>Queries checked against a real schema</td></tr>
+      <tr><td>Templates</td><td><a href="https://keats.github.io/tera/">tera</a> 1</td><td>The theme layer, with template suggestions</td></tr>
+      <tr><td>Cache</td><td><a href="https://github.com/moka-rs/moka">moka</a> 0.12 in process, <a href="https://github.com/redis-rs/redis-rs">redis</a> 0.27 shared</td><td>Two tiers, deliberately</td></tr>
+      <tr><td>Plugins</td><td><a href="https://wasmtime.dev/">wasmtime</a> 47</td><td>One sandbox per plugin per request</td></tr>
+      <tr><td>Passwords</td><td><a href="https://github.com/RustCrypto/password-hashes/tree/master/argon2">argon2</a> 0.5</td><td>Hashing</td></tr>
+      <tr><td>Sanitising</td><td><a href="https://github.com/rust-ammonia/ammonia">ammonia</a> 4</td><td>The filtered HTML text format</td></tr>
       </tbody>
       </table>
+
+      <p>This website adds a few names of its own on top of the kernel&#8217;s: <a href="https://rsms.me/inter/">Inter</a> and <a href="https://www.jetbrains.com/lp/mono/">JetBrains Mono</a>, self-hosted, are the faces you are reading; <a href="https://github.com/trishume/syntect">syntect</a> highlights the mirrored documentation&#8217;s code at import time and <a href="https://github.com/pulldown-cmark/pulldown-cmark">pulldown-cmark</a> renders its markdown; the gates described on <a href="/accessibility">the accessibility page</a> run on <a href="https://github.com/dequelabs/axe-core">axe-core</a> and <a href="https://playwright.dev/">Playwright</a>.</p>
       
       <h2>The toolchain, and how it moves</h2>
       

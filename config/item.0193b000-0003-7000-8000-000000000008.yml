@@ -31,7 +31,8 @@ fields:
       <li>The site name is text inside its link, not the alternative text of an image. The first version put it on the image, and in dark mode the stylesheet hid that image and left the link with no accessible name at all. A name that depends on which stylesheet rule won is not a name.</li>
       <li>A code block that scrolls sideways can take keyboard focus and has a name, so it can be scrolled without a mouse. It is not marked as a landmark: a mirrored documentation page has more than a hundred code blocks, and a hundred landmarks is not a landmark list.</li>
       <li>Focus is visible everywhere, with an outline that meets the contrast threshold for a user interface component in both colour schemes.</li>
-      <li>Motion is a chevron rotation and a button hover, and both stop under <code>prefers-reduced-motion</code>.</li>
+      <li>Motion is small and it stops. The front page plays one entrance when it loads, cards lift on hover, and moving between pages crossfades where the browser supports it. All of it sits behind <code>prefers-reduced-motion: no-preference</code> or is switched off in the reduce block, the view-transition pseudo-elements included, so a reader who asked for less motion gets a page that does not move at all.</li>
+      <li>The illustrations are the site&#8217;s own SVG line drawings, served from this origin, each carrying its own palette for both colour schemes. They are decorative or captioned; none of them is the only place a fact lives.</li>
       <li>Long unbreakable text wraps rather than pushing the page sideways. Code blocks scroll inside their own box instead, so the source stays selectable.</li>
       </ul>
       

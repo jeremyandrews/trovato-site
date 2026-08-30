@@ -59,6 +59,11 @@ p, ul, ol, blockquote, table {
     margin: 0 0 var(--space-4);
 }
 
+/* Fewer orphans where the engine knows how; harmless where it does not. */
+p, li, figcaption {
+    text-wrap: pretty;
+}
+
 /* An explicit weight, so no browser synthesises one there is no file for. */
 strong, b {
     font-weight: var(--weight-semibold);
@@ -195,9 +200,39 @@ th {
 
 /* ── Header ──────────────────────────────────────────────────────────────── */
 
+/* Sticky, and slightly translucent once anything is behind it. The fallback
+   chain matters: engines without color-mix get the opaque surface, engines
+   without backdrop-filter get a slightly transparent one that still reads,
+   and the unthemed-element scan in scripts/shoot.mjs still measures a warm
+   background in both schemes because the mix is 88% surface. `transparent`
+   here is alpha, not a palette color. */
 .site-header {
     border-bottom: 1px solid var(--border);
     background: var(--surface);
+}
+
+/* Sticky only where the bar is one row tall. On a phone the header wraps to
+   three rows, and a sticky three-row header is a third of the screen gone. */
+@media (min-width: 48rem) {
+    .site-header {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+    }
+}
+
+@supports (backdrop-filter: blur(1px)) {
+    .site-header {
+        background: color-mix(in srgb, var(--surface) 88%, transparent);
+        backdrop-filter: blur(8px);
+    }
+}
+
+/* A heading a fragment link lands on must clear the sticky header. */
+:target,
+h2[id],
+h3[id] {
+    scroll-margin-top: 6rem;
 }
 
 .site-header__bar {
@@ -401,8 +436,27 @@ button.site-nav__logout {
 
 /* ── Front page ──────────────────────────────────────────────────────────── */
 
+/* The hero: copy beside the found illustration, stacking on a narrow screen.
+   The two 'minmax(0, …)' are not decoration — a grid child's min-width is
+   auto, and the inline hero SVG would otherwise set the track's floor and
+   push the page sideways at 360px. */
+.front-hero {
+    display: grid;
+    gap: var(--space-6);
+    align-items: center;
+    margin-block: var(--space-6) var(--space-8);
+}
+
+@media (min-width: 60rem) {
+    .front-hero {
+        grid-template-columns: minmax(0, 11fr) minmax(0, 9fr);
+        gap: var(--space-10);
+        margin-block: var(--space-8) var(--space-10);
+    }
+}
+
 .front__title {
-    margin-block: var(--space-6) var(--space-5);
+    margin: 0 0 var(--space-5);
 }
 
 .front__wordmark {
@@ -413,15 +467,141 @@ button.site-nav__logout {
 
 .front__wordmark--dark { display: none; }
 
-.front__body {
+.front-hero__lede {
+    font-size: var(--text-2xl);
+    line-height: var(--leading-tight);
+    text-wrap: balance;
+    margin-bottom: var(--space-4);
+}
+
+.front-hero__sub {
+    color: var(--text-muted);
+    font-size: var(--text-lg);
     max-width: var(--measure);
 }
 
-.front-hero__lede {
-    font-size: var(--text-xl);
+.front-hero__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    margin-block: var(--space-6) 0;
+}
+
+.front-hero__art svg {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+/* ── The three claims, as cards ──────────────────────────────────────────── */
+
+.front-features {
+    display: grid;
+    gap: var(--space-4);
+    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+    margin-block: var(--space-10);
+}
+
+.feature-card {
+    display: block;
+    padding: var(--space-5);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--surface-sunken);
+    color: var(--text);
+    text-decoration: none;
+    transition:
+        border-color var(--motion-fast) var(--motion-ease),
+        translate var(--motion-fast) var(--motion-ease);
+}
+
+.feature-card:hover {
+    border-color: var(--border-control);
+    translate: 0 -2px;
+    text-decoration: none;
+}
+
+.feature-card img {
+    display: block;
+    width: 3.5rem;
+    height: 3.5rem;
+    margin-bottom: var(--space-3);
+}
+
+.feature-card__title {
+    font-size: var(--text-lg);
+    margin: 0 0 var(--space-2);
+}
+
+.feature-card__text {
     color: var(--text-muted);
+    margin: 0 0 var(--space-3);
+}
+
+.feature-card__more {
+    color: var(--link);
+    font-weight: var(--weight-semibold);
+}
+
+.feature-card:hover .feature-card__more {
+    text-decoration: underline;
+}
+
+/* ── What it looks like ──────────────────────────────────────────────────── */
+
+.front-gallery {
+    margin-block: var(--space-10);
+}
+
+.front-gallery__blurb {
+    color: var(--text-muted);
+    max-width: var(--measure);
     margin-bottom: var(--space-5);
 }
+
+/* Narrow: a scroll-snap strip, so three screenshots do not become three
+   screens of page. The strip scrolls inside its own box; the document never
+   scrolls sideways, which is the invariant scripts/shoot.mjs measures. */
+.front-gallery__grid {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: min(85%, 24rem);
+    gap: var(--space-4);
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-padding-inline: var(--space-4);
+    padding-bottom: var(--space-2);
+}
+
+.front-gallery__grid > figure {
+    scroll-snap-align: center;
+    margin: 0;
+}
+
+@media (min-width: 48rem) {
+    .front-gallery__grid {
+        grid-auto-flow: row;
+        grid-auto-columns: auto;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        overflow-x: visible;
+        scroll-snap-type: none;
+    }
+}
+
+.front-gallery__grid img {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.front-gallery__grid figcaption {
+    color: var(--text-muted);
+    font-size: var(--text-sm);
+    margin-top: var(--space-2);
+    padding-inline: var(--space-2);
+}
+
+/* ── The proofs ──────────────────────────────────────────────────────────── */
 
 .proof {
     margin-top: var(--space-10);
@@ -434,75 +614,190 @@ button.site-nav__logout {
     font-size: var(--text-xl);
 }
 
-.front-hero__actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-3);
-    margin-block: var(--space-6);
+/* A proof with a diagram: copy beside art, art below on a narrow screen.
+   `.proof-flip` swaps the sides rather than an nth-of-type trick, because
+   the section order on this page is content, and content moves. */
+.proof-split {
+    display: grid;
+    gap: var(--space-6);
+    align-items: center;
 }
+
+/* A grid item's min-width is auto, so a code block's longest line would set
+   the column's floor and shove the page sideways at 360px. Found by the
+   overflow check, at exactly the width it guards. */
+.proof-split > * {
+    min-width: 0;
+}
+
+@media (min-width: 60rem) {
+    .proof-split {
+        grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+        gap: var(--space-8);
+    }
+
+    .proof-split .proof__title {
+        grid-column: 1 / -1;
+        margin-bottom: 0;
+    }
+
+    .proof-flip .proof__copy { order: 2; }
+    .proof-flip .proof__art { order: 1; }
+}
+
+.proof__copy > :last-child {
+    margin-bottom: 0;
+}
+
+.proof__copy {
+    max-width: var(--measure);
+}
+
+.proof__art img,
+.proof__art svg {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+/* ── Recent posts, as cards ──────────────────────────────────────────────── */
 
 .front-listing {
     border-top: 1px solid var(--border);
     padding-top: var(--space-6);
-    margin-top: var(--space-8);
+    margin-top: var(--space-10);
 }
 
 .front-listing__items {
     list-style: none;
     padding: 0;
     margin: 0;
+    display: grid;
+    gap: var(--space-4);
+    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
 }
 
+/* The card is the plugin's markup restyled: the site does not own that HTML,
+   so everything here hangs off the classes it already emits. The dot in the
+   corner is the brand's found-dot, quiet until the card is hovered. */
 .front-listing__item {
-    padding-block: var(--space-4);
-    border-bottom: 1px solid var(--border);
+    position: relative;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-5);
+    padding-inline-end: var(--space-8);
+    transition:
+        border-color var(--motion-fast) var(--motion-ease),
+        translate var(--motion-fast) var(--motion-ease);
 }
 
-.front-listing__item:last-child {
-    border-bottom: 0;
+.front-listing__item::after {
+    content: "";
+    position: absolute;
+    inset-block-start: var(--space-5);
+    inset-inline-end: var(--space-5);
+    width: 0.625rem;
+    height: 0.625rem;
+    border-radius: 50%;
+    background: var(--border);
+    transition: background var(--motion-fast) var(--motion-ease);
+}
+
+.front-listing__item:has(a:hover),
+.front-listing__item:has(a:focus-visible) {
+    border-color: var(--border-control);
+    translate: 0 -2px;
+}
+
+.front-listing__item:has(a:hover)::after,
+.front-listing__item:has(a:focus-visible)::after {
+    background: var(--accent);
 }
 
 .front-listing__link {
     font-size: var(--text-lg);
     font-weight: var(--weight-semibold);
+    text-decoration: none;
+}
+
+.front-listing__link:hover {
+    text-decoration: underline;
 }
 
 .front-listing__meta {
-    margin: var(--space-1) 0 0;
+    margin: var(--space-2) 0 0;
     color: var(--text-muted);
     font-size: var(--text-sm);
 }
 
 /* ── Listings and items ──────────────────────────────────────────────────── */
 
-.listing,
 .item {
     max-width: var(--measure);
 }
 
+/* A listing takes the full container; its prose parts keep the measure. The
+   teasers themselves are cards on a grid, like the front page's. */
 .listing__description,
 .listing__empty {
     color: var(--text-muted);
+    max-width: var(--measure);
 }
 
 .listing__items {
     list-style: none;
     padding: 0;
     margin: var(--space-6) 0 0;
+    display: grid;
+    gap: var(--space-4);
+    grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
 }
 
 .teaser {
-    padding-block: var(--space-5);
-    border-bottom: 1px solid var(--border);
+    position: relative;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-5);
+    padding-inline-end: var(--space-8);
+    transition:
+        border-color var(--motion-fast) var(--motion-ease),
+        translate var(--motion-fast) var(--motion-ease);
 }
 
-.teaser:last-child {
-    border-bottom: 0;
+.teaser::after {
+    content: "";
+    position: absolute;
+    inset-block-start: var(--space-5);
+    inset-inline-end: var(--space-5);
+    width: 0.625rem;
+    height: 0.625rem;
+    border-radius: 50%;
+    background: var(--border);
+    transition: background var(--motion-fast) var(--motion-ease);
+}
+
+.teaser:has(a:hover),
+.teaser:has(a:focus-visible) {
+    border-color: var(--border-control);
+    translate: 0 -2px;
+}
+
+.teaser:has(a:hover)::after,
+.teaser:has(a:focus-visible)::after {
+    background: var(--accent);
 }
 
 .teaser__title {
     font-size: var(--text-lg);
     margin: 0 0 var(--space-1);
+}
+
+.teaser__title a {
+    text-decoration: none;
+}
+
+.teaser__title a:hover {
+    text-decoration: underline;
 }
 
 .teaser__meta,
@@ -546,11 +841,80 @@ button.site-nav__logout {
 }
 
 .item__footer {
+    clear: both;
     margin-top: var(--space-8);
     padding-top: var(--space-4);
     border-top: 1px solid var(--border);
     color: var(--text-muted);
     font-size: var(--text-sm);
+}
+
+/* ── Page banners and prose figures ──────────────────────────────────────── */
+
+/* A page's banner: illustration beside the opening paragraphs. It floats on
+   a wide screen so the prose wraps around it and the empty right half of the
+   measure finally earns its keep; on a narrow screen it is simply the next
+   block. The floated width plus the 68ch measure fits inside the container,
+   and .item__footer clears it so a short page cannot end mid-float. */
+.page-banner {
+    margin: 0 0 var(--space-5);
+    max-width: 24rem;
+}
+
+.page-banner img,
+.page-banner svg {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+@media (min-width: 60rem) {
+    .item--page {
+        max-width: none;
+    }
+
+    .item--page .item__content {
+        max-width: var(--measure);
+    }
+
+    .page-banner {
+        float: inline-end;
+        width: min(38%, 24rem);
+        margin: 0 0 var(--space-5) var(--space-6);
+    }
+}
+
+/* A figure inside a filtered body carries no class — the text format strips
+   them — so the element is the hook. The plinth behind the art is the sunken
+   surface, which keeps a light-scheme illustration from floating on bare
+   cream and gives a dark-scheme one its own warm ground. */
+.item__content figure {
+    margin: var(--space-6) 0;
+}
+
+.item__content figure img {
+    display: block;
+    width: 100%;
+    height: auto;
+    background: var(--surface-sunken);
+    border-radius: var(--radius-lg);
+    padding: var(--space-4);
+}
+
+.item__content figcaption {
+    color: var(--text-muted);
+    font-size: var(--text-sm);
+    margin-top: var(--space-2);
+}
+
+/* A table in a page body scrolls inside its own box on a narrow screen, the
+   same way the documentation's tables do. The stack table on /rust is wider
+   than 360px now that its components carry links, and it is the links that
+   earn the scrollbar. */
+.item__content table {
+    display: block;
+    overflow-x: auto;
+    max-width: 100%;
 }
 
 .blog-teaser,
@@ -660,11 +1024,30 @@ button.site-nav__logout {
     list-style: none;
     padding: 0;
     margin: 0;
+    display: grid;
+    gap: var(--space-3);
+    grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
 }
 
 .docs-index__item {
-    padding-block: var(--space-2);
-    border-bottom: 1px solid var(--border);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: var(--space-3) var(--space-4);
+    transition: border-color var(--motion-fast) var(--motion-ease);
+}
+
+.docs-index__item:has(a:hover),
+.docs-index__item:has(a:focus-visible) {
+    border-color: var(--border-control);
+}
+
+.docs-index__item a {
+    text-decoration: none;
+    font-weight: var(--weight-semibold);
+}
+
+.docs-index__item a:hover {
+    text-decoration: underline;
 }
 
 .search-page {
@@ -835,28 +1218,72 @@ select {
 .site-footer {
     border-top: 1px solid var(--border);
     margin-top: var(--space-12);
-    padding-block: var(--space-8);
+    padding-block: var(--space-10) var(--space-8);
     color: var(--text-muted);
     font-size: var(--text-sm);
 }
 
+.site-footer__grid {
+    display: grid;
+    gap: var(--space-6);
+    margin-bottom: var(--space-6);
+}
+
+@media (min-width: 48rem) {
+    .site-footer__grid {
+        grid-template-columns: minmax(0, 5fr) minmax(0, 3fr) minmax(0, 4fr);
+        gap: var(--space-8);
+    }
+}
+
+.site-footer__mark {
+    display: block;
+    width: 2.5rem;
+    height: auto;
+    margin-bottom: var(--space-3);
+}
+
+.site-footer__mark--dark { display: none; }
+
+.site-footer__heading {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    color: var(--text);
+    margin: 0 0 var(--space-3);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
 .footer-nav {
     display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-4);
-    margin-bottom: var(--space-4);
+    flex-direction: column;
+    gap: var(--space-2);
+    margin: 0;
 }
 
-.site-footer__language {
+/* The credits: every component the site stands on, linked to its home.
+   Giving the credit is the point; the list is data, so it reads like one. */
+.site-footer__credits {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: var(--space-1) var(--space-4);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.site-footer__bottom {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--space-4);
-    margin: 0 0 var(--space-3);
+    gap: var(--space-3) var(--space-6);
+    justify-content: space-between;
+    border-top: 1px solid var(--border);
+    padding-top: var(--space-5);
 }
 
+.site-footer__language,
 .site-footer__colophon {
     margin: 0;
-    max-width: var(--measure);
 }
 
 /* ── Wide ────────────────────────────────────────────────────────────────── */
@@ -961,12 +1388,87 @@ select {
     .site-branding__lockup--dark { display: block; }
     .front__wordmark--light { display: none; }
     .front__wordmark--dark { display: block; }
+    .site-footer__mark--light { display: none; }
+    .site-footer__mark--dark { display: block; }
+}
+
+/* ── Selection ───────────────────────────────────────────────────────────── */
+
+/* Peach under ink, in both schemes: the highlight color the brand sheet gives
+   the dot on clay is also the one thing on the page a selection can be. Both
+   are palette tokens, and the pairing is Ink on Peach at better than 12:1. */
+::selection {
+    background: var(--brand-peach);
+    color: var(--brand-ink);
 }
 
 /* ── Motion ──────────────────────────────────────────────────────────────── */
 
-/* There is very little to switch off, which is the point. What exists is the
-   chevron rotation and the button hover, and both stop here. */
+/* The front page allows itself one entrance now: the hero settles, the
+   search path draws itself, and the dot lands where it ends. All of it is
+   behind prefers-reduced-motion: no-preference, all of it is finished within
+   about a second and a half, and every end state is the page at rest — so a
+   screenshot taken late sees the same page a reader does. Scroll-driven
+   reveals were tried and rejected: scripts/shoot.mjs captures the full page
+   from the top, and a section that is transparent until scrolled into view
+   is a blank band in every archived screenshot. A gate artifact nobody can
+   read is worse than a page that does not shimmer. */
+
+@media (prefers-reduced-motion: no-preference) {
+    .front-hero__copy,
+    .front-hero__art {
+        animation: front-rise var(--motion-slow) var(--motion-ease) backwards;
+    }
+
+    .front-hero__art {
+        animation-delay: 120ms;
+    }
+
+    /* The dot lands first, then the wandering path finishes arriving at it:
+       found, and then how it was found. The path carries pathLength="1", so
+       the dash arithmetic is unit-free. */
+    .hero-search {
+        stroke-dasharray: 1;
+        stroke-dashoffset: 1;
+        animation: hero-draw 1.2s var(--motion-ease) 0.2s forwards;
+    }
+
+    .hero-dot {
+        transform-box: fill-box;
+        transform-origin: center;
+        animation: hero-land 0.45s cubic-bezier(0.2, 0, 0.3, 1.4) 0.5s backwards;
+    }
+}
+
+@keyframes front-rise {
+    from {
+        opacity: 0;
+        translate: 0 0.75rem;
+    }
+}
+
+@keyframes hero-draw {
+    to { stroke-dashoffset: 0; }
+}
+
+@keyframes hero-land {
+    from {
+        opacity: 0;
+        scale: 0.3;
+    }
+}
+
+/* Cross-document view transitions: navigation crossfades instead of
+   flashing, with the header and footer held stable so only the content
+   appears to change. The at-rule is harmless where unsupported, and the
+   reduce block below switches the animations off for readers who asked. */
+@view-transition {
+    navigation: auto;
+}
+
+.site-header { view-transition-name: site-header; }
+.site-footer { view-transition-name: site-footer; }
+
 @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
@@ -975,5 +1477,12 @@ select {
         animation-iteration-count: 1 !important;
         transition-duration: 0.01ms !important;
         scroll-behavior: auto !important;
+    }
+
+    /* The view-transition pseudo-elements are not matched by * above. */
+    ::view-transition-group(*),
+    ::view-transition-old(*),
+    ::view-transition-new(*) {
+        animation: none !important;
     }
 }

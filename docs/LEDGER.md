@@ -1,7 +1,8 @@
 # Build ledger
 
-**Status:** Complete. All nine gates passed.
-**Last updated:** 2026-08-25
+**Status:** Nine gates passed. Gate 10, the visual rework, is built and checked
+against a preview render; it closes when the full gate set runs against a real build.
+**Last updated:** 2026-08-30
 **Where things stand:** The site is built, checked and reproducible. A clean-room rebuild
 reaches a populated, themed, working site in 24 seconds from destroyed volumes, and every
 gate passes against it. What stands between this repository and https://trovato.rs serving
@@ -858,3 +859,94 @@ unchanged, and the documentation mirror matching the pinned tag.
 
 `run.sh` now runs cron once before it finishes, so the translations are in place
 when the command returns rather than up to a minute later.
+
+## Gate 10 — the visual rework
+
+**Goal:** the site was text-heavy and visually flat. Rework it with imagery and a
+more modern surface without breaking a single existing gate: same palette, same
+tokens-only stylesheet discipline, same origin policy, same behaviour with
+JavaScript off and motion reduced.
+
+### What was built
+
+- **An illustration system, generated.** `static/art/gen_art.py` draws fourteen
+  SVGs in the mark's own language: monoline strokes, round caps, and exactly one
+  filled clay circle per piece — the found-dot. Text inside a drawing is greeked
+  (drawn as strokes), so one file serves English and Italian alike. Each standalone
+  file carries its own `prefers-color-scheme` block, verified to apply even when
+  the SVG is loaded through `<img>`, which is how every filtered body has to load
+  it. The script is the source of truth, exactly as `assets/brand/gen_final.py`
+  is for the brand; the SVGs are output.
+- **A front page with a hero, three claim cards, a screenshot band, and three
+  illustrated proofs.** The hero's illustration is the one inline SVG (in
+  `elements/item--front_page.html`, template-owned markup): it draws with the new
+  `--art-*` tokens and plays the page's one entrance — the search path draws
+  itself, the dot lands. The screenshot band is honest about what it is: three
+  *sketches* of the admin screens, captioned as sketches, linking to the tutorial
+  for the real pixels.
+- **Per-page banners through template suggestions.** The kernel resolves
+  `elements/item--page--{id}` before `item--page` (theme/engine.rs), and item ids
+  are fixed in config, so five pages get an illustrated header from a template of
+  their own while their bodies stay `filtered_html`. Translations overlay fields
+  on the same item id, which is why the Italian pages get the banners for free.
+- **Cards for every listing** — blog, news, the docs index, the front page's
+  recent posts — with the found-dot in the corner that takes the accent on hover.
+  The recent-posts markup belongs to the site plugin and was not touched; the
+  cards hang entirely off the classes it already emits.
+- **Credit where credit is due.** Every component in the stack table on /rust now
+  links to its home, a paragraph below it credits the site's own additions
+  (Inter, JetBrains Mono, syntect, pulldown-cmark, axe-core, Playwright), and the
+  footer carries a linked "Built with" list on every page.
+- **The modern surface, behind guards.** Cross-document view transitions
+  (`@view-transition`, header and footer pinned by name), a sticky translucent
+  header (wide screens only — on a phone the wrapped header would eat a third of
+  the viewport), `color-mix` with an `@supports` fallback, `text-wrap: pretty`,
+  scroll-snap for the screenshot band on narrow screens, `::selection` in peach.
+  The reduce block now also switches off the view-transition pseudo-elements,
+  which the `*` selector does not reach.
+
+### What the gates caught, and one thing they taught
+
+1. **The dash test caught the first version of the front page.** The proofs
+   inlined their diagrams as SVG painted with `var(--art-…)`, and a custom
+   property's double hyphen inside served config prose is exactly what
+   `the_copy_uses_no_dash_punctuation` flags. Same for two BEM modifier classes
+   (`proof--split`). The fix was better than an exemption: the diagrams became
+   `<img>` (their standalone files already carry both schemes), the classes
+   became `proof-split`/`proof-flip`, and the em dashes in new copy were
+   rewritten into this site's punctuation. The test read the new copy the way it
+   reads everything, and it was right twice.
+2. **Scroll-driven reveals were tried and rejected.** `animation-timeline:
+   view()` fades sections in as they scroll into view — and leaves every
+   below-fold section transparent in `shoot.mjs`'s full-page captures, because
+   `captureBeyondViewport` renders without scrolling. A gate artifact nobody can
+   read is worse than a page that does not shimmer. The one entrance the front
+   page keeps finishes in about a second and a half and ends at the page at
+   rest; both browser gates now wait it out before measuring.
+3. **Two overflows at 360px, found at exactly the width the gate guards.** A
+   grid item's `min-width: auto` let a code block's longest line set the proof
+   column's floor (fixed with `min-width: 0`), and the stack table grew past the
+   viewport the moment its components carried links (fixed with the same
+   scroll-in-its-own-box treatment the docs tables already had).
+
+### Checked here, and what still needs the real stack
+
+Run against a template-level preview render (Jinja2 standing in for Tera, mock
+context, the real stylesheets and art):
+
+- axe-core, WCAG 2.0/2.1/2.2 A+AA plus best-practice, front page and seven other
+  templates, both schemes: no violations.
+- Horizontal overflow at 360 and 1280, both schemes, all previewed pages: none.
+- The 36 `@contrast` annotations in tokens.css, re-computed independently: all
+  pass; the dark scheme still overrides every role; the new `--art-*` tokens are
+  literal hex in both schemes and carry no annotations, like `--border`,
+  because decorative line work is not a control.
+- The dash, placeholder and class-modifier sweeps over `config/`, re-implemented
+  to the test's own algorithm: clean.
+
+A preview render is not the kernel. Before this gate can be called passed, the
+full set must run against a real build: `cargo test --all`, `npm run crawl`,
+`npm run a11y`, `npm run shoot`, the moderation and roundtrip checks, and the
+docs-import check. Nothing in this rework touches the plugin, the config
+entities' shapes, or any route, so the risk concentrates in the two browser
+gates — which is where the checking above concentrated too.

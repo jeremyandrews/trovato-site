@@ -143,10 +143,31 @@
     --container-narrow: 44rem;
 
     /* ── Motion ──────────────────────────────────────────────────────────── */
-    /* One duration, one easing, used for state changes only. Nothing on this
-       site moves because it arrived. */
+    /* Two durations, one easing. `--motion-fast` is for state changes. The
+       slower one is for the few entrances the front page now allows itself —
+       a hero that settles, a section that rises as it scrolls in — and every
+       one of them stops under prefers-reduced-motion. */
     --motion-fast: 120ms;
+    --motion-slow: 600ms;
     --motion-ease: cubic-bezier(0.2, 0, 0.2, 1);
+
+    /* ── Illustration (light) ────────────────────────────────────────────
+       The roles the site's illustrations draw with, mirrored from
+       static/art/gen_art.py, which is their source of truth. The standalone
+       SVGs bake these values in behind their own media query; the diagrams
+       inlined on the front page read them from here, so they always agree
+       with the page they sit on. Decorative line work: like `--border`,
+       these carry no @contrast annotation — WCAG 1.4.11 is about components
+       and state, not about pictures. Every value is the brand palette or a
+       surface already declared above, verbatim. */
+    --art-stroke: #221B16;
+    --art-soft: #8E7A66;
+    --art-faint: #E0D2C0;
+    --art-dot: #B14B2E;
+    --art-accent: #B14B2E;
+    --art-fill: #F1E8DC;
+    --art-panel: #FAF5EF;
+    --art-peach: #FFD9A8;
 }
 
 /* ── Dark ────────────────────────────────────────────────────────────────────
@@ -200,5 +221,19 @@
         /* @contrast --focus on --surface UI */
         /* @contrast --focus on --surface-sunken UI */
         --focus: #E08963;
+
+        /* ── Illustration (dark) ─────────────────────────────────────────
+           The dark half of the roles in the light block, mirrored from
+           static/art/gen_art.py. The dot is Clay Light, exactly as BRAND.md
+           says a dot on a dark background must be; the peach role is peach's
+           job — a warm wash — at a value that belongs to this scheme. */
+        --art-stroke: #FAF5EF;
+        --art-soft: #A2917F;
+        --art-faint: #3A2E26;
+        --art-dot: #E08963;
+        --art-accent: #E08963;
+        --art-fill: #221B16;
+        --art-panel: #2A211B;
+        --art-peach: #4A3423;
     }
 }

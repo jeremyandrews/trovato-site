@@ -45,6 +45,10 @@ for (const scheme of SCHEMES) {
       continue;
     }
 
+    // The front page plays a short entrance (site.css, the Motion section).
+    // Let it finish so axe measures the page at rest, not mid-fade.
+    await page.waitForTimeout(1800);
+
     const results = await new AxeBuilder({ page }).withTags(TAGS).analyze();
     checked++;
 

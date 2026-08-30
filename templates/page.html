@@ -155,15 +155,55 @@
 {% block footer %}
 <div class="site-footer">
     <div class="container">
-        {% if footer_menu is defined and footer_menu %}
-        <nav class="footer-nav" aria-label="Footer">
-            {% for link in footer_menu %}
-            {% if not link.hidden %}
-            <a href="{{ link.path }}">{{ link.title }}</a>
+        <div class="site-footer__grid">
+            <div>
+                {# The mark ships in two files for the two schemes, exactly as
+                   the header lockup does and for the same reason: baked-in
+                   fills. Decorative — the text beside it does the naming. #}
+                <img src="/static/brand/trovato-mark.svg" alt="" aria-hidden="true"
+                     class="site-footer__mark site-footer__mark--light" width="40" height="40">
+                <img src="/static/brand/trovato-mark-on-dark.svg" alt="" aria-hidden="true"
+                     class="site-footer__mark site-footer__mark--dark" width="40" height="40">
+                <p class="site-footer__colophon">
+                    <em>Trovato</em> is Italian for <em>found</em>. This site runs on a
+                    released Trovato kernel, unpatched; how it is put together is
+                    <a href="https://github.com/jeremyandrews/trovato-site">its own repository</a>.
+                </p>
+            </div>
+
+            {% if footer_menu is defined and footer_menu %}
+            <nav aria-label="Footer">
+                <p class="site-footer__heading">Site</p>
+                <div class="footer-nav">
+                    {% for link in footer_menu %}
+                    {% if not link.hidden %}
+                    <a href="{{ link.path }}">{{ link.title }}</a>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+            </nav>
             {% endif %}
-            {% endfor %}
-        </nav>
-        {% endif %}
+
+            {# Credit where credit is due: the components this site stands on,
+               each linked to its home. The full stack, with versions and
+               roles, is on /rust; this list is the thank-you note. #}
+            <div>
+                <p class="site-footer__heading">Built with</p>
+                <ul class="site-footer__credits">
+                    <li><a href="https://www.rust-lang.org/" rel="external">Rust</a></li>
+                    <li><a href="https://www.postgresql.org/" rel="external">PostgreSQL</a></li>
+                    <li><a href="https://github.com/tokio-rs/axum" rel="external">axum</a></li>
+                    <li><a href="https://redis.io/" rel="external">Redis</a></li>
+                    <li><a href="https://wasmtime.dev/" rel="external">Wasmtime</a></li>
+                    <li><a href="https://keats.github.io/tera/" rel="external">Tera</a></li>
+                    <li><a href="https://rsms.me/inter/" rel="external">Inter</a></li>
+                    <li><a href="https://www.jetbrains.com/lp/mono/" rel="external">JetBrains Mono</a></li>
+                    <li><a href="https://github.com/dequelabs/axe-core" rel="external">axe-core</a></li>
+                    <li><a href="https://playwright.dev/" rel="external">Playwright</a></li>
+                </ul>
+            </div>
+        </div>
+
         {% if footer_tiles is defined and footer_tiles %}
         {{ footer_tiles | safe }} {# SAFE: kernel tile render pipeline output #}
         {% endif %}
@@ -182,14 +222,16 @@
            Which leaves this: one link, in both languages, pointing at where the
            Italian starts. The Italian pages link to each other in their own copy.
            Both are recorded in docs/LEDGER.md, Gate 9. #}
-        <p class="site-footer__language">
-            <a href="/it/why" hreflang="it" lang="it">Questo sito è disponibile anche in italiano</a>
-        </p>
+        <div class="site-footer__bottom">
+            <p class="site-footer__language">
+                <a href="/it/why" hreflang="it" lang="it">Questo sito è disponibile anche in italiano</a>
+            </p>
 
-        <p class="site-footer__colophon">
-            Trovato is dual licensed under MIT or Apache-2.0.
-            The source is on <a href="https://github.com/jeremyandrews/trovato">GitHub</a>.
-        </p>
+            <p class="site-footer__colophon">
+                Trovato is dual licensed under MIT or Apache-2.0.
+                The source is on <a href="https://github.com/jeremyandrews/trovato">GitHub</a>.
+            </p>
+        </div>
     </div>
 </div>
 {% endblock %}
