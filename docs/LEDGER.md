@@ -1003,3 +1003,35 @@ Fixed where the site can fix it: the importer now assigns `100 + position *
 the same order. A new test in `checks/tests/content.rs` pins the property,
 because it silently breaks the day the manifest grows past ninety documents,
 and a loud test beats a quietly shuffled index.
+
+### Gate 10, fourth finding: Italian was a page, not a place
+
+Switching to Italian led somewhere navigation could not stay: every menu and
+footer link on an Italian page pointed at the English site, so the second
+click was always an exit. The old design was honest about why — recorded at
+Gate 9, an item-page template cannot see its own language (`routes/item.rs`
+overwrites `active_language` with the default after setting it) or its own
+address (the context carries only `/item/{uuid}`), so the footer offered one
+link into Italian and the Italian bodies hand-linked each other.
+
+The way around both limits is that the translation overlay merges the
+translation's *fields* into the item's, verbatim, and the site owns the
+translations. Each translation now carries a `nav` metadata field — an
+object with no `value` key, which the kernel's field render loop skips in
+every branch, so it reaches the templates and never the page — naming its
+language and its English address; each translated English item carries the
+Italian address the same way. On gather pages `active_language` is inserted
+after the overwrite and is truthful, and the templates read whichever signal
+exists.
+
+What that buys, on an Italian page: `<html lang="it">` instead of an English
+voice reading Italian prose; a skip link that says «Vai al contenuto»; menu
+and footer entries whose destinations exist in Italian pointing there under
+their Italian names (Perché Trovato, Come iniziare, Comunità,
+Accessibilità), so moving between the translated pages never falls back to
+English; and a per-page switcher in both directions, replacing the
+hand-kept «In italiano» link rows in the translation bodies, which are gone.
+An entry with no Italian destination keeps its English path and name — a
+translated label on an untranslated page is a promise the click breaks, and
+four pages is what the Italian site is. A new content test verifies the
+switcher's addresses in both directions against the items' real aliases.

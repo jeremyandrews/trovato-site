@@ -17,7 +17,16 @@
 
    No inline <style>. Every rule is in static/css/. #}
 <!DOCTYPE html>
-<html lang="{{ active_language | default(value='en') }}" dir="{{ text_direction | default(value='ltr') }}">
+{#- `active_language` arrives overwritten with the site default on item pages
+    (docs/LEDGER.md, Gate 9), so a translated page declares its language
+    through the `nav` metadata field the site's translations carry. Without
+    this, an Italian page says lang="en" and a screen reader pronounces
+    Italian prose with an English voice. -#}
+{%- set page_lang = active_language | default(value='en') -%}
+{%- if item is defined and item.fields.nav is defined and item.fields.nav.language is defined -%}
+{%- set page_lang = item.fields.nav.language -%}
+{%- endif -%}
+<html lang="{{ page_lang }}" dir="{{ text_direction | default(value='ltr') }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -94,7 +103,17 @@
 </head>
 <body>
     {% block body %}
+    {#- The skip link is the first thing a screen reader announces, so on an
+        Italian page it speaks Italian. The same detection as the <html lang>
+        above; Tera blocks render independently, hence the repetition. -#}
+    {%- set skip_it = false -%}
+    {%- if item is defined and item.fields.nav is defined and item.fields.nav.language is defined and item.fields.nav.language == "it" -%}{%- set skip_it = true -%}
+    {%- elif active_language is defined and active_language == "it" -%}{%- set skip_it = true -%}{%- endif -%}
+    {% if skip_it %}
+    <a href="#main-content" class="skip-link" lang="it">Vai al contenuto</a>
+    {% else %}
     <a href="#main-content" class="skip-link">Skip to main content</a>
+    {% endif %}
 
     <header class="header">
         {% block header %}{% endblock %}

@@ -6,6 +6,11 @@ status: 1
 created: 1785542400
 changed: 1785542400
 fields:
+  # Read by the theme, rendered by nothing: an object field with no
+  # `value` key is skipped by the kernel's field loop, so this is
+  # navigation metadata the templates can see and the page never shows.
+  nav:
+    italian_path: /it/get-started
   body:
     value: |
       <p>Two ways in. Docker needs no Rust toolchain and gets you a running site. Building from source needs the toolchain and gets you something you can change.</p>

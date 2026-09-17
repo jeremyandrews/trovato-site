@@ -10,6 +10,22 @@
 {% extends "base.html" %}
 
 {% block header %}
+{# Which language this render is in.
+
+   The kernel gives a template no single answer, so two signals are read.
+   On an item page, `routes/item.rs` overwrites `active_language` with the
+   site default after setting it (recorded in docs/LEDGER.md, Gate 9), but
+   the translation overlay merges the translation's fields into the item's —
+   so the site's translations carry a `nav` object of their own, and
+   `item.fields.nav.language` survives where `active_language` does not. An
+   object field with no `value` key is skipped by the kernel's field render
+   loop, so the marker never appears on the page. On a gather page the
+   gather route inserts `active_language` *after* the overwrite, so there
+   the variable itself is truthful. Tera renders each block independently,
+   which is why the same three lines appear again in the footer block. #}
+{%- set nav_it = false -%}
+{%- if item is defined and item.fields.nav is defined and item.fields.nav.language is defined and item.fields.nav.language == "it" -%}{%- set nav_it = true -%}
+{%- elif active_language is defined and active_language == "it" -%}{%- set nav_it = true -%}{%- endif -%}
 <div class="site-header">
     <div class="container site-header__bar">
         <div class="site-branding">
@@ -44,10 +60,32 @@
                     {% if main_menu is defined and main_menu %}
                     {% for link in main_menu %}
                     {% if not link.hidden %}
+                    {#- On an Italian page, a menu entry whose destination
+                        exists in Italian points at the Italian version, under
+                        its Italian name, so navigating between the translated
+                        pages never drops the reader back into English. An
+                        entry with no Italian destination keeps its English
+                        path and its English name: a translated label on an
+                        untranslated page would be a promise the click breaks.
+                        An if-chain, not a dictionary — Tera has no object
+                        literal, exactly as the breadcrumb mapping below. -#}
+                    {%- set path = link.path -%}
+                    {%- set title = link.title -%}
+                    {%- set translated = false -%}
+                    {%- if nav_it -%}
+                    {%- if path == "/why" -%}{%- set path = "/it/why" -%}{%- set title = "Perché Trovato" -%}{%- set translated = true -%}
+                    {%- elif path == "/get-started" -%}{%- set path = "/it/get-started" -%}{%- set title = "Come iniziare" -%}{%- set translated = true -%}
+                    {%- elif path == "/community" -%}{%- set path = "/it/community" -%}{%- set title = "Comunità" -%}{%- set translated = true -%}
+                    {%- elif path == "/accessibility" -%}{%- set path = "/it/accessibility" -%}{%- set title = "Accessibilità" -%}{%- set translated = true -%}
+                    {%- endif -%}
+                    {%- endif -%}
                     <li>
                         {# aria-current, not only the active class: the class is
                            styling, and assistive technology cannot see it. #}
-                        <a href="{{ link.path }}" class="site-nav__link{% if current_path is defined and current_path == link.path %} site-nav__link--active{% endif %}"{% if current_path is defined and current_path == link.path %} aria-current="page"{% endif %}>{{ link.title }}</a>
+                        {# SAFE on href: the path is a menu link from config or
+                           one of the literals above; escaping writes every
+                           slash as &#x2F;. #}
+                        <a href="{{ path | safe }}" class="site-nav__link{% if current_path is defined and current_path == path %} site-nav__link--active{% endif %}"{% if current_path is defined and current_path == path %} aria-current="page"{% endif %}{% if translated %} lang="it" hreflang="it"{% endif %}>{{ title }}</a>
                     </li>
                     {% endif %}
                     {% endfor %}
@@ -153,6 +191,11 @@
 {% endblock %}
 
 {% block footer %}
+{# The same two-signal language detection as the header block; Tera renders
+   blocks independently, so it cannot be computed once and shared. #}
+{%- set nav_it = false -%}
+{%- if item is defined and item.fields.nav is defined and item.fields.nav.language is defined and item.fields.nav.language == "it" -%}{%- set nav_it = true -%}
+{%- elif active_language is defined and active_language == "it" -%}{%- set nav_it = true -%}{%- endif -%}
 <div class="site-footer">
     <div class="container">
         <div class="site-footer__grid">
@@ -177,7 +220,16 @@
                 <div class="footer-nav">
                     {% for link in footer_menu %}
                     {% if not link.hidden %}
-                    <a href="{{ link.path }}">{{ link.title }}</a>
+                    {#- The same Italian mapping as the main menu, for the one
+                        footer destination that exists in Italian. -#}
+                    {%- set path = link.path -%}
+                    {%- set title = link.title -%}
+                    {%- set translated = false -%}
+                    {%- if nav_it and path == "/accessibility" -%}
+                    {%- set path = "/it/accessibility" -%}{%- set title = "Accessibilità" -%}{%- set translated = true -%}
+                    {%- endif -%}
+                    {# SAFE on href: a config menu path or the literal above. #}
+                    <a href="{{ path | safe }}"{% if translated %} lang="it" hreflang="it"{% endif %}>{{ title }}</a>
                     {% endif %}
                     {% endfor %}
                 </div>
@@ -207,25 +259,36 @@
         {% if footer_tiles is defined and footer_tiles %}
         {{ footer_tiles | safe }} {# SAFE: kernel tile render pipeline output #}
         {% endif %}
-        {# The Italian pages, linked from every page.
+        {# The language switcher, now per-page where a page has a partner.
 
-           Not a per-page language switcher, and not a language-dependent block
-           either. Two things stop it. A template cannot work out the current
-           page's Italian address, because for an item page the only path the
-           context carries is `/item/{uuid}`. And a template cannot tell which
-           language it is rendering at all: `routes/item.rs` inserts the resolved
-           `active_language` into the context and then calls
-           `inject_site_context`, which overwrites it with the site default. So
-           `<html lang>` says `en` on an Italian page, and every `{% raw %}{% if %}{% endraw %}` on the
-           language is false everywhere.
-
-           Which leaves this: one link, in both languages, pointing at where the
-           Italian starts. The Italian pages link to each other in their own copy.
-           Both are recorded in docs/LEDGER.md, Gate 9. #}
+           An earlier version of this comment explained why a per-page
+           switcher was impossible: a template sees only `/item/{uuid}` and
+           `active_language` arrives overwritten (docs/LEDGER.md, Gate 9).
+           Both remain true — the way around them is that the site's own
+           translations and page items carry a `nav` metadata field the
+           templates read, so an Italian page knows its English address and
+           an English page knows its Italian one. A page with no partner
+           falls back to the site-level link, exactly as before. The paths
+           are site config reviewed in pull requests; SAFE because escaping
+           writes every slash as &#x2F;. #}
         <div class="site-footer__bottom">
+            {% if nav_it %}
             <p class="site-footer__language">
-                <a href="/it/why" hreflang="it" lang="it">Questo sito è disponibile anche in italiano</a>
+                {% if item is defined and item.fields.nav is defined and item.fields.nav.english_path is defined %}
+                <a href="{{ item.fields.nav.english_path | safe }}" hreflang="en" lang="en">This page is also available in English</a>
+                {% else %}
+                <a href="/" hreflang="en" lang="en">Back to the English site</a>
+                {% endif %}
             </p>
+            {% else %}
+            <p class="site-footer__language">
+                {% if item is defined and item.fields.nav is defined and item.fields.nav.italian_path is defined %}
+                <a href="{{ item.fields.nav.italian_path | safe }}" hreflang="it" lang="it">Questa pagina è disponibile anche in italiano</a>
+                {% else %}
+                <a href="/it/why" hreflang="it" lang="it">Questo sito è disponibile anche in italiano</a>
+                {% endif %}
+            </p>
+            {% endif %}
 
             <p class="site-footer__colophon">
                 Trovato is dual licensed under MIT or Apache-2.0.

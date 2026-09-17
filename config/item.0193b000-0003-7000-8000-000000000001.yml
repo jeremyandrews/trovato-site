@@ -6,6 +6,11 @@ status: 1
 created: 1785542400
 changed: 1785542400
 fields:
+  # Read by the theme, rendered by nothing: an object field with no
+  # `value` key is skipped by the kernel's field loop, so this is
+  # navigation metadata the templates can see and the page never shows.
+  nav:
+    italian_path: /it/why
   body:
     value: |
       <p>Drupal 6 got the mental model right. Everything is a node. You add fields to any content type without writing a schema. You query content through a builder instead of writing SQL. You extend the system by implementing a few named functions, and the system calls them for you. I have worked with Drupal since 2002 and that model has held up better than anything that replaced it.</p>

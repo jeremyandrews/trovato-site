@@ -6,6 +6,11 @@ status: 1
 created: 1785542400
 changed: 1785542400
 fields:
+  # Read by the theme, rendered by nothing: an object field with no
+  # `value` key is skipped by the kernel's field loop, so this is
+  # navigation metadata the templates can see and the page never shows.
+  nav:
+    italian_path: /it/accessibility
   body:
     value: |
       <p>The target is WCAG 2.2 AA. This page says what is actually checked, how, and what is known to be missing. It is written the way an engineering page should be, because a statement that only says "we are committed to accessibility" tells you nothing you can act on.</p>

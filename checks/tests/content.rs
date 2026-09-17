@@ -296,6 +296,22 @@ fn a_translated_field_has_the_shape_the_item_stores() {
                 continue;
             };
             for (name, field) in fields {
+                // `nav` is the one deliberate exception: navigation metadata
+                // for the theme, shaped as an object with no `value` key so
+                // the kernel's field render loop skips every branch it has.
+                // A `value` key or a bare string here would print it on the
+                // page, which is the opposite failure to the one below.
+                if name == "nav" {
+                    let ok = field.is_object()
+                        && field.get("value").is_none()
+                        && field.get("sections").is_none();
+                    if !ok {
+                        wrong.push(format!(
+                            "{item_id}/{language}/nav: must be an object with no value key, or the renderer prints it"
+                        ));
+                    }
+                    continue;
+                }
                 let ok = field.get("value").and_then(|v| v.as_str()).is_some()
                     && field.get("format").and_then(|v| v.as_str()).is_some();
                 if !ok {
@@ -303,6 +319,70 @@ fn a_translated_field_has_the_shape_the_item_stores() {
                         "{item_id}/{language}/{name}: not {{value, format}}"
                     ));
                 }
+            }
+        }
+    }
+    assert!(wrong.is_empty(), "\n{}\n", wrong.join("\n"));
+}
+
+#[test]
+fn the_language_switcher_links_are_real_addresses_in_both_directions() {
+    // The theme keeps a reader in Italian by reading `nav` metadata: a
+    // translation carries its language and its English address, and the
+    // English item carries its Italian address. Nothing else checks those
+    // strings, and a typo in one produces a switcher that quietly links a
+    // page to somewhere else. So: every translation must carry the marker,
+    // the two paths must be the same address in both directions, and the
+    // English half must be the alias the item actually has.
+    let path = config_dir().join("variable.plugin.trovato_site.site_translations.yml");
+    let text = std::fs::read_to_string(&path).expect("the translations file is readable");
+    let json = text.split_once("value: ").expect("the file has a value").1;
+    let value: serde_json::Value = serde_json::from_str(json).expect("the value is valid JSON");
+
+    let c = content();
+    let mut wrong = Vec::new();
+    for (item_id, languages) in value.as_object().into_iter().flatten() {
+        for (language, translation) in languages.as_object().into_iter().flatten() {
+            let Some(nav) = translation.get("fields").and_then(|f| f.get("nav")) else {
+                wrong.push(format!(
+                    "{item_id}/{language}: translation carries no nav marker"
+                ));
+                continue;
+            };
+            if nav.get("language").and_then(|v| v.as_str()) != Some(language.as_str()) {
+                wrong.push(format!(
+                    "{item_id}/{language}: nav.language does not name the translation's own language"
+                ));
+            }
+            let Some(english) = nav.get("english_path").and_then(|v| v.as_str()) else {
+                wrong.push(format!("{item_id}/{language}: nav.english_path missing"));
+                continue;
+            };
+
+            let source = format!("/item/{item_id}");
+            let alias = c
+                .aliases
+                .iter()
+                .find(|(s, _)| s == &source)
+                .map(|(_, a)| a.as_str());
+            if alias != Some(english) {
+                wrong.push(format!(
+                    "{item_id}/{language}: nav.english_path is {english}, the item's alias is {alias:?}"
+                ));
+            }
+
+            let expected = format!("/{language}{english}");
+            let item_file = config_dir().join(format!("item.{item_id}.yml"));
+            let item_text = std::fs::read_to_string(&item_file)
+                .unwrap_or_else(|_| panic!("{item_id} has no config item file"));
+            let declared = item_text
+                .lines()
+                .find_map(|l| l.strip_prefix("    italian_path: "))
+                .map(str::trim);
+            if declared != Some(expected.as_str()) {
+                wrong.push(format!(
+                    "{item_id}: item declares italian_path {declared:?}, the translation implies {expected}"
+                ));
             }
         }
     }
