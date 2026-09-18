@@ -1,7 +1,7 @@
 name = "trovato_site"
 description = "The trovato.rs website: the news content type and the front-page listing"
 version = "0.1.0"
-api_version = "0.101"
+api_version = "0.102"
 default_enabled = false
 dependencies = []
 
@@ -29,8 +29,9 @@ weight = 0
 # sitemap and `url_alias` for their friendly paths, both read-only;
 # `item_translation` is the one table this plugin writes, and it writes nothing
 # else anywhere. The kernel reads translations from that table and has no way to
-# put a row in it on 0.101.0, so the site's translations are carried in config and
-# brought across by tap_cron.
+# put a row in it on 0.102.0 either — the two admin routes are still registered
+# `GET` only and their templates are still absent from the image — so the site's
+# translations are carried in config and brought across by tap_cron.
 #
 # `raw_sql` is declared because the listing is one ORDER BY over two content
 # types joined to their aliases, with a LIMIT — not something the structured item

@@ -44,10 +44,21 @@
                     {% if main_menu is defined and main_menu %}
                     {% for link in main_menu %}
                     {% if not link.hidden %}
+                    {# `requested_path`, falling back to `current_path`.
+
+                       The address as it was asked for, which is the only one a
+                       menu link can be compared against. `current_path` is what
+                       the request was rewritten *to*, and for an aliased item
+                       that is `/item/{uuid}` — which no menu link ever equals,
+                       so the active trail was dead on every page reached through
+                       an alias, which here is every page except the listings.
+                       `requested_path` is new in 0.102.0; the fallback is for a
+                       route that does not set it. #}
+                    {% set here = requested_path | default(value=current_path | default(value='')) %}
                     <li>
                         {# aria-current, not only the active class: the class is
                            styling, and assistive technology cannot see it. #}
-                        <a href="{{ link.path }}" class="site-nav__link{% if current_path is defined and current_path == link.path %} site-nav__link--active{% endif %}"{% if current_path is defined and current_path == link.path %} aria-current="page"{% endif %}>{{ link.title }}</a>
+                        <a href="{{ link.path }}" class="site-nav__link{% if here == link.path %} site-nav__link--active{% endif %}"{% if here == link.path %} aria-current="page"{% endif %}>{{ link.title }}</a>
                     </li>
                     {% endif %}
                     {% endfor %}
@@ -167,24 +178,44 @@
         {% if footer_tiles is defined and footer_tiles %}
         {{ footer_tiles | safe }} {# SAFE: kernel tile render pipeline output #}
         {% endif %}
-        {# The Italian pages, linked from every page.
+        {# The language switcher: this page, in the other languages it exists in.
 
-           Not a per-page language switcher, and not a language-dependent block
-           either. Two things stop it. A template cannot work out the current
-           page's Italian address, because for an item page the only path the
-           context carries is `/item/{uuid}`. And a template cannot tell which
-           language it is rendering at all: `routes/item.rs` inserts the resolved
-           `active_language` into the context and then calls
-           `inject_site_context`, which overwrites it with the site default. So
-           `<html lang>` says `en` on an Italian page, and every `{% raw %}{% if %}{% endraw %}` on the
-           language is false everywhere.
+           A real switcher, per page, which 0.101.0 could not support. Two things
+           stopped it and both are fixed on 0.102.0. `active_language` now
+           survives to the template, because `inject_site_context` fills it in
+           only when the route has not already set it, so a block can branch on
+           the language it is actually rendering. And `available_translations`
+           carries one `{language, path}` for every language the page exists in,
+           at the page's own reader-facing address — not `/item/{uuid}`, and not
+           a language the page has no translation in.
 
-           Which leaves this: one link, in both languages, pointing at where the
-           Italian starts. The Italian pages link to each other in their own copy.
-           Both are recorded in docs/LEDGER.md, Gate 9. #}
+           Only the other languages are listed: a link to the page the reader is
+           already on is noise, and the current language is already in
+           `<html lang>`.
+
+           The fallback is for the pages the kernel supplies none of this on. A
+           gather listing and a themed plugin page get `active_language` and no
+           `available_translations`, so on `/news` or `/learn` a theme still has
+           no per-page switcher to offer and this stays an entry-point link
+           instead. Recorded as a finding for the kernel. #}
+        {% if available_translations is defined and available_translations | length > 1 %}
+        <nav class="site-footer__language"
+             aria-label="{% if active_language == 'it' %}Lingua{% else %}Language{% endif %}">
+            {% for alt in available_translations %}
+            {% if alt.language != active_language %}
+            <a href="{{ alt.path }}" hreflang="{{ alt.language }}" lang="{{ alt.language }}">{% if alt.language == 'it' %}Questa pagina in italiano{% elif alt.language == 'en' %}This page in English{% else %}{{ alt.language }}{% endif %}</a>
+            {% endif %}
+            {% endfor %}
+        </nav>
+        {% elif active_language == 'it' %}
         <p class="site-footer__language">
-            <a href="/it/why" hreflang="it" lang="it">Questo sito è disponibile anche in italiano</a>
+            <a href="/" hreflang="en" lang="en">This site is also available in English</a>
         </p>
+        {% else %}
+        <p class="site-footer__language">
+            <a href="/it/" hreflang="it" lang="it">Questo sito è disponibile anche in italiano</a>
+        </p>
+        {% endif %}
 
         <p class="site-footer__colophon">
             Trovato is dual licensed under MIT or Apache-2.0.

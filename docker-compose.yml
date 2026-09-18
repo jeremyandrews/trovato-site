@@ -40,7 +40,7 @@ services:
   # site wins every name collision and inherits everything it does not override.
   # This is the whole mechanism by which the site is an external application.
   site:
-    image: ghcr.io/jeremyandrews/trovato:${TROVATO_VERSION:-0.101.0}
+    image: ghcr.io/jeremyandrews/trovato:${TROVATO_VERSION:-0.102.0}
     restart: unless-stopped
     ports:
       - "127.0.0.1:${SITE_PORT:-3080}:3000"

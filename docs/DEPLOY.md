@@ -315,7 +315,7 @@ dc exec -T postgres pg_dump -U trovato -Fc trovato > pre-upgrade.dump
 ls -lh pre-upgrade.dump
 
 # 2. Change one line in .env.production.
-#    TROVATO_VERSION=0.102.0
+#    TROVATO_VERSION=0.103.0
 
 # 3. Pull and restart. Migrations run on startup.
 dc pull site
@@ -331,11 +331,18 @@ curl -s -o /dev/null -w '%{http_code}\n' https://trovato.rs/
 Two things to do in the repository afterwards, neither of which is urgent and
 both of which drift if forgotten:
 
-- **The SDK pin.** `Cargo.toml` pins `trovato-sdk` to a revision of the kernel
-  repository. The plugin keeps working across a minor release without rebuilding,
-  because the kernel accepts a plugin whose major version matches and whose minor
-  version is no higher than its own. Repin at your convenience; repin before a
-  major.
+- **The SDK pin, which is a triple.** `Cargo.toml` pins `trovato-sdk` to a
+  revision of the kernel repository, `plugins/trovato_site/trovato_site.info.toml`
+  declares an `api_version`, and `TROVATO_VERSION` names the image. The three
+  move together, and the comment above the pin records them so a later reader can
+  see whether they still agree. Resolve the revision from the tag rather than
+  copying a short hash: `git rev-list -n 1 v0.103.0` in a kernel clone.
+
+  The plugin keeps working across a minor release without rebuilding, because the
+  kernel accepts a plugin whose major version matches and whose minor version is
+  no higher than its own. Repin at your convenience; repin before a major. Moving
+  0.101.0 to 0.102.0 needed no plugin source change at all, and the rebuild took
+  the same 22 seconds it took before.
 - **The documentation mirror.** `TAG` in `tools/src/docs_import.rs` names the
   release the documentation is mirrored from. Change it, run
   `cargo run -p tools --bin docs-import`, commit the result, deploy, and re-import

@@ -69,8 +69,10 @@ build log, gate by gate, including everything that did not work and why.
 ## Brand assets
 
 The SVGs under `static/brand/` are copied from `assets/brand/` in the Trovato kernel
-repository at tag v0.101.0. `assets/brand/BRAND.md` there is the source of truth for
+repository at tag v0.102.0. `assets/brand/BRAND.md` there is the source of truth for
 the palette, the lockups and the rules; this repository holds copies, not originals.
+Every file under `assets/brand/` is byte for byte identical at v0.101.0 and
+v0.102.0, so the tag moved and the copies did not.
 
 ## License
 

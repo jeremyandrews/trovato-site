@@ -22,20 +22,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     {% if csrf_token is defined %}<meta name="csrf-token" content="{{ csrf_token }}">{% endif %}
-    {# No alternate-language links.
+    {# Alternate-language links, one per language the page exists in plus
+       `x-default`, built by the kernel.
 
-       They belong here and cannot be built. The kernel has a
-       `build_hreflang_links` that produces exactly them, and nothing calls it —
-       it is reachable only from its own tests, so `hreflang_links` is never
-       defined. Building them in this template needs the page's reader-facing
-       path, and for an item page the context does not carry one: the route
-       resolves the alias into a local `canonical_path`, uses it to build the
-       absolute `page_meta.canonical`, and inserts only the absolute form. So the
-       only path a template can see is `/item/{uuid}`.
-
-       Emitting alternates pointing at `/item/{uuid}` would be worse than
-       emitting none: it would tell a crawler that the canonical URL and its
-       alternates are different addresses. Recorded in docs/LEDGER.md, Gate 9. #}
+       On 0.101.0 these could not be emitted at all: `build_hreflang_links`
+       produced exactly them and nothing called it, so `hreflang_links` was never
+       defined, and the only path a template could see for an item page was
+       `/item/{uuid}` — alternates pointing there would have told a crawler that
+       a page's canonical URL and its alternates are different addresses. Both
+       halves are fixed on 0.102.0: the item route and the front route each
+       populate `hreflang_links` from the languages the page actually exists in,
+       and they name the page's reader-facing addresses. #}
+    {% if hreflang_links is defined %}{% for alt in hreflang_links %}
+    <link rel="alternate" hreflang="{{ alt.lang }}" href="{{ alt.href }}">
+    {% endfor %}{% endif %}
     <title>{% block title %}{{ title | default(value="Trovato") }}{% endblock %}</title>
 
     {# Head metadata for search engines and link unfurlers, built by the route in

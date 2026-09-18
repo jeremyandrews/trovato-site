@@ -11,10 +11,9 @@ from nothing to a populated site.
 
 ## The site itself
 
-- [x] **Every page serves.** 14 destinations plus 4 Italian pages, all 200.
-      `npm run crawl` walks 191 pages from the front page and the Italian entry
-      point and fails on any 404, any 5xx, and any page served as a
-      template-failure dump.
+- [x] **Every page serves.** 14 destinations plus 5 Italian pages, all 200.
+      `npm run crawl` walks 188 pages from the front page and from `/it/` and
+      fails on any 404, any 5xx, and any page served as a template-failure dump.
 - [x] **Every page is themed and navigable.** The same crawl fails a page missing
       its main landmark, its stylesheet, its skip link or its main navigation.
 - [x] **The site works with JavaScript switched off.** Search submits to the
