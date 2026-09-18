@@ -1,6 +1,7 @@
 # Build ledger
 
-**Status:** Complete. All nine gates passed, and Gate 11 moved the kernel to 0.102.0.
+**Status:** Complete. Eleven gates passed: Gate 10 reworked the site visually and
+Gate 11 moved the kernel to 0.102.0, and the two are now on one branch.
 **Last updated:** 2026-09-18
 **Where things stand:** The site is built, checked and reproducible. A clean-room rebuild
 reaches a populated, themed, working site in 22.5 seconds from destroyed volumes, and every
@@ -862,12 +863,157 @@ unchanged, and the documentation mirror matching the pinned tag.
 `run.sh` now runs cron once before it finishes, so the translations are in place
 when the command returns rather than up to a minute later.
 
+## Gate 10 — the visual rework
+
+**Goal:** the site was text-heavy and visually flat. Rework it with imagery and a
+more modern surface without breaking a single existing gate: same palette, same
+tokens-only stylesheet discipline, same origin policy, same behaviour with
+JavaScript off and motion reduced.
+
+### What was built
+
+- **An illustration system, generated.** `static/art/gen_art.py` draws fourteen
+  SVGs in the mark's own language: monoline strokes, round caps, and exactly one
+  filled clay circle per piece — the found-dot. Text inside a drawing is greeked
+  (drawn as strokes), so one file serves English and Italian alike. Each standalone
+  file carries its own `prefers-color-scheme` block, verified to apply even when
+  the SVG is loaded through `<img>`, which is how every filtered body has to load
+  it. The script is the source of truth, exactly as `assets/brand/gen_final.py`
+  is for the brand; the SVGs are output.
+- **A front page with a hero, three claim cards, a screenshot band, and three
+  illustrated proofs.** The hero's illustration is the one inline SVG (in
+  `elements/item--front_page.html`, template-owned markup): it draws with the new
+  `--art-*` tokens and plays the page's one entrance — the search path draws
+  itself, the dot lands. The screenshot band is honest about what it is: three
+  *sketches* of the admin screens, captioned as sketches, linking to the tutorial
+  for the real pixels.
+- **Per-page banners through template suggestions.** The kernel resolves
+  `elements/item--page--{id}` before `item--page` (theme/engine.rs), and item ids
+  are fixed in config, so five pages get an illustrated header from a template of
+  their own while their bodies stay `filtered_html`. Translations overlay fields
+  on the same item id, which is why the Italian pages get the banners for free.
+- **Cards for every listing** — blog, news, the docs index, the front page's
+  recent posts — with the found-dot in the corner that takes the accent on hover.
+  The recent-posts markup belongs to the site plugin and was not touched; the
+  cards hang entirely off the classes it already emits.
+- **Credit where credit is due.** Every component in the stack table on /rust now
+  links to its home, a paragraph below it credits the site's own additions
+  (Inter, JetBrains Mono, syntect, pulldown-cmark, axe-core, Playwright), and the
+  footer carries a linked "Built with" list on every page.
+- **The modern surface, behind guards.** Cross-document view transitions
+  (`@view-transition`, header and footer pinned by name), a sticky translucent
+  header (wide screens only — on a phone the wrapped header would eat a third of
+  the viewport), `color-mix` with an `@supports` fallback, `text-wrap: pretty`,
+  scroll-snap for the screenshot band on narrow screens, `::selection` in peach.
+  The reduce block now also switches off the view-transition pseudo-elements,
+  which the `*` selector does not reach.
+
+### What the gates caught, and one thing they taught
+
+1. **The dash test caught the first version of the front page.** The proofs
+   inlined their diagrams as SVG painted with `var(--art-…)`, and a custom
+   property's double hyphen inside served config prose is exactly what
+   `the_copy_uses_no_dash_punctuation` flags. Same for two BEM modifier classes
+   (`proof--split`). The fix was better than an exemption: the diagrams became
+   `<img>` (their standalone files already carry both schemes), the classes
+   became `proof-split`/`proof-flip`, and the em dashes in new copy were
+   rewritten into this site's punctuation. The test read the new copy the way it
+   reads everything, and it was right twice.
+2. **Scroll-driven reveals were tried and rejected.** `animation-timeline:
+   view()` fades sections in as they scroll into view — and leaves every
+   below-fold section transparent in `shoot.mjs`'s full-page captures, because
+   `captureBeyondViewport` renders without scrolling. A gate artifact nobody can
+   read is worse than a page that does not shimmer. The one entrance the front
+   page keeps finishes in about a second and a half and ends at the page at
+   rest; both browser gates now wait it out before measuring.
+3. **Two overflows at 360px, found at exactly the width the gate guards.** A
+   grid item's `min-width: auto` let a code block's longest line set the proof
+   column's floor (fixed with `min-width: 0`), and the stack table grew past the
+   viewport the moment its components carried links (fixed with the same
+   scroll-in-its-own-box treatment the docs tables already had).
+
+### Checked here, and what still needs the real stack
+
+Run against a template-level preview render (Jinja2 standing in for Tera, mock
+context, the real stylesheets and art):
+
+- axe-core, WCAG 2.0/2.1/2.2 A+AA plus best-practice, front page and seven other
+  templates, both schemes: no violations.
+- Horizontal overflow at 360 and 1280, both schemes, all previewed pages: none.
+- The 36 `@contrast` annotations in tokens.css, re-computed independently: all
+  pass; the dark scheme still overrides every role; the new `--art-*` tokens are
+  literal hex in both schemes and carry no annotations, like `--border`,
+  because decorative line work is not a control.
+- The dash, placeholder and class-modifier sweeps over `config/`, re-implemented
+  to the test's own algorithm: clean.
+
+A preview render is not the kernel. Before this gate can be called passed, the
+full set must run against a real build: `cargo test --all`, `npm run crawl`,
+`npm run a11y`, `npm run shoot`, the moderation and roundtrip checks, and the
+docs-import check. Nothing in this rework touches the plugin, the config
+entities' shapes, or any route, so the risk concentrates in the two browser
+gates — which is where the checking above concentrated too.
+
+### Gate 10, revised: real screenshots, and the bug behind them
+
+The sketch "screenshots" did not survive review: drawn screens read as fluff
+where real ones would carry weight. Chasing the replacement surfaced two real
+defects in the documentation mirror, both older than this gate:
+
+1. **The tutorial's images were never mirrored.** Every tutorial part
+   references its screenshots as `images/part-NN/…`, relative to
+   `docs/tutorial/` in the kernel repository, and nothing here ever fetched
+   them — so all nine parts have been serving broken images since the mirror
+   existed. `docs-import` now fetches every image a mirrored document
+   references from the same pinned tag, writes it under
+   `static/docs/images/`, rewrites the `<img src>` to match, and sweeps that
+   directory for stale files like it sweeps `config/docs/`. Forty-one images,
+   14 MB, committed like the rest of the mirror.
+2. **The links wrapping those images pointed at a GitHub path that does not
+   exist.** `resolve_link`'s fallback rewrote `images/part-01/foo.png` to
+   `blob/{tag}/images/part-01/foo.png` — missing the `docs/tutorial/` the
+   files actually live under — so every screenshot's click-through was a 404.
+   An image link now resolves to the mirrored copy, the same place its
+   `<img>` points.
+
+The config under `config/docs/` was regenerated to match by applying the
+identical rewrite to the committed files; `docs-import -- --check` against a
+real toolchain must confirm the tool reproduces them byte for byte before
+this gate closes.
+
+With real pixels available, the sketches came out everywhere they pretended
+to be screenshots: the front-page gallery now shows the tutorial's admin
+content list, the Gather queries admin, and Ritrovo's themed front page,
+cropped to card ratio from the top with the full capture a click away; Get
+started shows the installer's actual welcome step where its copy describes
+it; Why shows the real Gather admin. The line drawings that never claimed to
+be screenshots — the hero, the three diagrams, the three banners, the three
+icons — stay, and the four browser-and-terminal sketches are gone from the
+generator and the tree.
+
+### Gate 10, third finding: the index sorted its weights as strings
+
+Reviewing the rework live surfaced a bug older than it: `/learn` opened its
+tutorial section at Part 7, with Parts 1 through 6 filed at the bottom under
+repeated section headings. Gather sorts `fields.weight` through a JSONB text
+extraction, so the index renders in string order, and in string order `100`
+(Part 7) sorts before `20` (Building your first site) sorts before `90`
+(Part 6). The importer had been assigning `position * 10` — 0 through 350 —
+since the mirror existed; the scramble was simply never looked at.
+
+Fixed where the site can fix it: the importer now assigns `100 + position *
+10`, so every weight is three digits and string order and numeric order are
+the same order. A new test in `checks/tests/content.rs` pins the property,
+because it silently breaks the day the manifest grows past ninety documents,
+and a loud test beats a quietly shuffled index.
+
 ## Gate 11 — the kernel bump to 0.102.0
 
 **Attempt 1 — 2026-09-18 — PASS (1 fix loop)**
 
-Gate 10, the visual rework, is on its own branch and not merged, so the numbering
-steps over it rather than reusing the number.
+This gate was run on a branch taken before Gate 10, the visual rework, was merged,
+which is why the numbering steps over it rather than reusing the number. The two
+are on one branch now, and the notes above and below both stand.
 
 **Goal:** move the site from `v0.101.0` to `v0.102.0`, find out what the release
 fixed, take out the workarounds it replaced, and find out what moving a release

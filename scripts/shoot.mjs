@@ -55,6 +55,11 @@ for (const scheme of SCHEMES) {
       }
       const status = response?.status() ?? 0;
 
+      // The front page plays a short entrance (site.css, the Motion section);
+      // every end state is the page at rest. Wait it out so the archived
+      // screenshot and the element measurements see the settled page.
+      await page.waitForTimeout(1800);
+
       // A page that did not render is not a page to measure. Repeated runs
       // against a local stack trip the login rate limiter, and a 429's error
       // page would otherwise be counted as the site's own unthemed markup.

@@ -454,3 +454,48 @@ fn no_translation_hand_builds_its_own_language_links() {
         );
     }
 }
+
+#[test]
+fn the_documentation_index_sorts_the_same_by_text_and_by_number() {
+    // Gather sorts `fields.weight` through a JSONB text extraction, so the
+    // order `/learn` renders is string order. The importer therefore assigns
+    // equal-width weights (100, 110, …), under which string order and numeric
+    // order agree. This is the test for that property, because the day the
+    // manifest grows past ninety documents the weights reach four digits and
+    // the property silently breaks — at which point this fails loudly instead
+    // of the tutorial opening at Part 7 again.
+    let mut weights = Vec::new();
+    for (name, text) in config_files() {
+        if !(name.starts_with("item.") && text.contains("type: docs")) {
+            continue;
+        }
+        let weight = text
+            .lines()
+            .find_map(|l| l.strip_prefix("  weight: "))
+            .unwrap_or_else(|| panic!("{name} carries no weight"))
+            .trim()
+            .to_string();
+        weights.push(weight);
+    }
+    assert!(!weights.is_empty(), "no mirrored documents found");
+
+    let numeric: Vec<u64> = weights
+        .iter()
+        .map(|w| w.parse().unwrap_or_else(|_| panic!("weight {w} is not a number")))
+        .collect();
+
+    let mut by_text = weights.clone();
+    by_text.sort();
+    let mut by_number = numeric.clone();
+    by_number.sort_unstable();
+    let renumbered: Vec<String> = by_number.iter().map(u64::to_string).collect();
+    assert_eq!(
+        by_text, renumbered,
+        "string order and numeric order disagree; the index will shuffle"
+    );
+
+    let mut unique = numeric.clone();
+    unique.sort_unstable();
+    unique.dedup();
+    assert_eq!(unique.len(), numeric.len(), "two documents share a weight");
+}

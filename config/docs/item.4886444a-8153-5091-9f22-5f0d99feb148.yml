@@ -755,7 +755,7 @@ fields:
   section: How it works
   section_blurb: 'The design documents: what each part does and why it is shaped that way.'
   source_path: docs/design/Design-Infrastructure.md
-  weight: 270
+  weight: 370
 id: '4886444a-8153-5091-9f22-5f0d99feb148'
 language: en
 status: 1

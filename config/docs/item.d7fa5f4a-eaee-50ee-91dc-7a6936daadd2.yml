@@ -256,7 +256,7 @@ fields:
   section: How it works
   section_blurb: 'The design documents: what each part does and why it is shaped that way.'
   source_path: docs/design/Versioning.md
-  weight: 300
+  weight: 400
 id: d7fa5f4a-eaee-50ee-91dc-7a6936daadd2
 language: en
 status: 1

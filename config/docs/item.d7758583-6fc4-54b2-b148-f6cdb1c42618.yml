@@ -98,7 +98,7 @@ fields:
   section: How it works
   section_blurb: 'The design documents: what each part does and why it is shaped that way.'
   source_path: docs/design/Architecture.md
-  weight: 190
+  weight: 290
 id: d7758583-6fc4-54b2-b148-f6cdb1c42618
 language: en
 status: 1

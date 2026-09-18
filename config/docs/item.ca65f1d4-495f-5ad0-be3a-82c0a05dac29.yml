@@ -486,7 +486,7 @@ fields:
   section: Start here
   section_blurb: Getting a site running and putting content in it.
   source_path: INSTALL.md
-  weight: 10
+  weight: 110
 id: ca65f1d4-495f-5ad0-be3a-82c0a05dac29
 language: en
 status: 1

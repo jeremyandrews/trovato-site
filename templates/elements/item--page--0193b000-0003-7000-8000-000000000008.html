@@ -1,0 +1,25 @@
+{# The Accessibility page. The banner is the claim the page then
+   substantiates: both schemes, focus visible in each, measured.
+
+   This template exists because the kernel resolves `item--page--{id}`
+   before `item--page` (theme/engine.rs, item_suggestions), which is the one
+   place per-page markup can live: the body itself is filtered_html, and the
+   filter strips class attributes, so a page that wants an illustrated header
+   gets it from its element template rather than from its copy. The item id
+   is config, fixed in this repository, so the filename is stable across
+   installs.
+
+   The banner is decorative here — the page's copy carries the content — so
+   the image is empty-alt and the layout floats it beside the prose on a wide
+   screen. Translations overlay title and fields on the same item id, which
+   is why the Italian page gets the same banner without a template of its
+   own. #}
+<article class="item item--page">
+    <h1 class="item__title">{{ item.title }}</h1>
+    <figure class="page-banner">
+        <img src="/static/art/banner-a11y.svg" alt="" aria-hidden="true" width="640" height="420">
+    </figure>
+    <div class="item__content prose">
+        {{ children | safe }} {# SAFE: kernel field pipeline and tap output, both sanitized upstream #}
+    </div>
+</article>

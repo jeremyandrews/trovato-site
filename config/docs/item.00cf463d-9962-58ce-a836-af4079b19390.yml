@@ -542,7 +542,7 @@ fields:
   section: The project
   section_blurb: Standards, known problems, and how the work is organised.
   source_path: KNOWN-ISSUES.md
-  weight: 350
+  weight: 450
 id: '00cf463d-9962-58ce-a836-af4079b19390'
 language: en
 status: 1

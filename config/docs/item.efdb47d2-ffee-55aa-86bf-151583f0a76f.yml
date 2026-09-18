@@ -1247,7 +1247,7 @@ fields:
   section: How it works
   section_blurb: 'The design documents: what each part does and why it is shaped that way.'
   source_path: docs/design/Design-Content-Model.md
-  weight: 210
+  weight: 310
 id: efdb47d2-ffee-55aa-86bf-151583f0a76f
 language: en
 status: 1

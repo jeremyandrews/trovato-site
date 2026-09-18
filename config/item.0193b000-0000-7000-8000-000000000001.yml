@@ -4,12 +4,20 @@
 # that is deliberate. The front-page handler renders a field only when it carries
 # a `value` key, so a bare string is passed through to the template untouched and
 # the template places it where it belongs. That is what lets the page read hero,
-# calls to action, proof, listing — the tap that renders the listing appends
-# after everything else and could not sit in the middle of that.
+# calls to action, features, gallery, proofs, listing — the tap that renders the
+# listing appends after everything else and could not sit in the middle of that.
 #
 # The consequence: this HTML is not filtered. It is site copy, written here and
 # reviewed in a pull request, and it is treated the same way the mirrored
 # documentation is. Nothing a visitor writes reaches either.
+#
+# The illustrations are referenced as <img> rather than inlined, and not only
+# for tidiness: an inline variant paints with `var(--art-…)`, and a custom
+# property's double hyphen inside served prose is exactly what the dash test in
+# checks/tests/content.rs exists to catch. The standalone files carry their own
+# prefers-color-scheme block, so they follow the reader's scheme anyway. The
+# one inline illustration, the hero, lives in the element template, which the
+# test does not scan and the stylesheet animates.
 id: '0193b000-0000-7000-8000-000000000001'
 type: front_page
 title: trovato
@@ -20,27 +28,97 @@ changed: 1785542400
 fields:
   body: |
     <p class="front-hero__lede">A content management system written in Rust.</p>
-    <p>I have worked with Drupal since 2002. Drupal 6 got the mental model right: everything is a node, you add fields to any content type, you query it without writing SQL, and you extend it by implementing a few named functions. Trovato keeps the model and replaces the implementation. Content is one JSONB row instead of a join per field. Plugins are WebAssembly modules that run in their own sandbox and reach nothing they have not declared. Queries are built with Gather, a type-safe query engine filling the role Views did.</p>
+    <p class="front-hero__sub">I have worked with Drupal since 2002, and Drupal 6 got the mental model right: everything is an item, any type takes fields, queries are built rather than written. Trovato keeps the model and replaces the implementation. Content is one JSONB row instead of a join per field. Plugins are WebAssembly modules in their own sandbox. Gather stands where Views used to. <a href="/why">The whole argument is on the Why page.</a></p>
   proof: |
-    <section class="proof" aria-labelledby="proof-sandbox">
+    <section class="front-features" aria-label="The three claims">
+      <a class="feature-card" href="/why">
+        <img src="/static/art/icon-onerow.svg" alt="" aria-hidden="true" width="120" height="120">
+        <h2 class="feature-card__title">Twenty fields, one row</h2>
+        <p class="feature-card__text">An item is one row with one JSONB column. Twenty fields is twenty keys, and loading the item is one read, not twenty joins.</p>
+        <span class="feature-card__more">Why that matters</span>
+      </a>
+      <a class="feature-card" href="/rust">
+        <img src="/static/art/icon-sandbox.svg" alt="" aria-hidden="true" width="120" height="120">
+        <h2 class="feature-card__title">A sandbox with a manifest</h2>
+        <p class="feature-card__text">A plugin is a WebAssembly module, and its manifest is the whole of what it may reach. Declare nothing, get nothing.</p>
+        <span class="feature-card__more">The plugin contract</span>
+      </a>
+      <a class="feature-card" href="/learn">
+        <img src="/static/art/icon-gather.svg" alt="" aria-hidden="true" width="120" height="120">
+        <h2 class="feature-card__title">Queries are built</h2>
+        <p class="feature-card__text">Gather fills the role Views did: a query is configuration, so it exports to a file, survives review, and imports next door.</p>
+        <span class="feature-card__more">The documentation</span>
+      </a>
+    </section>
+
+    <section class="front-gallery" aria-labelledby="front-gallery-heading">
+      <h2 id="front-gallery-heading">What it looks like</h2>
+      <p class="front-gallery__blurb">Real screens from Ritrovo, the conference directory <a href="/learn/tutorial-01-hello-trovato">the tutorial</a> builds in nine parts from an empty database. The screenshots are the tutorial&#8217;s own, mirrored at the pinned release.</p>
+      <div class="front-gallery__grid">
+        <figure>
+          <a href="/static/docs/images/part-04/admin-content-list.png">
+          <img src="/static/docs/images/part-04/admin-content-list.png" width="1280" height="10569"
+               alt="The Trovato admin content list: a dark sidebar, filters, and a table of items with type, author, status and updated columns.">
+          </a>
+          <figcaption>The content list: every item, its status, its date.</figcaption>
+        </figure>
+        <figure>
+          <a href="/static/docs/images/part-03/gather-queries-admin.png">
+          <img src="/static/docs/images/part-03/gather-queries-admin.png" width="1280" height="2046"
+               alt="The Gather queries admin: a table of queries with their labels, base tables, owning plugins and operations.">
+          </a>
+          <figcaption>Gather: every listing on a site is a query you can open.</figcaption>
+        </figure>
+        <figure>
+          <a href="/static/docs/images/part-03/front-page.png">
+          <img src="/static/docs/images/part-03/front-page.png" width="1280" height="1586"
+               alt="Ritrovo&#8217;s themed front page: a hero reading Discover Tech Conferences Worldwide, with stat tiles below it.">
+          </a>
+          <figcaption>Ritrovo itself, themed, by part three.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section class="proof proof-split" aria-labelledby="proof-sandbox">
       <h2 class="proof__title" id="proof-sandbox">A plugin that declares nothing gets nothing</h2>
-      <p>Every plugin is a WebAssembly module with a manifest, and the manifest is the whole of what it may reach. The kernel builds that plugin&#8217;s linker from the list and exposes those host interfaces and no others. This is the manifest of the plugin that renders the listing further down this page:</p>
-      <figure class="code">
-        <figcaption class="code__lang">toml</figcaption>
-        <pre class="code__body"><code>[capabilities]
+      <div class="proof__copy">
+        <p>Every plugin is a WebAssembly module with a manifest, and the manifest is the whole of what it may reach. The kernel builds that plugin&#8217;s linker from the list and exposes those host interfaces and no others. This is the manifest of the plugin that renders the listing further down this page:</p>
+        <figure class="code">
+          <figcaption class="code__lang">toml</figcaption>
+          <pre class="code__body"><code>[capabilities]
     host_interfaces = ["db", "logging", "variables"]
     db_tables = ["item", "url_alias"]
     raw_sql = true</code></pre>
-      </figure>
-      <p>It reads two tables and it says which two. There is no filesystem at all: the runtime hand-writes five WASI stubs and opens no directories, so a plugin that asks to write a file gets <code>ENOSYS</code>. There is no path from one plugin&#8217;s memory into another&#8217;s. A plugin that names no interfaces is handed an empty linker and can do arithmetic.</p>
+        </figure>
+        <p>It reads two tables and it says which two. There is no filesystem at all: the runtime hand-writes five WASI stubs and opens no directories, so a plugin that asks to write a file gets <code>ENOSYS</code>. There is no path from one plugin&#8217;s memory into another&#8217;s. A plugin that names no interfaces is handed an empty linker and can do arithmetic.</p>
+      </div>
+      <div class="proof__art">
+        <img src="/static/art/diagram-sandbox.svg" alt="" aria-hidden="true" width="720" height="400">
+      </div>
     </section>
 
-    <section class="proof" aria-labelledby="proof-storage">
+    <section class="proof proof-split proof-flip" aria-labelledby="proof-storage">
       <h2 class="proof__title" id="proof-storage">Twenty fields, one row</h2>
-      <p>In Drupal 6, CCK gave every field its own table, so a content type with twenty fields was twenty tables and loading one node was twenty joins. Trovato keeps the model and stores an item as one row with one JSONB column. Twenty fields is twenty keys, and loading the item is one read.</p>
-      <figure class="code">
-        <figcaption class="code__lang">sql</figcaption>
-        <pre class="code__body"><code>SELECT title, fields FROM item WHERE id = $1;</code></pre>
-      </figure>
-      <p>Revisions and staging belong to the migration that creates content rather than being added on top of it. Every save writes a revision, and every item carries a stage, so an editorial workflow is a property of the write path and not a plugin bolted onto it.</p>
+      <div class="proof__copy">
+        <p>In Drupal 6, CCK gave every field its own table, so a content type with twenty fields was twenty tables and loading one node was twenty joins. Trovato keeps the model and stores an item as one row with one JSONB column. Twenty fields is twenty keys, and loading the item is one read.</p>
+        <figure class="code">
+          <figcaption class="code__lang">sql</figcaption>
+          <pre class="code__body"><code>SELECT title, fields FROM item WHERE id = $1;</code></pre>
+        </figure>
+        <p>Revisions and staging belong to the migration that creates content rather than being added on top of it. Every save writes a revision, and every item carries a stage, so an editorial workflow is a property of the write path and not a plugin bolted onto it.</p>
+      </div>
+      <div class="proof__art">
+        <img src="/static/art/diagram-onerow.svg" alt="" aria-hidden="true" width="720" height="400">
+      </div>
+    </section>
+
+    <section class="proof proof-split" aria-labelledby="proof-gather">
+      <h2 class="proof__title" id="proof-gather">A query is a definition, not a string</h2>
+      <div class="proof__copy">
+        <p>Gather fills the role Views did. A query is a base table, filters, sorts, relationships and a display, stored as configuration: it exports to a file, is reviewed in a pull request, and imports into the next environment unchanged. It has a visual builder for the people who want one and a YAML file for the people who do not.</p>
+        <p>The listing of recent posts at the bottom of this page is one, and so is every listing on this site. None of them is a SQL string in a template.</p>
+      </div>
+      <div class="proof__art">
+        <img src="/static/art/diagram-gather.svg" alt="" aria-hidden="true" width="720" height="400">
+      </div>
     </section>
