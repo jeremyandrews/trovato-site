@@ -99,9 +99,7 @@ fn main() -> std::process::ExitCode {
         let rendered = render::render(markdown, &|link| resolve_link(link));
         for link in &rendered.links {
             match resolve_link(link) {
-                Some(target)
-                    if target.starts_with("/learn/") || target.starts_with("/static/") =>
-                {
+                Some(target) if target.starts_with("/learn/") || target.starts_with("/static/") => {
                     internal_links += 1;
                 }
                 Some(_) => outbound_links += 1,
@@ -119,13 +117,11 @@ fn main() -> std::process::ExitCode {
             } else {
                 format!("{dir}/images/{rest}")
             };
-            if let Some(existing) = image_sources.get(&rest) {
-                if existing != &repo_path {
-                    eprintln!(
-                        "image {rest} is referenced from two places: {existing} and {repo_path}"
-                    );
-                    return std::process::ExitCode::FAILURE;
-                }
+            if let Some(existing) = image_sources.get(&rest)
+                && existing != &repo_path
+            {
+                eprintln!("image {rest} is referenced from two places: {existing} and {repo_path}");
+                return std::process::ExitCode::FAILURE;
             }
             image_sources.insert(rest, repo_path);
         }

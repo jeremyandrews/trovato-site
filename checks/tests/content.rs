@@ -481,7 +481,10 @@ fn the_documentation_index_sorts_the_same_by_text_and_by_number() {
 
     let numeric: Vec<u64> = weights
         .iter()
-        .map(|w| w.parse().unwrap_or_else(|_| panic!("weight {w} is not a number")))
+        .map(|w| {
+            w.parse()
+                .unwrap_or_else(|_| panic!("weight {w} is not a number"))
+        })
         .collect();
 
     let mut by_text = weights.clone();
