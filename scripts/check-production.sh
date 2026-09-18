@@ -44,7 +44,7 @@ cat > "$env_file" <<ENVEOF
 SITE_HOST=localhost
 SITE_URL=https://localhost:${HTTPS_PORT}
 ACME_EMAIL=nobody@localhost
-TROVATO_VERSION=${TROVATO_VERSION:-0.101.0}
+TROVATO_VERSION=${TROVATO_VERSION:-0.102.0}
 POSTGRES_USER=trovato
 POSTGRES_DB=trovato
 POSTGRES_PASSWORD=production-check-only

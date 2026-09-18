@@ -1,9 +1,9 @@
 # Build ledger
 
-**Status:** Complete. All nine gates passed.
-**Last updated:** 2026-08-25
+**Status:** Complete. All nine gates passed, and Gate 11 moved the kernel to 0.102.0.
+**Last updated:** 2026-09-18
 **Where things stand:** The site is built, checked and reproducible. A clean-room rebuild
-reaches a populated, themed, working site in 24 seconds from destroyed volumes, and every
+reaches a populated, themed, working site in 22.5 seconds from destroyed volumes, and every
 gate passes against it. What stands between this repository and https://trovato.rs serving
 it is DNS, a host, and the decisions in `docs/LAUNCH.md`.
 
@@ -15,13 +15,16 @@ that starts cold reads this file and continues from the first unmet gate.
 
 | Fact | Value |
 |---|---|
-| Kernel release | `v0.101.0` (commit `5304a68`) |
-| Kernel image | `ghcr.io/jeremyandrews/trovato:0.101.0` (digest `sha256:cf9c7580b4e3…`) |
+| Kernel release | `v0.102.0` (commit `20baa121810b5c656b3f80028335770069fab5e0`) |
+| Kernel image | `ghcr.io/jeremyandrews/trovato:0.102.0` (local image id `9ff4f8d08ce0`) |
+| Plugin `api_version` | `0.102` |
+| Previous release | `v0.101.0` (commit `5304a68`), image digest `sha256:cf9c7580b4e3…`, until Gate 11 |
+| Documentation mirror | `v0.101.0`, pinned separately by `TAG` in `tools/src/docs_import.rs` |
 | Compose project | `trovato-site` |
 | Site port (local) | `127.0.0.1:3080` |
 | Proxy port (local, Phase 8) | `127.0.0.1:8443` |
 | Base URL | `https://trovato.rs` |
-| Scratch kernel clone | `../trovato-scratch`, read-only, never edited |
+| Scratch kernel clone | `../trovato-scratch` through Gate 9; `../trovato` for Gate 11. Read-only in both cases, and every kernel fact in this file is read from a tag (`git show v0.102.0:…`) rather than from a working tree |
 
 ## Gate 0 — baseline and preflight
 
@@ -858,3 +861,205 @@ unchanged, and the documentation mirror matching the pinned tag.
 
 `run.sh` now runs cron once before it finishes, so the translations are in place
 when the command returns rather than up to a minute later.
+
+## Gate 11 — the kernel bump to 0.102.0
+
+**Attempt 1 — 2026-09-18 — PASS (1 fix loop)**
+
+Gate 10, the visual rework, is on its own branch and not merged, so the numbering
+steps over it rather than reusing the number.
+
+**Goal:** move the site from `v0.101.0` to `v0.102.0`, find out what the release
+fixed, take out the workarounds it replaced, and find out what moving a release
+costs when the plugin contract is frozen.
+
+| Check | Result |
+|---|---|
+| The pin moves as one triple | PASS — SDK rev `20baa121810b5c656b3f80028335770069fab5e0`, tag `v0.102.0`, image `0.102.0`, `api_version` `0.102`, recorded above the pin in `Cargo.toml` |
+| The plugin builds against the new SDK unchanged | PASS — no source change, `cargo build --release --target wasm32-wasip1 -p trovato_site` in 2.04s |
+| The plugin loads on the new kernel | PASS — `trovato_site 0.1.0`, `api_version` `0.102` against kernel `0.102` |
+| Clean-room rebuild | PASS — volumes destroyed and `overlay/` removed, then `./scripts/run.sh --fresh --proxy`: 22.5s, against 24.7s measured the same way on 0.101.0 minutes earlier |
+| Findings 4, 5 and 18 fixed, and the workarounds out | PASS — three workarounds removed, each with the page as evidence |
+| Finding 14 settled | PASS — could not reproduce, and now positively disproved |
+| Every status on the twenty-two re-derived | PASS — 3 fixed, 18 open, 1 could not reproduce, all from the source at the tag |
+| The Italian pages unchanged or better | PASS — same prose, minus the hand-built link paragraph; `lang`, alternates, canonical, switcher and menus all better |
+| Every gate re-run | PASS — see the numbers below |
+| The kernel was not edited | PASS — read-only throughout, every kernel fact taken from `git show v0.102.0:…` |
+
+### What 0.102.0 fixed, and what came out of the site
+
+Three of the twenty-two, and each one had a workaround with a name.
+
+1. **Finding 4, `<html lang>` always the site default.** `inject_site_context`
+   now fills the language in only when the route has not already set it. What
+   came out: `templates/page.html` carried one hardcoded Italian link in the
+   footer of every page, with a comment explaining that a per-page switcher was
+   impossible because a template could not tell which language it was rendering.
+   It is a real switcher now, built from `available_translations`, labelled in the
+   language it points at, with the nav's `aria-label` following the page. The
+   proof that the old comment was right and is now wrong: two `{% if %}`
+   conditions on `active_language` that render differently on `/why` and
+   `/it/why`.
+2. **Finding 5, the front page never translated.** `routes/front.rs` applies the
+   overlay now. What came out: the absence itself. The Italian front page was
+   written during Gate 9 and deliberately not committed, because it would have
+   been configuration nothing read, and the comment in
+   `variable.plugin.trovato_site.site_translations.yml` said so. It is in
+   configuration now, its two fields as bare strings because that is the shape the
+   front-page item stores, and `/it/` serves it. Also out: the crawler's
+   `--lang it` start path, which was `/it/why` because a bare language prefix was
+   a 404 on 0.101.0 and the front page could not be translated anyway. It is
+   `/it/` now, which is the address a reader who clicks the switcher lands on.
+3. **Finding 18, `build_hreflang_links` reachable only from its own tests.** Both
+   routes call it now. What came out: the `{# No alternate-language links. #}`
+   block in `templates/base.html`, which is the site's own `base.html` overriding
+   the kernel's and had dropped the tags the kernel's emitted; and the paragraph
+   of hand-written cross-language links at the bottom of all four Italian bodies,
+   `<strong>In italiano:</strong>` followed by three Italian links and an
+   `<a hreflang="en">English</a>`. Those were the site's hand-built `hreflang`
+   links, and they are what a reader saw instead of a switcher. A test now fails
+   if a translation carries either string again.
+
+### The fix loop: an alternate that named `/item/{uuid}`
+
+Removing the base.html block emitted the kernel's alternates, and on the
+language-prefixed pages they were wrong:
+
+```
+/it/why  <link rel="alternate" hreflang="en"  href="/item/0193b000-0003-…">
+         <link rel="alternate" hreflang="it"  href="/it/item/0193b000-0003-…">
+         <link rel="canonical"                href="https://trovato.rs/item/0193b000-0003-…">
+```
+
+Which is precisely the harm the removed comment had warned about: telling a
+crawler that a page's canonical address and its alternates are different
+addresses. `/why` was correct at the same moment, which is what made it findable.
+
+Root cause, and it is the site's own omission rather than a kernel defect. The
+item route resolves a page's canonical address with
+`get_canonical_alias_with_context(source, stage, language)`, which filters
+`url_alias` by the request's language exactly. Every alias this site declares
+carries `language: en`. So on an `it` request the lookup found nothing and fell
+back to `/item/{uuid}`, and 0.102.0 then built the alternates, the switcher and
+the canonical out of that fallback. The forward lookup that serves the request,
+`find_by_alias_with_context`, does fall back to `en`, which is why `/it/why`
+served the right page the whole time and only its metadata was wrong.
+
+The fix is four files: the four translated pages' aliases declared a second time
+with `language: it`. The table's unique key is `(alias, language, stage_id)`, so
+one path in two languages is the shape it is built for. Afterwards:
+
+```
+/it/why  <link rel="alternate" hreflang="en"        href="/why">
+         <link rel="alternate" hreflang="it"        href="/it/why">
+         <link rel="alternate" hreflang="x-default" href="/why">
+         <link rel="canonical"                      href="https://trovato.rs/why">
+```
+
+`/it/why`'s canonical was `https://trovato.rs/item/0193b000-…` on 0.101.0 too, so
+this loop fixed a defect that had shipped rather than one the bump introduced.
+
+Two tests came out of it. `no_two_aliases_claim_the_same_path` is now keyed on
+`(alias, language)`, which is what its own comment always said the database
+constraint was. And `every_translated_page_has_an_alias_in_its_own_language`
+fails if a translation arrives without its alias, which is the trap this loop
+fell into.
+
+### Two more things the bump paid for, unasked
+
+- **The active navigation trail works on aliased pages.** `requested_path` is new
+  in 0.102.0: the address as asked for, before a language prefix was stripped and
+  before an alias was resolved. The site's own navigation matched on
+  `current_path`, which on an aliased item is `/item/{uuid}` and equals no menu
+  link, so `aria-current="page"` and the active class were absent on every page
+  except the listings. Both appear now, on `/why`, `/get-started` and their
+  Italian addresses, with a fallback for a route that does not set it.
+- **A reader who logs in to comment comes back to the page.** Not a change here,
+  a consequence of the alias fix: the comment form's return address was
+  `/item/{uuid}` on a prefixed page and is the page's alias now. It is also why
+  the crawl is three addresses shorter.
+
+### Findings
+
+New, all of them phrased for the kernel's backlog, none fixable from here, and
+all seven recorded in `docs/REPORT.md` under "What the bump revealed":
+
+1. `get_canonical_alias_with_context` has no default-language fallback while
+   `find_by_alias_with_context` has one and documents why. The asymmetry is what
+   the fix loop above cost.
+2. A gather listing and a themed plugin page get no `available_translations`, so a
+   theme can offer no per-page switcher on `/news`, `/blog`, `/learn`, `/search`
+   or `/contact`. The site offers an entry-point link there instead.
+3. `tap_item_view` is not told the language the page is served in, and
+   `Item.language` is the item's own, so a plugin's output cannot follow the page.
+   Visible as an English listing heading on the Italian front page.
+4. A translated menu link keeps its default-language label unless the label is the
+   target's exact default title, and nothing lets a site supply the translated
+   label. Visible as "Why" over an Italian address.
+5. `render_thread` builds its own context, with the item's default-language
+   canonical and no `requested_path`, so the login link on `/it/why` returns a
+   reader to `/why`.
+6. `trovato_seo`'s JSON-LD carries the untranslated title on a translated page.
+7. The site name and slogan are not translatable, so an Italian page carries an
+   English slogan.
+
+Three of the original twenty-two were themselves wrong in part, and the
+corrections are recorded with the findings rather than quietly applied: finding
+10's claim that import does not update `changed` (it does, from the file), finding
+19's claim that no plugin uses `item-api` (`plugins/argus` hand-rolls a binding,
+and did at 0.101.0), and finding 13's count of seventeen plugins (16 plugins, 22
+menu entries, and the cause is that the frozen SDK's `MenuDefinition` has no
+`handler_type` field at all). Finding 11's "every other entity defaults that
+field" is imprecise too: they carry a bare `i64`, and `Role` is the outlier
+because its `created` is a `DateTime<Utc>`.
+
+Finding 14 is settled in the other direction. `elements/comments.html` is in the
+0.102.0 image at `/app/templates/elements/comments.html`, and in the 0.101.0
+image as well, so the original finding was wrong rather than fixed. The site still
+supplies its own copy, which wins the name collision and is the markup the theme
+is built around.
+
+### What did not move
+
+Eighteen of the twenty-two are open, and the reason is visible in the release
+itself: `git diff --stat v0.101.0 v0.102.0` does not touch `middleware/rate_limit.rs`,
+`host/variables.rs`, `routes/sitemap.rs`, `routes/static_files.rs`,
+`middleware/security_headers.rs`, `middleware/query_profiler.rs`, the config
+storage, the theme engine, `templates/user/login.html` or `trovato_blog`. Every
+finding rooted in those files is unchanged by construction. 0.102.0 is the AI
+assistant and the multilingual half; the rest of the list was not in its scope.
+
+One of them reproduced itself during this gate: the accessibility pass and the
+crawl both hit 429 on static assets and had to wait a minute, which is finding 1,
+at 0.102.0, measured without trying to.
+
+Finding 16 is open at 0.102.0 and fixed on kernel main 21 commits past the tag, so
+it will arrive in the next release.
+
+### The numbers, against Gate 9's
+
+Both columns measured on the same machine in the same session, the 0.101.0 column
+re-run rather than quoted, so the comparison is not against a remembered figure.
+
+| Gate | 0.101.0 | 0.102.0 |
+|---|---|---|
+| Clean-room rebuild, volumes destroyed and `overlay/` removed | 24.7s | **22.5s** |
+| Plugin build against the pinned SDK | — | 2.04s, no source change |
+| Test suites | 8 green | **8 green**, 67 tests |
+| Crawl from `/` and `/llms.txt` | 191 pages, clean | **188 pages, clean** |
+| Crawl including the Italian entry point | 191 pages, clean | **188 pages, clean**, entered at `/it/` rather than `/it/why` |
+| axe-core, one page per template family, both colour schemes | 18 renders, no violations | **18 renders, no violations** |
+| Screenshots, both widths, both schemes | 36, no overflow, nothing unthemed, nothing off-origin | **36, same** |
+| Config round-trip | 126 entities at Gate 9 | **133 entities** (61 in `config/`, 72 in `config/docs/`); 129 of them are Gate 9's set, and the four new ones are this gate's Italian alias rows |
+| Moderation fails closed | PASS | **PASS** |
+| Production profile over TLS, `./scripts/check-production.sh` | PASS | **PASS** — TLS, HSTS, the caching policy, the private session, the absolute sitemap, the www redirect, the HTTP redirect, and only the proxy publishing a port |
+| Documentation mirror matches its pinned tag | PASS | **PASS** — 36 documents, 0 stale, still `v0.101.0` |
+
+The three fewer crawled addresses are explained above: four
+`/user/login?destination=/item/{uuid}` addresses collapsed onto the aliases they
+should always have been, and `/it/` became a page.
+
+Nothing broke on the bump. The one thing that had to be fixed was a defect of the
+site's own that 0.102.0 made visible by building new output out of it, and the
+plugin that the whole repository exists to ship compiled against the new SDK
+without a line changing.

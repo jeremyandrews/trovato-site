@@ -1,0 +1,18 @@
+# The Italian alias for Comunità, the same path as the English one in a second
+# language.
+#
+# Why a second row rather than nothing: the kernel resolves a page's canonical
+# address from its source with `get_canonical_alias_with_context`, which filters
+# `url_alias` by the request's language exactly. The forward lookup that serves
+# the request falls back to `en`; that reverse one does not. Without this row
+# `/it/community` resolved no canonical and fell back to `/item/{uuid}`, which then
+# became the page's canonical link, both of its `hreflang` alternates and the
+# address the footer switcher offered. The table's unique key is
+# (alias, language, stage_id), so one path in two languages is the shape it is
+# built for.
+id: '0193b000-0004-7001-8000-000000000007'
+source: /item/0193b000-0003-7000-8000-000000000007
+alias: /community
+language: it
+stage_id: '0193a5a0-0000-7000-8000-000000000001'
+created: 1785542400

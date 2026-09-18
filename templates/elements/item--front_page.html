@@ -12,10 +12,25 @@
 <div class="front__body">
     {{ item.fields.body | safe }} {# SAFE: see above. #}
 
+    {# The two calls to action, in the language the page is being served in.
+
+       They are in the template rather than in the copy because they sit between
+       two fields the template places, and they follow the language because
+       `active_language` reaches a template on 0.102.0: the route sets it and
+       `inject_site_context` no longer overwrites it. On 0.101.0 this block was
+       English on the Italian front page, which was one of the reasons there was
+       no Italian front page. #}
+    {% if active_language == 'it' %}
+    <nav class="front-hero__actions" aria-label="Come iniziare">
+        <a class="button" href="/it/get-started">Come iniziare</a>
+        <a class="button button--secondary" href="/it/why">Perché Trovato</a>
+    </nav>
+    {% else %}
     <nav class="front-hero__actions" aria-label="Get started">
         <a class="button" href="/get-started">Get started</a>
         <a class="button button--secondary" href="/why">Why Trovato</a>
     </nav>
+    {% endif %}
 
     {{ item.fields.proof | safe }} {# SAFE: see above. #}
 </div>

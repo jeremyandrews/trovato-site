@@ -17,10 +17,12 @@ import { BASE } from "./pages.mjs";
 const startPaths = ["/", "/llms.txt"];
 if (process.argv.includes("--lang")) {
   const lang = process.argv[process.argv.indexOf("--lang") + 1];
-  // Not `/${lang}/`: the bare language prefix does not resolve on this kernel,
-  // and the front page cannot be translated anyway, so the Italian starts at the
-  // page the footer links to. See docs/LEDGER.md, Gate 9.
-  if (lang) startPaths.push(`/${lang}/why`);
+  // `/${lang}/` — the address a translated site is most often entered on, and
+  // the one a reader who picks the switcher on the front page lands on. On
+  // 0.101.0 it was a 404 (a language prefix reached content aliases and nothing
+  // else) and the front page could not be translated either, so the Italian had
+  // to start at `/${lang}/why` instead. Both are fixed on 0.102.0.
+  if (lang) startPaths.push(`/${lang}/`);
 }
 
 // Paths that are not pages: they are documents, or they change state.

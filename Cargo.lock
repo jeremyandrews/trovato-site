@@ -670,8 +670,8 @@ dependencies = [
 
 [[package]]
 name = "trovato-sdk"
-version = "0.101.0"
-source = "git+https://github.com/jeremyandrews/trovato?rev=5304a687192e49743daa0b63666e4d1afabc43eb#5304a687192e49743daa0b63666e4d1afabc43eb"
+version = "0.102.0"
+source = "git+https://github.com/jeremyandrews/trovato?rev=20baa121810b5c656b3f80028335770069fab5e0#20baa121810b5c656b3f80028335770069fab5e0"
 dependencies = [
  "serde",
  "serde_json",
@@ -681,8 +681,8 @@ dependencies = [
 
 [[package]]
 name = "trovato-sdk-macros"
-version = "0.101.0"
-source = "git+https://github.com/jeremyandrews/trovato?rev=5304a687192e49743daa0b63666e4d1afabc43eb#5304a687192e49743daa0b63666e4d1afabc43eb"
+version = "0.102.0"
+source = "git+https://github.com/jeremyandrews/trovato?rev=20baa121810b5c656b3f80028335770069fab5e0#20baa121810b5c656b3f80028335770069fab5e0"
 dependencies = [
  "proc-macro2",
  "quote",

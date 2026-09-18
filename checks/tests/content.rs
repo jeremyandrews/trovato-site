@@ -49,9 +49,18 @@ fn scalar(text: &str, key: &str) -> Option<String> {
         .map(|(_, v)| v.trim().trim_matches('\'').trim_matches('"').to_string())
 }
 
+/// One `url_alias.*.yml`: the item it points at, the path it claims, and the
+/// language it claims it in. A page translated into a second language carries one
+/// row per language, which is what the table's unique key is shaped for.
+struct Alias {
+    source: String,
+    alias: String,
+    language: String,
+}
+
 struct Content {
     items: HashMap<String, String>,
-    aliases: Vec<(String, String)>,
+    aliases: Vec<Alias>,
 }
 
 fn content() -> Content {
@@ -64,9 +73,11 @@ fn content() -> Content {
             let title = scalar(&text, "title").unwrap_or_default();
             items.insert(id, title);
         } else if name.starts_with("url_alias.") {
-            let source = scalar(&text, "source").unwrap_or_default();
-            let alias = scalar(&text, "alias").unwrap_or_default();
-            aliases.push((source, alias));
+            aliases.push(Alias {
+                source: scalar(&text, "source").unwrap_or_default(),
+                alias: scalar(&text, "alias").unwrap_or_default(),
+                language: scalar(&text, "language").unwrap_or_default(),
+            });
         }
     }
 
@@ -77,12 +88,13 @@ fn content() -> Content {
 fn every_alias_points_at_something_that_exists() {
     let c = content();
     let mut broken = Vec::new();
-    for (source, alias) in &c.aliases {
-        if let Some(id) = source.strip_prefix("/item/")
+    for entry in &c.aliases {
+        if let Some(id) = entry.source.strip_prefix("/item/")
             && !c.items.contains_key(id)
         {
             broken.push(format!(
-                "{alias} points at /item/{id}, which no file declares"
+                "{} points at /item/{id}, which no file declares",
+                entry.alias
             ));
         }
     }
@@ -99,7 +111,7 @@ fn no_item_is_orphaned() {
     let aliased: HashSet<&str> = c
         .aliases
         .iter()
-        .filter_map(|(source, _)| source.strip_prefix("/item/"))
+        .filter_map(|entry| entry.source.strip_prefix("/item/"))
         .collect();
 
     let front_page = "0193b000-0000-7000-8000-000000000001";
@@ -134,21 +146,75 @@ fn no_two_items_claim_the_same_title() {
 }
 
 #[test]
-fn no_two_aliases_claim_the_same_path() {
+fn no_two_aliases_claim_the_same_path_in_one_language() {
     // The database has a unique constraint on (alias, language, stage_id), so the
     // second import silently replaces the first and one of the two pages becomes
     // unreachable without an error anywhere.
+    //
+    // Keyed on the pair the constraint is keyed on. One path in two languages is
+    // the shape a translated page needs — `/why` in `en` and in `it`, pointing at
+    // the same item — and is how the kernel resolves a language-prefixed address
+    // back to a reader-facing one.
     let c = content();
-    let mut seen: HashMap<&str, usize> = HashMap::new();
-    for (_, alias) in &c.aliases {
-        *seen.entry(alias.as_str()).or_default() += 1;
+    let mut seen: HashMap<(&str, &str), usize> = HashMap::new();
+    for entry in &c.aliases {
+        *seen
+            .entry((entry.alias.as_str(), entry.language.as_str()))
+            .or_default() += 1;
     }
-    let duplicates: Vec<&str> = seen
+    let duplicates: Vec<String> = seen
         .iter()
         .filter(|(_, n)| **n > 1)
-        .map(|(a, _)| *a)
+        .map(|((alias, language), _)| format!("{alias} ({language})"))
         .collect();
     assert!(duplicates.is_empty(), "duplicate aliases: {duplicates:?}");
+}
+
+#[test]
+fn every_translated_page_has_an_alias_in_its_own_language() {
+    // The kernel resolves a page's canonical address with
+    // `get_canonical_alias_with_context(source, stage, language)`, which filters
+    // `url_alias` by the language exactly. The forward lookup
+    // (`find_by_alias_with_context`) falls back to `en`; this reverse one does
+    // not. So an item translated into Italian and aliased only in English
+    // resolves no canonical on `/it/…` and falls back to `/item/{uuid}` — which
+    // then becomes its canonical link, its `hreflang` alternates and the address
+    // the language switcher offers.
+    //
+    // Declaring the alias in both languages is what the table's unique key is
+    // shaped for, and it is the site's own omission rather than something the
+    // kernel does wrong. The asymmetry between the two lookups is recorded as a
+    // finding.
+    let path = config_dir().join("variable.plugin.trovato_site.site_translations.yml");
+    let text = std::fs::read_to_string(&path).expect("the translations file is readable");
+    let json = text.split_once("value: ").expect("the file has a value").1;
+    let translations: serde_json::Value =
+        serde_json::from_str(json).expect("the value is valid JSON");
+
+    let front_page = "0193b000-0000-7000-8000-000000000001";
+    let c = content();
+    let mut missing = Vec::new();
+
+    for (item_id, languages) in translations.as_object().into_iter().flatten() {
+        // The front page's address is `/`, which cannot be aliased; the front
+        // route names `/` and `/{lang}/` itself.
+        if item_id == front_page {
+            continue;
+        }
+        let source = format!("/item/{item_id}");
+        for language in languages.as_object().into_iter().flatten().map(|(l, _)| l) {
+            let has = c
+                .aliases
+                .iter()
+                .any(|a| a.source == source && &a.language == language);
+            if !has {
+                missing.push(format!(
+                    "{item_id}: translated into {language}, no {language} alias"
+                ));
+            }
+        }
+    }
+    assert!(missing.is_empty(), "\n{}\n", missing.join("\n"));
 }
 
 /// A file's reader-visible copy: comment lines removed, and nothing at all for a
@@ -276,13 +342,37 @@ fn every_translation_names_an_item_that_exists() {
     );
 }
 
+/// How a field is stored, in the two shapes this site's items use.
+///
+/// `{value, format}` is what a filtered field carries and what the renderer
+/// looks for. A bare string is what the front page's `body` and `proof` carry on
+/// purpose, so that the handler passes them through untouched and the template
+/// places them.
+fn field_shape(field: &serde_json::Value) -> &'static str {
+    if field.get("value").and_then(|v| v.as_str()).is_some()
+        && field.get("format").and_then(|v| v.as_str()).is_some()
+    {
+        "{value, format}"
+    } else if field.is_string() {
+        "a bare string"
+    } else {
+        "neither {value, format} nor a bare string"
+    }
+}
+
 #[test]
-fn a_translated_field_has_the_shape_the_item_stores() {
+fn a_translated_field_has_the_shape_the_item_it_overlays_stores() {
     // apply_translation_overlay merges the translation's fields into the item's,
-    // key for key. A translation that stores a bare string where the item stores
-    // `{value, format}` replaces a renderable field with one the renderer skips,
-    // and the page loses that field in that language only. Silent, and only
-    // visible to somebody reading the translated page.
+    // key for key, so the shape a translation stores has to be the shape that
+    // item stores — not one shape for the whole site. A `{value, format}` field
+    // translated as a bare string replaces a renderable field with one the
+    // renderer skips; a bare string translated as `{value, format}` renders the
+    // object's debug spelling into the page. Both are silent, and both are
+    // visible only to somebody reading the translated page.
+    //
+    // Checked against each item's own file rather than against a constant,
+    // because the front page's fields are deliberately bare strings and the
+    // other four pages' are deliberately not.
     let path = config_dir().join("variable.plugin.trovato_site.site_translations.yml");
     let text = std::fs::read_to_string(&path).expect("the translations file is readable");
     let json = text.split_once("value: ").expect("the file has a value").1;
@@ -290,17 +380,29 @@ fn a_translated_field_has_the_shape_the_item_stores() {
 
     let mut wrong = Vec::new();
     for (item_id, languages) in value.as_object().into_iter().flatten() {
+        let item_path = config_dir().join(format!("item.{item_id}.yml"));
+        let item_text =
+            std::fs::read_to_string(&item_path).expect("the translated item's file is readable");
+        let item: serde_json::Value =
+            serde_yml::from_str(&item_text).expect("the item file is valid YAML");
+        let item_fields = item.get("fields").and_then(|f| f.as_object());
+
         for (language, translation) in languages.as_object().into_iter().flatten() {
             let Some(fields) = translation.get("fields").and_then(|f| f.as_object()) else {
                 wrong.push(format!("{item_id}/{language}: no fields"));
                 continue;
             };
             for (name, field) in fields {
-                let ok = field.get("value").and_then(|v| v.as_str()).is_some()
-                    && field.get("format").and_then(|v| v.as_str()).is_some();
-                if !ok {
+                let Some(stored) = item_fields.and_then(|f| f.get(name)) else {
                     wrong.push(format!(
-                        "{item_id}/{language}/{name}: not {{value, format}}"
+                        "{item_id}/{language}/{name}: the item has no such field"
+                    ));
+                    continue;
+                };
+                let (want, got) = (field_shape(stored), field_shape(field));
+                if want != got {
+                    wrong.push(format!(
+                        "{item_id}/{language}/{name}: the item stores {want}, the translation is {got}"
                     ));
                 }
             }
@@ -311,20 +413,44 @@ fn a_translated_field_has_the_shape_the_item_stores() {
 
 #[test]
 fn the_translated_pages_are_the_ones_that_were_promised() {
-    // Four core pages. The front page is deliberately absent: routes/front.rs
-    // renders the configured front-page item without applying a translation
-    // overlay, so a front-page translation would be configuration nothing reads.
+    // Five: the four core pages and the front page. The front page was absent
+    // until 0.102.0, because routes/front.rs rendered the configured front-page
+    // item without applying a translation overlay and a front-page translation
+    // was configuration nothing read. It applies the overlay now and serves the
+    // result at `/it/`, which is also the address the switcher and the hreflang
+    // alternates name.
     let path = config_dir().join("variable.plugin.trovato_site.site_translations.yml");
     let text = std::fs::read_to_string(&path).expect("the translations file is readable");
     let json = text.split_once("value: ").expect("the file has a value").1;
     let value: serde_json::Value = serde_json::from_str(json).expect("the value is valid JSON");
 
     let count = value.as_object().map_or(0, serde_json::Map::len);
-    assert_eq!(count, 4, "expected four translated pages, found {count}");
+    assert_eq!(count, 5, "expected five translated pages, found {count}");
 
     let front = "0193b000-0000-7000-8000-000000000001";
     assert!(
-        value.get(front).is_none(),
-        "the front page cannot be translated on this kernel; see docs/LEDGER.md"
+        value.get(front).is_some(),
+        "the front page is translated from 0.102.0 on; see docs/LEDGER.md"
     );
+}
+
+#[test]
+fn no_translation_hand_builds_its_own_language_links() {
+    // Until 0.102.0 a template could not tell which language it was rendering
+    // and could not work out a page's address in another language, so each
+    // Italian page carried a paragraph of hand-written links to the other
+    // Italian pages and back to English. The kernel supplies
+    // `available_translations` and `hreflang_links` now, the footer builds a
+    // real switcher from them, and the menus follow the language — so a page
+    // that hand-builds them again is a page whose links will drift out of step
+    // with the ones the kernel emits.
+    let path = config_dir().join("variable.plugin.trovato_site.site_translations.yml");
+    let text = std::fs::read_to_string(&path).expect("the translations file is readable");
+    for needle in ["In italiano:", "hreflang="] {
+        assert!(
+            !text.contains(needle),
+            "a translation carries a hand-built language link ({needle}); \
+             the footer switcher and the kernel's hreflang_links cover this"
+        );
+    }
 }
