@@ -1,16 +1,76 @@
+# The news post about how this site is built.
+#
+# The counts in the config paragraph are the contents of `config/` and will go
+# stale if entities are added without touching them. They are deliberately the
+# hand-written set and do not include the mirrored documentation under
+# `config/docs/`, which is generated and would make the number meaningless.
+#
+# The two findings quoted at the end are numbers 1 and 2 in docs/REPORT.md.
+# Their statuses there are re-derived against the tag this site runs, so if a
+# future release fixes one, the post is wrong and REPORT.md is the place that
+# will say so first.
 id: '0193b000-0001-7000-8000-000000000003'
 type: news
 title: This site runs on a released Trovato
 language: en
 status: 1
 created: 1787529600
-changed: 1787529600
+changed: 1789725600
 fields:
   body:
     value: |
-      <p>trovato.rs is built as an external application on a published release image. It adds a plugin, some templates, a config set and its own static files, and it patches nothing in the kernel. Whatever it needed that the kernel did not have is written down rather than worked around.</p>
-      <p>The site's own repository is <a href="https://github.com/jeremyandrews/trovato-site">jeremyandrews/trovato-site</a>.</p>
+      <p>This website is an application. That is an odd word for a website, and it is the right one, so it is worth being clear about what it means here.</p>
+
+      <p>Trovato is not a framework you build a site inside. There is no step where you clone the kernel, add your own code to it, and run the result. The kernel ships as a published release image, and this site is a separate repository that runs on that image without altering it. What makes that possible is three environment variables. <code>PLUGINS_DIR</code>, <code>TEMPLATES_DIR</code> and <code>STATIC_DIR</code> are not single directories but colon-separated search paths, and this site sets each to the kernel&#8217;s own directory followed by its own. A later entry replaces an earlier file of the same name. That is the entire integration mechanism, and it is what lets &#8220;not a fork&#8221; be a fact about how the site is deployed rather than a claim about intent.</p>
+
+      <p>Four things get layered on that way. Here is what each one is.</p>
+
+      <h2>A plugin</h2>
+
+      <p>A plugin is a WebAssembly module that implements named extension points, which Trovato calls taps. The kernel calls them; the plugin does not reach out.</p>
+
+      <p>This site&#8217;s plugin is <code>trovato_site</code>, about 1,400 lines of Rust. It declares the <code>news</code> content type through <code>tap_item_info</code>, which is why this page exists as a kind of thing rather than as a page somebody styled. It renders the listing of recent posts on the front page. It builds the sitemap, because the kernel&#8217;s own emits relative URLs and the protocol requires absolute ones. And through <code>tap_cron</code> it carries the site&#8217;s Italian translations into the database on each tick, for reasons that are the last section of this post.</p>
+
+      <p>Its manifest is about twenty lines and worth reading, because it is the whole of what the plugin can touch: three host interfaces, three database tables, and the raw-SQL flag. <a href="/blog/what-a-plugin-may-reach">What a plugin may reach</a> goes through what each of those means and why this one declares what it does.</p>
+
+      <h2>Some templates</h2>
+
+      <p>A template override here is not a patch and not a hook. It is a file with the same name, earlier in the search path, and the kernel never knows the difference.</p>
+
+      <p><code>base.html</code> and <code>page.html</code> replace the kernel&#8217;s own, which is where the site gets its head metadata, its navigation and its footer. The four files under <code>gather/</code> render the listings, one per query. And <code>elements/item--docs.html</code> is the interesting one: it ignores the kernel&#8217;s rendered <code>children</code> entirely and reads <code>item.fields.html</code> directly, because for a mirrored document those fields already are the rendered HTML, and running them through the field pipeline would print the whole document twice, once escaped. Every page of documentation on this site reaches the reader through that one decision.</p>
+
+      <h2>A config set</h2>
+
+      <p>The <code>config/</code> directory is the site as data, one YAML file per entity, each with a stable UUID: 19 URL aliases, 17 menu links, 13 content items, 7 variables, 4 Gather queries, 2 languages and a role. Everything the site is, apart from the code, is in there.</p>
+
+      <p>Which means it exports, it is reviewed in a pull request like anything else, and it imports into the next environment unchanged. <code>./scripts/check-roundtrip.sh</code> is the gate that keeps that honest: it exports the running site&#8217;s configuration and checks that every key this repository declares comes back with the same value. The front page says queries are configuration and not strings in a template. This is that claim with a build step attached.</p>
+
+      <h2>Its own static files</h2>
+
+      <p>The kernel ships a <code>static/</code> of its own, so the site&#8217;s entry in <code>STATIC_DIR</code> comes second and its files win by name: <code>tokens.css</code> and <code>site.css</code> for the theme, <code>code.css</code> for the syntax colours, Inter and JetBrains Mono, the brand SVGs, the generated illustrations, and <code>passkey-login.js</code>.</p>
+
+      <p>The fonts are worth a sentence. They are here, in the repository, rather than fetched from anybody&#8217;s content delivery network, and nothing else on any page is fetched from another origin either. <code>npm run shoot</code> is the gate: it loads every page, records every request, and fails the build if one of them leaves this site.</p>
+
+      <h2>What it actually cost</h2>
+
+      <p>Building this site found twenty-two things wrong with or missing from the kernel. They are listed in <code>docs/REPORT.md</code> in the site&#8217;s repository, each with its status re-derived against the release the site now runs: three fixed at 0.102.0, eighteen still open, and one that could not be reproduced and is recorded as such.</p>
+
+      <p>None of them was patched in the kernel. Each was worked around in the site&#8217;s own layer and written down. Two show what that looks like in practice.</p>
+
+      <p>The first is that static assets are rate-limited as though they were API calls, at 100 requests per minute per address, with no configuration to change it. The 101st request for a stylesheet returns 429. A page here pulls about ten subresources, so a reader gets roughly ten pages in before their fonts stop loading. The site&#8217;s answer is that the front proxy serves <code>/static</code> and the kernel never sees those requests. Both browser gates hit the limit while crawling this release, which is the finding reproducing itself on the way past.</p>
+
+      <p>The second is that nothing in the kernel can write a content translation. Configuration import stores a per-language field map inside the item&#8217;s own fields, where the renderer looks for a value, finds a language code, and renders nothing in every language. The two administrative routes that would do it are registered for <code>GET</code> and their templates are not in the image. There is no endpoint. So the site keeps its translations in configuration and its plugin&#8217;s <code>tap_cron</code> writes them into the <code>item_translation</code> table itself. That is why a table called <code>item_translation</code> appears in the manifest of a plugin that otherwise only reads.</p>
+
+      <h2>What that buys</h2>
+
+      <p>So &#8220;not a fork&#8221; is not a boast about discipline. It means the kernel image is the published one, unchanged, and that everything this site does is a file in a search path or a row in a config set.</p>
+
+      <p>What that buys is the upgrade. Moving this site from 0.101.0 to 0.102.0 was a change to a pinned version and a run of the gates. The plugin compiled against the new kernel without a line changing, and three of the twenty-two findings were fixed, which meant three workarounds came out: a hardcoded Italian link in the footer of every page became a real per-page switcher, a paragraph of hand-written cross-language links came off the bottom of four Italian pages, and the Italian front page, written months earlier and deliberately not committed because nothing would have read it, went in.</p>
+
+      <p>It would be tidier to stop there, and it would be wrong. Moving one release also turned up seven things that were not on the original list at all, most of them places where the new release&#8217;s own facts stop one step short of the theme that has to use them, and some of those needed answers of their own. That is the honest shape of the thing: a release closed three holes and showed where seven more are. What it did not require, either time, was touching the kernel, which is the property being described here. Nothing had to be unpicked, because nothing had been patched in.</p>
+
+      <p>The site&#8217;s own repository is <a href="https://github.com/jeremyandrews/trovato-site">jeremyandrews/trovato-site</a>, including the report and the build log.</p>
     format: filtered_html
   summary:
-    value: The website is an external application on a released kernel, not a fork of it.
+    value: Three environment variables, twenty-two findings, and no patches to the kernel.
     format: plain_text
