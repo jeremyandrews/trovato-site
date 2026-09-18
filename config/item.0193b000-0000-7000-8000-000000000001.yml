@@ -28,7 +28,7 @@ changed: 1785542400
 fields:
   body: |
     <p class="front-hero__lede">A content management system written in Rust.</p>
-    <p class="front-hero__sub">I have worked with Drupal since 2002, and Drupal 6 got the mental model right: everything is an item, any type takes fields, queries are built rather than written. Trovato keeps the model and replaces the implementation. Content is one JSONB row instead of a join per field. Plugins are WebAssembly modules in their own sandbox. Gather stands where Views used to. <a href="/why">The whole argument is on the Why page.</a></p>
+    <p class="front-hero__sub">An item, which is what Trovato calls one piece of content, is a single database row with its fields in one JSONB column, so adding a field to a content type changes no schema. Plugins are WebAssembly modules that reach only what they declare. Every listing on a site is a query you build and keep as configuration, not a string in a template. It is for a site whose content has to outlive a few redesigns, run by people who would rather review a change than find it in production.</p>
   proof: |
     <section class="front-features" aria-label="The three claims">
       <a class="feature-card" href="/why">
@@ -40,13 +40,13 @@ fields:
       <a class="feature-card" href="/rust">
         <img src="/static/art/icon-sandbox.svg" alt="" aria-hidden="true" width="120" height="120">
         <h2 class="feature-card__title">A sandbox with a manifest</h2>
-        <p class="feature-card__text">A plugin is a WebAssembly module, and its manifest is the whole of what it may reach. Declare nothing, get nothing.</p>
+        <p class="feature-card__text">A plugin is a WebAssembly module, and the kernel builds its linker from the interfaces it declared. One it did not declare is not refused when it is called. There is nothing to link it to.</p>
         <span class="feature-card__more">The plugin contract</span>
       </a>
       <a class="feature-card" href="/learn">
         <img src="/static/art/icon-gather.svg" alt="" aria-hidden="true" width="120" height="120">
         <h2 class="feature-card__title">Queries are built</h2>
-        <p class="feature-card__text">Gather fills the role Views did: a query is configuration, so it exports to a file, survives review, and imports next door.</p>
+        <p class="feature-card__text">Gather is the query engine. A listing is a definition rather than a string, so it exports to a file, is reviewed in a pull request, and imports next door unchanged.</p>
         <span class="feature-card__more">The documentation</span>
       </a>
     </section>
@@ -82,15 +82,18 @@ fields:
     <section class="proof proof-split" aria-labelledby="proof-sandbox">
       <h2 class="proof__title" id="proof-sandbox">A plugin that declares nothing gets nothing</h2>
       <div class="proof__copy">
-        <p>Every plugin is a WebAssembly module with a manifest, and the manifest is the whole of what it may reach. The kernel builds that plugin&#8217;s linker from the list and exposes those host interfaces and no others. This is the manifest of the plugin that renders the listing further down this page:</p>
+        <p>A plugin is a WebAssembly module, and it arrives with a manifest. The kernel reads the manifest and builds that plugin a linker of its own, holding the host interfaces it named and nothing else. So a module that imports an interface it did not declare does not get as far as being refused: it fails to instantiate, because there is nothing on the other side of the import. The check is not made when the call happens. The call cannot be built.</p>
+        <p>This is the manifest of the plugin that renders the listing at the bottom of this page:</p>
         <figure class="code">
           <figcaption class="code__lang">toml</figcaption>
           <pre class="code__body"><code>[capabilities]
     host_interfaces = ["db", "logging", "variables"]
-    db_tables = ["item", "url_alias"]
+    db_tables = ["item", "url_alias", "item_translation"]
     raw_sql = true</code></pre>
         </figure>
-        <p>It reads two tables and it says which two. There is no filesystem at all: the runtime hand-writes five WASI stubs and opens no directories, so a plugin that asks to write a file gets <code>ENOSYS</code>. There is no path from one plugin&#8217;s memory into another&#8217;s. A plugin that names no interfaces is handed an empty linker and can do arithmetic.</p>
+        <p>It reads two tables, writes a third, and names all three. <code>host_interfaces</code> is drawn from a closed list of thirteen, fixed by the kernel: a manifest naming anything else is rejected when it is parsed, and no plugin can add a fourteenth, only a kernel release can. <code>db_tables</code> is open, and it is half of the allowlist: the other half is every table the plugin&#8217;s own migrations create, which it gets without asking. What it lists here is what it wants to reach that it did not create itself.</p>
+        <p>The last line is the awkward one, and it is on the page because leaving it off would be the dishonest version. <code>raw_sql</code> lets a plugin run SQL the kernel does not check against that table list, and the kernel gates the flag rather than parsing the query. This plugin takes it because its listing is one <code>ORDER BY</code> across two content types joined to their aliases with a <code>LIMIT</code>, which the structured item API cannot say in one call. The guarantee is not that no plugin ever takes the escape hatch. It is that taking it is a line in a file somebody reviews, and you can see who took it.</p>
+        <p>The rest of the sandbox is the same shape. There is no filesystem: the runtime hand-writes five WASI stubs and opens no directories, so a plugin that asks to write a file gets <code>ENOSYS</code>. There is no path from one plugin&#8217;s memory into another&#8217;s. A plugin that names no interfaces at all is handed an empty linker, and can do arithmetic. <a href="/blog/what-a-plugin-may-reach">What a plugin may reach</a> goes through all thirteen interfaces one by one.</p>
       </div>
       <div class="proof__art">
         <img src="/static/art/diagram-sandbox.svg" alt="" aria-hidden="true" width="720" height="400">
@@ -100,12 +103,12 @@ fields:
     <section class="proof proof-split proof-flip" aria-labelledby="proof-storage">
       <h2 class="proof__title" id="proof-storage">Twenty fields, one row</h2>
       <div class="proof__copy">
-        <p>In Drupal 6, CCK gave every field its own table, so a content type with twenty fields was twenty tables and loading one node was twenty joins. Trovato keeps the model and stores an item as one row with one JSONB column. Twenty fields is twenty keys, and loading the item is one read.</p>
+        <p>An item is one row, and its fields are one JSONB column on that row. A content type with twenty fields is twenty keys in that column, not twenty tables and not twenty joins. Adding a field to a type changes no schema, because the schema does not describe the fields. Loading an item with twenty fields on it is one read:</p>
         <figure class="code">
           <figcaption class="code__lang">sql</figcaption>
           <pre class="code__body"><code>SELECT title, fields FROM item WHERE id = $1;</code></pre>
         </figure>
-        <p>Revisions and staging belong to the migration that creates content rather than being added on top of it. Every save writes a revision, and every item carries a stage, so an editorial workflow is a property of the write path and not a plugin bolted onto it.</p>
+        <p>Two more things are on that row rather than added beside it. Every save writes a revision, which is a stored earlier version of the item, so the history is a consequence of writing rather than a feature somebody switched on. And every item carries a stage, the content environment it belongs to, such as live or draft or one campaign. Because both live in the storage every write goes through, an editorial workflow does not have to be told about each code path that writes. The words Trovato uses for all of this are laid out in <a href="/learn/design-terminology">the terminology page</a>.</p>
       </div>
       <div class="proof__art">
         <img src="/static/art/diagram-onerow.svg" alt="" aria-hidden="true" width="720" height="400">
@@ -115,7 +118,7 @@ fields:
     <section class="proof proof-split" aria-labelledby="proof-gather">
       <h2 class="proof__title" id="proof-gather">A query is a definition, not a string</h2>
       <div class="proof__copy">
-        <p>Gather fills the role Views did. A query is a base table, filters, sorts, relationships and a display, stored as configuration: it exports to a file, is reviewed in a pull request, and imports into the next environment unchanged. It has a visual builder for the people who want one and a YAML file for the people who do not.</p>
+        <p>Gather is the query engine. A query is a definition rather than a sentence of SQL: a base table, filters, sorts, relationships and a display. It is stored as configuration, so it exports to a file, is reviewed in a pull request, and imports into the next environment unchanged. It has a visual builder for the people who want one and a YAML file for the people who do not.</p>
         <p>The listing of recent posts at the bottom of this page is one, and so is every listing on this site. None of them is a SQL string in a template.</p>
       </div>
       <div class="proof__art">
