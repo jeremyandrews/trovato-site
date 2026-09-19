@@ -5,7 +5,7 @@
 # order the documents are meant to be read rather than alphabetically.
 query_id: trovato_site.docs_index
 label: Learn
-description: The Trovato documentation, mirrored from the kernel repository at v0.101.0.
+description: The Trovato documentation, mirrored from the kernel repository at v0.102.0.
 definition:
   base_table: item
   item_type: docs
