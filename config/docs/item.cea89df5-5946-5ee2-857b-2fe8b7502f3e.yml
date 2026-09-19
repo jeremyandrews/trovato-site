@@ -93,7 +93,7 @@ fields:
   section: How it works
   section_blurb: 'The design documents: what each part does and why it is shaped that way.'
   source_path: docs/design/Terminology.md
-  weight: 200
+  weight: 300
 id: cea89df5-5946-5ee2-857b-2fe8b7502f3e
 language: en
 status: 1

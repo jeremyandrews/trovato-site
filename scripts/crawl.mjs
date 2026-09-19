@@ -28,7 +28,20 @@ if (process.argv.includes("--lang")) {
 // Paths that are not pages: they are documents, or they change state.
 const SKIP = [/^\/user\/logout/, /^\/admin/, /^\/api\//, /^\/cron\//];
 // Not pages: they are documents, and have no navigation to check for.
-const DOCUMENT = [/\.xml$/, /\.txt$/, /^\/llms\.txt$/, /^\/learn\/raw\//];
+//
+// Images are in the list for the front page's gallery, whose figures link each
+// screenshot to the full-size file so a reader can open one and actually read
+// it. That is a link to a document, and demanding a skip link and a main
+// landmark of a PNG would be the check misreading its own subject. The status
+// is still checked, so a gallery pointing at a file that is not there is still
+// a failed crawl.
+const DOCUMENT = [
+  /\.xml$/,
+  /\.txt$/,
+  /^\/llms\.txt$/,
+  /^\/learn\/raw\//,
+  /\.(png|jpe?g|gif|svg|webp|avif|ico|pdf|woff2?)$/i,
+];
 
 const origin = new URL(BASE).origin;
 const seen = new Set();

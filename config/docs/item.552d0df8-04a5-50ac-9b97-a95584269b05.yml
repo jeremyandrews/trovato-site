@@ -272,7 +272,7 @@ fields:
     <li>You can install <code>ritrovo_notify</code> without <code>ritrovo_cfp</code> -- the notification worker processes whatever events arrive</li>
     <li>You can replace either plugin with a different implementation that uses the same queue name</li>
     </ul>
-    <p><a href="https://github.com/jeremyandrews/trovato/blob/v0.101.0/images/part-06/conference-with-cfp.png"><img src="images/part-06/conference-with-cfp.png" width="600" alt="A conference detail page showing the CFP closing soon badge with deadline date"></a></p>
+    <p><a href="/static/docs/images/part-06/conference-with-cfp.png"><img src="/static/docs/images/part-06/conference-with-cfp.png" width="600" alt="A conference detail page showing the CFP closing soon badge with deadline date"></a></p>
     <h3>Queue Message Format</h3>
     <p>Events on the <code>ritrovo_notifications</code> queue follow a common JSON format:</p>
     <figure class="code"><figcaption class="code__lang">json</figcaption><pre class="code__body" tabindex="0" aria-label="json code"><code class="language-json"><span class="tok-source tok-json"><span class="tok-meta tok-structure tok-dictionary tok-json"><span class="tok-punctuation tok-section tok-dictionary tok-begin tok-json">{</span>
@@ -317,7 +317,7 @@ fields:
     </span><span class="tok-meta tok-function-call tok-shell"><span class="tok-variable tok-function tok-shell"><span class="tok-meta tok-group tok-expansion tok-command tok-parens tok-shell"><span class="tok-punctuation tok-definition tok-variable tok-shell">$</span><span class="tok-punctuation tok-section tok-parens tok-begin tok-shell">(</span><span class="tok-meta tok-function-call tok-shell"><span class="tok-variable tok-function tok-shell">brew</span></span><span class="tok-meta tok-function-call tok-arguments tok-shell"><span class="tok-variable tok-parameter tok-option tok-shell"><span class="tok-punctuation tok-definition tok-parameter tok-shell"> --</span>prefix</span> libpq</span><span class="tok-punctuation tok-section tok-parens tok-end tok-shell">)</span></span>/bin/psql</span></span><span class="tok-meta tok-function-call tok-arguments tok-shell"> postgres://trovato:trovato@localhost:5432/trovato <span class="tok-punctuation tok-separator tok-continuation tok-line tok-shell">\
     </span><span class="tok-variable tok-parameter tok-option tok-shell"><span class="tok-punctuation tok-definition tok-parameter tok-shell">  -</span>c</span> <span class="tok-string tok-quoted tok-double tok-shell"><span class="tok-punctuation tok-definition tok-string tok-begin tok-shell">&quot;</span>SELECT name, status FROM plugins WHERE name IN (&#39;ritrovo_cfp&#39;, &#39;ritrovo_access&#39;, &#39;ritrovo_notify&#39;) ORDER BY name;<span class="tok-punctuation tok-definition tok-string tok-end tok-shell">&quot;</span></span></span>
     <span class="tok-comment tok-line tok-number-sign tok-shell"><span class="tok-punctuation tok-definition tok-comment tok-begin tok-shell">#</span></span><span class="tok-comment tok-line tok-number-sign tok-shell"> Expect: three rows, all status 1</span><span class="tok-comment tok-line tok-number-sign tok-shell">
-    </span></span></code></pre></figure><p><a href="https://github.com/jeremyandrews/trovato/blob/v0.101.0/images/part-06/plugins-admin.png"><img src="images/part-06/plugins-admin.png" width="600" alt="The plugin management admin page showing installed plugins with status and actions"></a></p>
+    </span></span></code></pre></figure><p><a href="/static/docs/images/part-06/plugins-admin.png"><img src="/static/docs/images/part-06/plugins-admin.png" width="600" alt="The plugin management admin page showing installed plugins with status and actions"></a></p>
     <hr />
     <h2>Step 6: Comment Notifications</h2>
     <p>The notification system extends to comments: when someone comments on a conference you are subscribed to, you receive a notification.</p>
@@ -364,7 +364,7 @@ fields:
     <li>How three plugins (<code>ritrovo_access</code>, <code>ritrovo_cfp</code>, <code>ritrovo_notify</code>) work together through taps and queues with zero coupling.</li>
     </ul>
     <p>The plugin architecture has proven itself. Each plugin is independently deployable, testable, and understandable. The kernel dispatches, the queue connects, and plugins never need to know each other exist.</p>
-    <p><a href="https://github.com/jeremyandrews/trovato/blob/v0.101.0/images/part-06/front-page-community.png"><img src="images/part-06/front-page-community.png" width="600" alt="The Ritrovo front page with community features including comments, subscriptions, and CFP badges"></a></p>
+    <p><a href="/static/docs/images/part-06/front-page-community.png"><img src="/static/docs/images/part-06/front-page-community.png" width="600" alt="The Ritrovo front page with community features including comments, subscriptions, and CFP badges"></a></p>
     <hr />
     <h2>What's Deferred</h2>
     <table><thead><tr><th>Feature</th><th>Deferred To</th><th>Reason</th></tr></thead><tbody>
@@ -908,7 +908,7 @@ fields:
   section: The tutorial
   section_blurb: Nine parts, building one real site from an empty database.
   source_path: docs/tutorial/part-06-community.md
-  weight: 90
+  weight: 190
 id: '552d0df8-04a5-50ac-9b97-a95584269b05'
 language: en
 status: 1

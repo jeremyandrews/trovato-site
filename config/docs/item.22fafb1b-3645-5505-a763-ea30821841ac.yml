@@ -942,7 +942,7 @@ fields:
   section: Writing plugins
   section_blurb: The plugin contract, the taps, and what a plugin may reach.
   source_path: docs/api-reference.md
-  weight: 170
+  weight: 270
 id: '22fafb1b-3645-5505-a763-ea30821841ac'
 language: en
 status: 1
