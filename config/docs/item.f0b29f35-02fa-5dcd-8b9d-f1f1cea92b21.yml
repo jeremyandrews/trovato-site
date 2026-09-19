@@ -213,7 +213,7 @@ fields:
   section: Start here
   section_blurb: Getting a site running and putting content in it.
   source_path: docs/building-your-first-site.md
-  weight: 20
+  weight: 120
 id: f0b29f35-02fa-5dcd-8b9d-f1f1cea92b21
 language: en
 status: 1

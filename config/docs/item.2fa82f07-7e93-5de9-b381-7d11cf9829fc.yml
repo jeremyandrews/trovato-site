@@ -146,7 +146,7 @@ fields:
     <tr><th><code>tap_cron</code></th><th>Processes translation queue; checks for items flagged as needing translation</th></tr>
     <tr><th><code>tap_form_alter</code></th><th>Adds language selector dropdown to conference edit form</th></tr>
     </tbody></table>
-    <p><a href="https://github.com/jeremyandrews/trovato/blob/v0.101.0/images/part-07/conference-with-lang.png"><img src="images/part-07/conference-with-lang.png" width="600" alt="A conference detail page showing the language indicator badge and language switcher"></a></p>
+    <p><a href="/static/docs/images/part-07/conference-with-lang.png"><img src="/static/docs/images/part-07/conference-with-lang.png" width="600" alt="A conference detail page showing the language indicator badge and language switcher"></a></p>
     <h3>Translation Status</h3>
     <p>Each item tracks its translation state:</p>
     <table><thead><tr><th>Status</th><th>Meaning</th></tr></thead><tbody>
@@ -220,7 +220,7 @@ fields:
     <li><code>/it/conferenze</code> shows the same conferences with Italian titles and descriptions</li>
     <li>If a translation is missing, the default language (English) content is displayed as fallback</li>
     </ul>
-    <p><a href="https://github.com/jeremyandrews/trovato/blob/v0.101.0/images/part-07/front-page-global.png"><img src="images/part-07/front-page-global.png" width="600" alt="The Ritrovo front page with internationalization enabled, showing the language switcher and localized content"></a></p>
+    <p><a href="/static/docs/images/part-07/front-page-global.png"><img src="/static/docs/images/part-07/front-page-global.png" width="600" alt="The Ritrovo front page with internationalization enabled, showing the language switcher and localized content"></a></p>
     <h3>Verify</h3>
     <figure class="code"><figcaption class="code__lang">bash</figcaption><pre class="code__body" tabindex="0" aria-label="bash code"><code class="language-bash"><span class="tok-source tok-shell tok-bash"><span class="tok-comment tok-line tok-number-sign tok-shell"><span class="tok-punctuation tok-definition tok-comment tok-begin tok-shell">#</span></span><span class="tok-comment tok-line tok-number-sign tok-shell"> Italian conferences seeded</span><span class="tok-comment tok-line tok-number-sign tok-shell">
     </span><span class="tok-meta tok-function-call tok-shell"><span class="tok-variable tok-function tok-shell"><span class="tok-meta tok-group tok-expansion tok-command tok-parens tok-shell"><span class="tok-punctuation tok-definition tok-variable tok-shell">$</span><span class="tok-punctuation tok-section tok-parens tok-begin tok-shell">(</span><span class="tok-meta tok-function-call tok-shell"><span class="tok-variable tok-function tok-shell">brew</span></span><span class="tok-meta tok-function-call tok-arguments tok-shell"><span class="tok-variable tok-parameter tok-option tok-shell"><span class="tok-punctuation tok-definition tok-parameter tok-shell"> --</span>prefix</span> libpq</span><span class="tok-punctuation tok-section tok-parens tok-end tok-shell">)</span></span>/bin/psql</span></span><span class="tok-meta tok-function-call tok-arguments tok-shell"> postgres://trovato:trovato@localhost:5432/trovato <span class="tok-punctuation tok-separator tok-continuation tok-line tok-shell">\
@@ -286,7 +286,7 @@ fields:
       <span class="tok-meta tok-structure tok-dictionary tok-key tok-json"><span class="tok-string tok-quoted tok-double tok-json"><span class="tok-punctuation tok-definition tok-string tok-begin tok-json">&quot;</span>error<span class="tok-punctuation tok-definition tok-string tok-end tok-json">&quot;</span></span></span><span class="tok-meta tok-structure tok-dictionary tok-value tok-json"><span class="tok-punctuation tok-separator tok-dictionary tok-key-value tok-json">:</span> <span class="tok-string tok-quoted tok-double tok-json"><span class="tok-punctuation tok-definition tok-string tok-begin tok-json">&quot;</span>Conference not found<span class="tok-punctuation tok-definition tok-string tok-end tok-json">&quot;</span></span><span class="tok-punctuation tok-separator tok-dictionary tok-pair tok-json">,</span></span>
       <span class="tok-meta tok-structure tok-dictionary tok-key tok-json"><span class="tok-string tok-quoted tok-double tok-json"><span class="tok-punctuation tok-definition tok-string tok-begin tok-json">&quot;</span>status<span class="tok-punctuation tok-definition tok-string tok-end tok-json">&quot;</span></span></span><span class="tok-meta tok-structure tok-dictionary tok-value tok-json"><span class="tok-punctuation tok-separator tok-dictionary tok-key-value tok-json">:</span> <span class="tok-constant tok-numeric tok-json">404</span>
     </span><span class="tok-punctuation tok-section tok-dictionary tok-end tok-json">}</span></span>
-    </span></code></pre></figure><p><a href="https://github.com/jeremyandrews/trovato/blob/v0.101.0/images/part-07/api-response.png"><img src="images/part-07/api-response.png" width="600" alt="A JSON API response showing conference data with pagination metadata"></a></p>
+    </span></code></pre></figure><p><a href="/static/docs/images/part-07/api-response.png"><img src="/static/docs/images/part-07/api-response.png" width="600" alt="A JSON API response showing conference data with pagination metadata"></a></p>
     <h3>Stage Awareness</h3>
     <p>The API respects stage visibility:</p>
     <ul>
@@ -1030,7 +1030,7 @@ fields:
   section: The tutorial
   section_blurb: Nine parts, building one real site from an empty database.
   source_path: docs/tutorial/part-07-going-global.md
-  weight: 100
+  weight: 200
 id: '2fa82f07-7e93-5de9-b381-7d11cf9829fc'
 language: en
 status: 1

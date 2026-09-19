@@ -767,7 +767,7 @@ fields:
   section: How it works
   section_blurb: 'The design documents: what each part does and why it is shaped that way.'
   source_path: docs/design/Design-Query-Engine.md
-  weight: 220
+  weight: 320
 id: '920ff946-a546-5ba7-9e72-220a8e659252'
 language: en
 status: 1

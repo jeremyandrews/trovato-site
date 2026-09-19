@@ -983,7 +983,7 @@ fields:
   section: How it works
   section_blurb: 'The design documents: what each part does and why it is shaped that way.'
   source_path: docs/design/Design-Plugin-System.md
-  weight: 230
+  weight: 330
 id: '5753e2e8-557a-5c5f-a554-133c528b95a4'
 language: en
 status: 1

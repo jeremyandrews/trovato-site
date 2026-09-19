@@ -1,38 +1,66 @@
 {# The front page item.
 
+   The hero is a grid: the wordmark heading, the lede and the calls to action
+   in one column, the found illustration in the other. The illustration is
+   inlined rather than an <img> so it draws with the site's --art-* tokens
+   and the stylesheet can animate its two named parts, the search path that
+   draws itself and the dot that lands where it ends. It is aria-hidden: the
+   heading and the lede already say everything it shows.
+
+   The illustration's markup comes from static/art/gen_art.py (the inline
+   variant of hero-found); edit the geometry there and re-run it, never here.
+
+   The heading is the wordmark, and its text is the heading's own rather than
+   an image's: in dark mode the light image is hidden and the dark one is
+   decorative, so an alt-text heading was an empty heading.
+
    The fields are rendered here rather than by the kernel, because the order
-   matters and the kernel cannot produce it. `children` on this page is the site
-   plugin's listing of recent posts and nothing else: the front-page handler
-   renders a field only when it carries a `value` key, and this item's `body` and
-   `proof` are bare strings, so they arrive untouched for the template to place.
+   matters and the kernel cannot produce it. `children` on this page is the
+   site plugin's listing of recent posts and nothing else: the front-page
+   handler renders a field only when it carries a `value` key, and this
+   item's `body` and `proof` are bare strings, so they arrive untouched for
+   the template to place.
 
-   SAFE on both fields: they are site copy, written in `config/` and reviewed in a
-   pull request, in the same position as the mirrored documentation. No visitor
-   input reaches either. #}
-<div class="front__body">
-    {{ item.fields.body | safe }} {# SAFE: see above. #}
+   SAFE on both fields: they are site copy, written in `config/` and reviewed
+   in a pull request, in the same position as the mirrored documentation. No
+   visitor input reaches either. #}
+<header class="front-hero">
+    <div class="front-hero__copy">
+        <h1 class="front__title">
+            <span class="visually-hidden">trovato</span>
+            <img src="/static/brand/trovato-wordmark.svg" alt="" aria-hidden="true"
+                 class="front__wordmark front__wordmark--light" width="420" height="120">
+            <img src="/static/brand/trovato-wordmark-white.svg" alt="" aria-hidden="true"
+                 class="front__wordmark front__wordmark--dark" width="420" height="120">
+        </h1>
 
-    {# The two calls to action, in the language the page is being served in.
+        {{ item.fields.body | safe }} {# SAFE: see above. #}
 
-       They are in the template rather than in the copy because they sit between
-       two fields the template places, and they follow the language because
-       `active_language` reaches a template on 0.102.0: the route sets it and
-       `inject_site_context` no longer overwrites it. On 0.101.0 this block was
-       English on the Italian front page, which was one of the reasons there was
-       no Italian front page. #}
-    {% if active_language == 'it' %}
-    <nav class="front-hero__actions" aria-label="Come iniziare">
-        <a class="button" href="/it/get-started">Come iniziare</a>
-        <a class="button button--secondary" href="/it/why">Perché Trovato</a>
-    </nav>
-    {% else %}
-    <nav class="front-hero__actions" aria-label="Get started">
-        <a class="button" href="/get-started">Get started</a>
-        <a class="button button--secondary" href="/why">Why Trovato</a>
-    </nav>
-    {% endif %}
+        {# The two calls to action, in the language the page is being served in.
 
-    {{ item.fields.proof | safe }} {# SAFE: see above. #}
-</div>
+           They are in the template rather than in the copy because they sit
+           between two fields the template places, and they follow the language
+           because `active_language` reaches a template on 0.102.0: the route
+           sets it and `inject_site_context` no longer overwrites it. On 0.101.0
+           this block was English on the Italian front page, which was one of the
+           reasons there was no Italian front page. #}
+        {% if active_language == 'it' %}
+        <nav class="front-hero__actions" aria-label="Come iniziare">
+            <a class="button" href="/it/get-started">Come iniziare</a>
+            <a class="button button--secondary" href="/it/why">Perché Trovato</a>
+        </nav>
+        {% else %}
+        <nav class="front-hero__actions" aria-label="Get started">
+            <a class="button" href="/get-started">Get started</a>
+            <a class="button button--secondary" href="/why">Why Trovato</a>
+        </nav>
+        {% endif %}
+    </div>
+    <div class="front-hero__art" aria-hidden="true">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 400" aria-hidden="true" class="art"><path d="M 46 76 C 140 20, 210 140, 300 92 S 470 20, 560 84 S 700 190, 620 240 S 480 320, 482 272" class="hero-search" pathLength="1" stroke="var(--art-faint, #E0D2C0)" fill="none" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="70" cy="84" r="15" fill="none" stroke="var(--art-soft, #8E7A66)" stroke-width="8"/><rect x="182" y="28" width="48" height="48" rx="8" fill="none" stroke="var(--art-soft, #8E7A66)" stroke-width="8" stroke-linejoin="round"/><circle cx="330" cy="96" r="11" fill="none" stroke="var(--art-soft, #8E7A66)" stroke-width="8"/><rect x="452" y="24" width="40" height="40" rx="8" fill="none" stroke="var(--art-soft, #8E7A66)" stroke-width="8" stroke-linejoin="round"/><circle cx="600" cy="90" r="16" fill="none" stroke="var(--art-soft, #8E7A66)" stroke-width="8"/><rect x="694" y="38" width="44" height="44" rx="8" fill="none" stroke="var(--art-soft, #8E7A66)" stroke-width="8" stroke-linejoin="round"/><rect x="90" y="188" width="40" height="40" rx="8" fill="none" stroke="var(--art-soft, #8E7A66)" stroke-width="8" stroke-linejoin="round"/><circle cx="250" cy="170" r="13" fill="none" stroke="var(--art-soft, #8E7A66)" stroke-width="8"/><circle cx="560" cy="190" r="10" fill="none" stroke="var(--art-soft, #8E7A66)" stroke-width="8"/><rect x="650" y="158" width="36" height="36" rx="8" fill="none" stroke="var(--art-soft, #8E7A66)" stroke-width="8" stroke-linejoin="round"/><circle cx="78" cy="322" r="9" fill="none" stroke="var(--art-soft, #8E7A66)" stroke-width="8"/><rect x="173" y="285" width="30" height="30" rx="8" fill="none" stroke="var(--art-soft, #8E7A66)" stroke-width="8" stroke-linejoin="round"/><circle cx="640" cy="300" r="13" fill="none" stroke="var(--art-soft, #8E7A66)" stroke-width="8"/><circle cx="716" cy="250" r="8" fill="none" stroke="var(--art-soft, #8E7A66)" stroke-width="8"/><path d="M 400 128 L 400 268 Q 400 344 480 344" stroke="var(--art-stroke, #221B16)" fill="none" stroke-width="34" stroke-linecap="round" stroke-linejoin="round"/><path d="M 336 196 L 462 196" stroke="var(--art-stroke, #221B16)" fill="none" stroke-width="34" stroke-linecap="round" stroke-linejoin="round"/><circle cx="482" cy="272" r="24" class="hero-dot" fill="var(--art-dot, #B14B2E)"/></svg>
+    </div>
+</header>
+
+{{ item.fields.proof | safe }} {# SAFE: see above. #}
 
 {{ children | safe }} {# SAFE: the site plugin's listing, sanitized where it is built. #}

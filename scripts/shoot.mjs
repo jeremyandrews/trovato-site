@@ -55,6 +55,11 @@ for (const scheme of SCHEMES) {
       }
       const status = response?.status() ?? 0;
 
+      // The front page plays a short entrance (site.css, the Motion section);
+      // every end state is the page at rest. Wait it out so the archived
+      // screenshot and the element measurements see the settled page.
+      await page.waitForTimeout(1800);
+
       // A page that did not render is not a page to measure. Repeated runs
       // against a local stack trip the login rate limiter, and a 429's error
       // page would otherwise be counted as the site's own unthemed markup.
@@ -74,13 +79,20 @@ for (const scheme of SCHEMES) {
       // and that is invisible in a report that only samples the body. So every
       // element is measured, and in dark mode a light background is a failure.
       const overflow = await page.evaluate((scheme) => {
+        // Two notations, because the channels mean different numbers in each.
+        // `rgb(250, 245, 239)` counts 0 to 255; `color(srgb 0.98 0.96 0.94)`,
+        // which is how a browser serializes the `color-mix()` the sticky header
+        // uses, counts 0 to 1. Reading the second as though it were the first
+        // divides by 255 twice and reports a near-white plate as near-black, so
+        // the scale is chosen by the notation rather than assumed.
         const luminance = (rgb) => {
           const m = rgb.match(/\d+(\.\d+)?/g);
           if (!m || m.length < 3) return null;
           // A fully transparent background is not a background.
           if (m.length > 3 && Number(m[3]) === 0) return null;
+          const scale = rgb.startsWith("color(") ? 1 : 255;
           const ch = (v) => {
-            const c = Number(v) / 255;
+            const c = Number(v) / scale;
             return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
           };
           return 0.2126 * ch(m[0]) + 0.7152 * ch(m[1]) + 0.0722 * ch(m[2]);

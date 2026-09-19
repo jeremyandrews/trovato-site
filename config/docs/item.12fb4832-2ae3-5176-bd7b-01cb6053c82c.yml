@@ -622,7 +622,7 @@ fields:
   section: Writing plugins
   section_blurb: The plugin contract, the taps, and what a plugin may reach.
   source_path: docs/plugin-quick-reference.md
-  weight: 140
+  weight: 240
 id: '12fb4832-2ae3-5176-bd7b-01cb6053c82c'
 language: en
 status: 1
