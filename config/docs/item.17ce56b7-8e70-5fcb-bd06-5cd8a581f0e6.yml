@@ -520,7 +520,7 @@ fields:
   section: Writing plugins
   section_blurb: The plugin contract, the taps, and what a plugin may reach.
   source_path: docs/plugin-queue.md
-  weight: 160
+  weight: 260
 id: '17ce56b7-8e70-5fcb-bd06-5cd8a581f0e6'
 language: en
 status: 1

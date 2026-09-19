@@ -1693,7 +1693,7 @@ fields:
   section: Writing plugins
   section_blurb: The plugin contract, the taps, and what a plugin may reach.
   source_path: docs/plugin-development.md
-  weight: 130
+  weight: 230
 id: c66cb9e8-901c-5d6b-b279-88f5462cb055
 language: en
 status: 1

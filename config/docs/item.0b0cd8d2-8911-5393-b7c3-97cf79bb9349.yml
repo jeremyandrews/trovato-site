@@ -688,7 +688,7 @@ fields:
   section: The project
   section_blurb: Standards, known problems, and how the work is organised.
   source_path: docs/coding-standards.md
-  weight: 310
+  weight: 410
 id: '0b0cd8d2-8911-5393-b7c3-97cf79bb9349'
 language: en
 status: 1

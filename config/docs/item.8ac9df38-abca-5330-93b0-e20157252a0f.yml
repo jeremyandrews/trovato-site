@@ -242,7 +242,7 @@ fields:
   section: Writing plugins
   section_blurb: The plugin contract, the taps, and what a plugin may reach.
   source_path: docs/plugin-error-codes.md
-  weight: 150
+  weight: 250
 id: '8ac9df38-abca-5330-93b0-e20157252a0f'
 language: en
 status: 1

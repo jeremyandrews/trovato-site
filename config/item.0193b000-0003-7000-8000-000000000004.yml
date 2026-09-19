@@ -20,6 +20,11 @@ fields:
       docker compose --profile full up</code></pre>
       
       <p>Open <code>http://localhost:3001</code> and follow the installer. It asks for an administrator account and a site name, and then the site is yours.</p>
+
+      <figure>
+      <img src="/static/docs/images/part-01/installer-welcome.png" width="1200" height="800" alt="The installer's welcome step, confirming PostgreSQL and Redis are connected and migrations have run, with a continue button.">
+      <figcaption>The installer&#8217;s first screen, from <a href="/learn/tutorial-01-hello-trovato">the tutorial</a>: your databases, checked, before it asks you for anything.</figcaption>
+      </figure>
       
       <p>The <code>full</code> profile is what starts the Trovato container. Without it, <code>docker compose up</code> brings up PostgreSQL and Redis alone, which is what you want when you are running the server natively on port 3000.</p>
       
