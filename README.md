@@ -44,18 +44,30 @@ project's volumes first and starts over.
 
 ## Checking it
 
-Each of these is a gate, and all of them run in CI on every push.
+Each of these is a gate, and all of them run in CI on every push, in this order.
 
 ```
+cargo fmt --all --check           # formatting
+cargo clippy --all-targets -- -D warnings         # lints, warnings denied
 cargo test --all                  # the plugin, the contrast of every token pairing, the content set
-npm run crawl                     # every page reachable from the front page
+cargo run -p tools --bin docs-import -- --check   # the documentation mirror matches the pinned tag
+npm run crawl                     # every page reachable from the front page, and the language switcher round trip
 npm run a11y                      # axe-core, both colour schemes, nothing allowlisted
 npm run shoot                     # both widths, both schemes, no overflow, no off-origin requests
 ./scripts/check-moderation.sh     # comment moderation fails closed
 ./scripts/check-roundtrip.sh      # every declared config entity survives an export
 ./scripts/check-production.sh     # the production profile, over TLS, on this machine
-cargo run -p tools --bin docs-import -- --check   # the documentation mirror matches the pinned tag
 ```
+
+```
+./scripts/check-all.sh            # all of the above, in CI's order, stopping at the first failure
+```
+
+The order is CI's order, and the first two are the reason it is written down. `cargo
+fmt --all --check` and `cargo clippy --all-targets -- -D warnings` have always run in
+CI and were missing from this list, so on 2026-09-19 a merge that passed everything
+here failed on push as soon as the toolchain moved under it. A local list that does
+not predict CI is worse than no list.
 
 ## Production
 
