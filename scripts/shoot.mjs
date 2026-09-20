@@ -43,7 +43,7 @@ for (const scheme of SCHEMES) {
 
     for (const { path, name, family } of PAGES) {
       // The kernel rate-limits every GET at 100 a minute per IP, static assets
-      // included, and a screenshot pass is nine pages of real rendering in four
+      // included, and a screenshot pass is ten pages of real rendering in four
       // configurations. A 429 is answered the way the header asks rather than
       // counted as a broken page. See docs/LEDGER.md, Gate 2.
       let response = await page.goto(BASE + path, { waitUntil: "networkidle" });

@@ -12,8 +12,10 @@ from nothing to a populated site.
 ## The site itself
 
 - [x] **Every page serves.** 14 destinations plus 5 Italian pages, all 200.
-      `npm run crawl` walks 188 pages from the front page and from `/it/` and
-      fails on any 404, any 5xx, and any page served as a template-failure dump.
+      `npm run crawl` walks 232 pages from the front page and fails on any 404,
+      any 5xx, and any page served as a template-failure dump. It no longer needs
+      `--lang it` to reach the Italian pages: the footer switcher on the English
+      front page links to `/it/`, so the crawl finds them by following the site.
 - [x] **Every page is themed and navigable.** The same crawl fails a page missing
       its main landmark, its stylesheet, its skip link or its main navigation.
 - [x] **The site works with JavaScript switched off.** Search submits to the
@@ -23,12 +25,13 @@ from nothing to a populated site.
 - [x] **No page reaches another origin.** `npm run shoot` records every request on
       every page in both colour schemes and fails on anything off-site. Fonts,
       styles, scripts and images are all served from here.
-- [x] **Both colour schemes work at both widths.** 36 screenshots, no horizontal
+- [x] **Both colour schemes work at both widths.** 40 screenshots, no horizontal
       scroll at 360px, nothing carrying a background from the wrong scheme.
 - [x] **Accessibility, as far as a machine can check it.** `npm run a11y` runs
-      axe-core over one page per template family in both schemes, against WCAG
-      2.0, 2.1 and 2.2 A and AA plus best-practice rules, with nothing
-      allowlisted. No violations.
+      axe-core over one page per template family in both schemes, plus the
+      Italian front page, against WCAG 2.0, 2.1 and 2.2 A and AA plus
+      best-practice rules, with nothing allowlisted. Twenty renders, no
+      violations.
 - [x] **Colour contrast.** Every pairing the stylesheet declares is verified by
       `cargo test -p checks`, in both schemes, including the seven
       syntax-highlighting colours.

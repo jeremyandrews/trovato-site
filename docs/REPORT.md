@@ -78,22 +78,35 @@ to be, is in `docs/LEDGER.md`.
 
 ## The final crawl
 
-188 pages, from `/`, from `/llms.txt`, and from `/it/`. No 404s, no 5xx, no
-template-failure dumps, every page carrying its main landmark, its stylesheet, its
-skip link and its main navigation.
+232 pages, from `/` and from `/llms.txt`. No 404s, no 5xx, no template-failure
+dumps, every page carrying its main landmark, its stylesheet, its skip link and
+its main navigation, and every footer language switcher round-tripping: ten links,
+each serving 200, each landing on a page that declares the language the link
+claimed, and each landed-on page offering the way back.
 
-It was 191 on 0.101.0, and the three are an improvement rather than a loss. Four
-of them were `/user/login?destination=/item/{uuid}` addresses, one per translated
-page, produced because the comment form on a language-prefixed page was handed
-the uuid path as the place to come back to; they collapse onto the four English
-aliases that were already in the set. Against that, `/it/` is now a page, where on
-0.101.0 a bare language prefix was a 404. Fewer addresses, more site.
+`/it/` is no longer a start path. It does not need to be: the footer switcher on
+the English front page links to it, so the crawl reaches the Italian pages by
+following the site the way a reader would, which is a better check than being told
+where they are.
+
+It was 188 before the visual rework, and 191 on 0.101.0. The bump to 0.102.0 took
+three off: four `/user/login?destination=/item/{uuid}` addresses, one per
+translated page, collapsed onto the four English aliases already in the set once
+the comment form on a language-prefixed page stopped being handed the uuid path
+as the place to come back to, and against that `/it/` became a page where a bare
+language prefix had been a 404. Fewer addresses, more site.
+
+The rework then took it to 232. Forty-one of the difference is the tutorial
+screenshots the rework mirrored into `/static/docs/images/`, which the crawl
+fetches and status-checks as documents so that a gallery pointing at a file that
+is not there is a failed crawl; the rest is the capabilities blog post and the
+addresses that follow any new post.
 
 **The site** — `/`, `/why`, `/get-started`, `/rust`, `/community`,
 `/accessibility`, `/comment-policy`, `/authors/jeremy-andrews`, `/search`,
 `/contact`.
 
-**Listings and posts** — `/news` with three posts, `/blog` with one,
+**Listings and posts** — `/news` with three posts, `/blog` with two,
 `/blog/archive`, and each post at its own alias.
 
 **Documentation** — `/learn` and 36 mirrored pages: the readme, the installation
