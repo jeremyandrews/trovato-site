@@ -9,25 +9,18 @@ license = "MIT OR Apache-2.0"
 
 [workspace.dependencies]
 # The SDK comes from the public kernel repository, pinned by revision. Building
-# this repository therefore needs no Trovato checkout and no credentials — only
+# this repository therefore needs no Trovato checkout and no credentials, only
 # network access to github.com.
 #
-# PINNED BY `rev`, to the commit the release tag names. The triple that has to
-# move together:
+# The `rev` below is a literal because cargo cannot read a git dependency's
+# revision out of another file. It is not authored here: `kernel-release.toml`
+# holds the pinned release, `scripts/sync-kernel-release.sh` writes it onto this
+# line and into every other file that names it, and the `kernel_release` test in
+# the `checks` crate fails by name if any of those copies disagree. Move the pin
+# with `scripts/sync-kernel-release.sh --set-version X.Y.Z`, never by hand here.
 #
-#   rev                 20baa121810b5c656b3f80028335770069fab5e0  (tag v0.102.0)
-#   kernel image tag    0.102.0
-#   api_version         0.102
-#
-# The kernel image tag is `TROVATO_VERSION`, in `.env.example`,
-# `.env.production.example` and the default in `docker-compose.yml`.
-# `api_version` is in `plugins/trovato_site/trovato_site.info.toml` and must be
-# at or below the kernel's own API version, which is the release's minor: a
-# plugin declaring more than the kernel exports is refused at load.
-#
-# BUMP PROTOCOL: resolve the tag to its commit (`git rev-list -n 1 v0.102.0`),
-# move all three together, rebuild the overlay, and bring the stack up from
-# destroyed volumes rather than restarting it — a plugin is read at load.
+# After moving it, rebuild the overlay and bring the stack up from destroyed
+# volumes rather than restarting it: a plugin is read at load.
 trovato-sdk = { git = "https://github.com/jeremyandrews/trovato", rev = "20baa121810b5c656b3f80028335770069fab5e0" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
