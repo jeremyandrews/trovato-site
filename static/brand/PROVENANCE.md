@@ -6,6 +6,13 @@ repository at tag **v0.101.0** (commit `5304a68`):
 - the SVGs from `assets/brand/`
 - the PNGs from `assets/brand/png/`
 
+That is a dated fact about where these bytes came from, and it does not move when
+the site's pinned kernel does. The pin itself is generated:
+
+<!-- kernel-release:begin -->
+The site currently runs Trovato `0.102.0` (tag `v0.102.0`).
+<!-- kernel-release:end -->
+
 `assets/brand/BRAND.md` in that repository is the source of truth for the palette,
 the lockups, the clearspace rules and what may not be done to the mark. This
 directory holds copies so that the site serves its own assets from its own origin;

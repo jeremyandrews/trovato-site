@@ -1,5 +1,6 @@
-# Matches the toolchain the pinned Trovato release is built with (v0.102.0).
-# CI carries the same version explicitly; bump both together.
+# Matches the toolchain the pinned Trovato release is built with; that release is
+# named in `kernel-release.toml`. CI carries this version explicitly; bump both
+# together.
 [toolchain]
 channel = "1.96.0"
 components = ["rustfmt", "clippy"]

@@ -17,6 +17,21 @@ This repository lives at `jeremyandrews/trovato-site`, matching the kernel's hom
 `jeremyandrews/trovato`. Moving it under an organization is a decision for later; the
 only thing that would change is the remote.
 
+## Pinned kernel release
+
+<!-- kernel-release:begin -->
+The site is built against Trovato `0.102.0` (tag `v0.102.0`, commit
+`20baa121`): the SDK is pinned to that commit, the plugin declares
+`api_version = "0.102"`, and the stack runs
+`ghcr.io/jeremyandrews/trovato:0.102.0`.
+<!-- kernel-release:end -->
+
+That block is generated, and so is every other place in this repository that names
+the release. `kernel-release.toml` is where it is authored; running
+`scripts/sync-kernel-release.sh` writes it everywhere else, and `cargo test` fails
+by name if any copy disagrees. To move the pin, run the script with
+`--set-version X.Y.Z` and commit what it changed.
+
 ## Layout
 
 ```
@@ -90,11 +105,12 @@ re-run, never a hand-edit of a path. Each file carries its own
 
 ## Brand assets
 
-The SVGs under `static/brand/` are copied from `assets/brand/` in the Trovato kernel
-repository at tag v0.102.0. `assets/brand/BRAND.md` there is the source of truth for
-the palette, the lockups and the rules; this repository holds copies, not originals.
-Every file under `assets/brand/` is byte for byte identical at v0.101.0 and
-v0.102.0, so the tag moved and the copies did not.
+The SVGs under `static/brand/` are copies of `assets/brand/` in the Trovato kernel
+repository, taken at tag v0.101.0 and unchanged since: every file under
+`assets/brand/` is byte for byte identical at v0.101.0 and v0.102.0, so the tag
+moved and the copies did not. `assets/brand/BRAND.md` there is the source of truth
+for the palette, the lockups and the rules; this repository holds copies, not
+originals.
 
 ## License
 

@@ -1,0 +1,15 @@
+# The Trovato release this repository pins, and the only place it is authored.
+# Everything else that names the release is written from here by
+# scripts/sync-kernel-release.sh and checked by the test suite.
+#
+# Derived: the tag is "v" plus version; api_version, in the plugin manifest, is
+# the major and minor of version; TROVATO_VERSION and the kernel image tag
+# ghcr.io/jeremyandrews/trovato: are the version itself; and rev is written onto
+# the trovato-sdk dependency line, which cargo requires as a literal.
+#
+# To move the pin: scripts/sync-kernel-release.sh --set-version X.Y.Z, which
+# resolves the tag to its commit and rewrites every location. Then rebuild the
+# overlay and bring the stack up from destroyed volumes rather than restarting
+# it, because a plugin is read at load.
+version = "0.102.0"
+rev = "20baa121810b5c656b3f80028335770069fab5e0"
