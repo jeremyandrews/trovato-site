@@ -859,7 +859,7 @@ pub fn llms_txt() -> String {
         ),
         (
             "/community",
-            "Contributing, the code of conduct, and how this is built.",
+            "Contributing, the code of conduct, and how Trovato is built.",
         ),
         (
             "/accessibility",
