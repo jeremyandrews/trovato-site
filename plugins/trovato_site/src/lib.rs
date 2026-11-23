@@ -819,7 +819,7 @@ pub fn llms_txt() -> String {
     );
     out.push_str(
         "This file lists the site's documentation and the markdown each page was rendered \
-         from. Every `.md` link below is the source text, unrendered.\n\n",
+         from. Each \"markdown at\" link below is the source text, unrendered.\n\n",
     );
 
     out.push_str("## Documentation\n\n");

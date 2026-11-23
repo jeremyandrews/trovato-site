@@ -119,7 +119,7 @@ fields:
     <section class="proof proof-split" aria-labelledby="proof-gather">
       <h2 class="proof__title" id="proof-gather">Listings are configuration</h2>
       <div class="proof__copy">
-        <p>Many pages on a site are lists of content, and in Trovato those lists come from Gather. A query is a base table with its filters, sorts, relationships and display, and Trovato stores the whole thing as configuration, which exports to YAML. So a listing can live in git next to your code, and a change to it is reviewed and moved between environments like any other configuration change. Build it in Gather&#8217;s visual query builder in the admin, or edit the YAML by hand.</p>
+        <p>Many pages on a site are lists of content, and in Trovato those lists come from Gather. Each list is a Gather query: a definition of its base table, filters, sorts, relationships and display, and Trovato stores the whole thing as configuration, which exports to YAML. So a listing can live in git next to your code, and a change to it is reviewed and moved between environments like any other configuration change. Build it in Gather&#8217;s visual query builder in the admin, or edit the YAML by hand.</p>
         <p>The news, blog and documentation listings on this site are Gather queries. The recent posts at the bottom of this page aren&#8217;t: they come from the plugin whose manifest is shown above.</p>
       </div>
       <div class="proof__art">

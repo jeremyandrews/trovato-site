@@ -29,7 +29,7 @@ fields:
 
       <p>A plugin is how a site adds behaviour of its own, such as a new kind of content, a listing or a scheduled job. It is a WebAssembly module that implements named extension points, which Trovato calls taps. A plugin&#8217;s code runs only when the kernel calls one of its taps.</p>
 
-      <p>This site&#8217;s plugin is <code>trovato_site</code>, about 1,400 lines of Rust. Through <code>tap_item_info</code> it declares <code>news</code> as a content type (one of the kinds of content the site holds), which is why this post is stored as a news item. The plugin also renders the listing of recent posts on the front page. It builds the sitemap, because the kernel&#8217;s own emits relative URLs and the protocol requires absolute ones. And each time the kernel runs its scheduled jobs, <code>tap_cron</code> brings the database&#8217;s copy of the site&#8217;s Italian translations into line with the configuration, for reasons explained in &#8220;What it actually cost&#8221;, below.</p>
+      <p>This site&#8217;s plugin is <code>trovato_site</code>, about 1,400 lines of Rust. Through <code>tap_item_info</code> it declares <code>news</code> as a content type (one of the kinds of content the site holds), which is why this post is stored as a news item. The plugin also renders the listing of recent posts on the front page. It builds the sitemap, because the kernel&#8217;s own emits relative URLs and the protocol requires absolute ones. And each time the kernel runs its scheduled jobs, <code>tap_cron</code> brings the database&#8217;s copy of the site&#8217;s Italian translations into line with the configuration, for reasons explained in &#8220;What it cost&#8221;, below.</p>
 
       <p>Its manifest is the file listing what the plugin is allowed to use. It runs to 42 lines, about half of them comments explaining each choice. It names three host interfaces (groups of kernel functions, here database access, logging and site settings), three database tables, and the raw-SQL flag, which lets the plugin run SQL the kernel does not check against those tables. <a href="/blog/what-a-plugin-may-reach">What a plugin may reach</a> goes through what each of those means and why this one declares what it does.</p>
 
@@ -51,7 +51,7 @@ fields:
 
       <p>The fonts live here, in the repository, instead of being fetched from anybody&#8217;s content delivery network, and on every page the gate below checks, nothing else is fetched from another origin either. <code>npm run shoot</code> is that gate: it loads one page of each kind, records every request, and fails the build if one of them leaves this site.</p>
 
-      <h2>What it actually cost</h2>
+      <h2>What it cost</h2>
 
       <p>Building this site found twenty-two things wrong with or missing from the kernel. They are listed in <code>docs/REPORT.md</code> in the site&#8217;s repository, each with its status re-derived against the release the site now runs: three fixed at 0.102.0, eighteen still open, and one that could not be reproduced and is recorded as such.</p>
 
