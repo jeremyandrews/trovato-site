@@ -112,7 +112,7 @@ pub fn tap_item_info() -> Vec<ContentTypeDefinition> {
         ContentTypeDefinition {
             machine_name: DOCS_TYPE.into(),
             label: "Documentation".into(),
-            description: "A page of the Trovato documentation, mirrored from the kernel repository. Generated — edit the source there, not here.".into(),
+            description: "A page of the Trovato documentation, mirrored from the kernel repository. Generated: edit the source there, not here.".into(),
             title_label: None,
             // `html` and not `body`: the field holds markdown already rendered
             // and syntax-highlighted, and every rendering path the kernel offers

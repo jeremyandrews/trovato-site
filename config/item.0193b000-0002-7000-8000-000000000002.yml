@@ -31,26 +31,26 @@ changed: 1789725600
 fields:
   field_body:
     value: |
-      <p>The front page shows a manifest and four keys, and four keys are not much of an explanation. This is the long version: what a plugin can ask for, what it gets without asking, what it cannot have at any price, and the one line that gives some of it back.</p>
+      <p>Trovato is a content management system written in Rust, and much of what a Trovato site does comes from plugins: the blog and the contact form are plugins, and so is this site&#8217;s own code. What a plugin is allowed to touch is also the most a buggy or hostile one can do to your site. Each plugin ships a manifest, a short TOML file listing what it needs from the kernel, Trovato&#8217;s core. This post explains the manifest the front page shows, in full: what a plugin can ask for, what it gets without asking, what it cannot have at any price, and the one line that gives some of it back.</p>
 
       <h2>The linker is the enforcement</h2>
 
-      <p>A plugin is a WebAssembly module. It arrives with a manifest naming the host interfaces it wants, and at load the kernel builds that plugin a linker containing those interfaces and no others.</p>
+      <p>A plugin is a WebAssembly module, and the kernel runs it at named points, which Trovato calls taps. It arrives with a manifest naming the host interfaces it wants, the groups of functions the kernel offers plugins, such as database access, logging or mail. At load the kernel builds that plugin a linker (the table that connects a module&#8217;s imports to real functions) containing those interfaces and no others.</p>
 
-      <p>This is worth being precise about, because the obvious reading is wrong. The kernel is not checking a list when a plugin calls a host function and returning an error for the calls that are not on it. There is no such moment. A WebAssembly module declares its imports up front, and instantiating it means resolving every one of them against the linker it is handed. A module that imports <code>db</code> from a plugin that declared only <code>logging</code> has an import nothing satisfies, so it never instantiates. It does not run and get stopped. It does not start.</p>
+      <p>You might expect the kernel to check a list each time a plugin calls a host function, and to return an error for a call that is not on it. That moment never comes. A WebAssembly module declares its imports up front, and instantiating it means resolving every one of them against the linker it is handed. A module that imports <code>db</code> from a plugin that declared only <code>logging</code> has an import nothing satisfies, so it never instantiates, and none of its code runs.</p>
 
-      <p>A plugin that declares no interfaces at all is handed an empty linker. It can compute. It cannot do anything else, and the kernel has a test that says so: it builds a linker from <code>["logging"]</code>, confirms a module importing <code>logging</code> instantiates, confirms a module importing <code>db</code> does not, and then confirms that an empty declaration links nothing at all.</p>
+      <p>A plugin that declares no interfaces at all is handed a linker with no kernel interfaces in it. It can compute. It cannot do anything else, and the kernel has a test that says so: it builds a linker from <code>["logging"]</code>, confirms a module importing <code>logging</code> instantiates, confirms a module importing <code>db</code> does not, and then confirms that an empty declaration links no kernel interface at all.</p>
 
       <h2>The thirteen</h2>
 
-      <p><code>host_interfaces</code> is a closed list. The kernel knows thirteen names, they are the same thirteen the plugin world imports in the interface definition, and a manifest naming a fourteenth is rejected when it is parsed, with the full list in the error. Nothing a plugin can write adds one. A new host interface is a kernel release: it goes into the contract and into the kernel&#8217;s list, together.</p>
+      <p><code>host_interfaces</code> is a closed list. The kernel knows thirteen names, the same thirteen that the plugin interface definition says a plugin may import, and a manifest naming a fourteenth is rejected when it is parsed, with the full list in the error. Nothing a plugin can write adds one. A new host interface is a kernel release: it goes into the plugin contract, what plugins and the kernel agree on, and into the kernel&#8217;s list, together.</p>
 
       <p>Here they are, with what each one is for.</p>
 
       <ul>
-        <li><code>item-api</code>: the structured way to read and write content. Load an item by id, create one, update one, work with its fields as fields. Most plugins that touch content want this rather than <code>db</code>.</li>
+        <li><code>item-api</code>: the structured way to read and write content. An item is Trovato&#8217;s word for one piece of content. Load an item by id, create one, update one, work with its fields as fields. Most plugins that touch content want this rather than <code>db</code>.</li>
         <li><code>db</code>: the database, through the kernel. Structured selects, inserts, updates and deletes, each one checked against the plugin&#8217;s table allowlist before the query is built.</li>
-        <li><code>variables</code>: the site&#8217;s configuration values. Note that reads are namespaced to the calling plugin, so a plugin asking for another plugin&#8217;s key gets the default it passed in rather than an error, which is a real trap and is on the site&#8217;s list of findings.</li>
+        <li><code>variables</code>: the site&#8217;s configuration values. Reads are namespaced to the calling plugin, so a plugin asking for another plugin&#8217;s key gets the default it passed in rather than an error, which is a real trap and is on the site&#8217;s list of findings.</li>
         <li><code>request-context</code>: a key and value store scoped to the current request, for state that several taps on one request need to share.</li>
         <li><code>user-api</code>: two questions. Who is the current user, and do they have this permission.</li>
         <li><code>cache-api</code>: get and set by bin and key, and invalidate by tag, so a plugin doing expensive work can stop doing it twice.</li>
@@ -63,7 +63,7 @@ fields:
         <li><code>mail</code>: one function, and it does not take a recipient. It sends to the address the site configured and nowhere else, which is enough for a visitor to reach the site owner and useless for reaching strangers.</li>
       </ul>
 
-      <p>What is missing from that list is as much of the design as what is on it. There is no filesystem interface, and the omission is not an oversight to be filled in later: the runtime hand-writes five WASI stubs and opens no directories, so a plugin that asks to write a file gets <code>ENOSYS</code>. There is no interface for reaching into another plugin&#8217;s memory, because there is no path from one to another&#8217;s.</p>
+      <p>What is missing from that list is as much of the design as what is on it. There is no filesystem interface, and that is deliberate: the runtime hand-writes five stubs of WASI (WebAssembly&#8217;s standard system interface) and opens no directories. A plugin that writes to a file descriptor gets <code>ENOSYS</code>, and one that imports any other file function, such as <code>path_open</code>, cannot be instantiated. There is no interface for reaching into another plugin&#8217;s memory, because there is no path from one to another&#8217;s.</p>
 
       <h2>The table allowlist has two halves</h2>
 
@@ -78,17 +78,17 @@ fields:
 
       <p>So <code>db_tables</code> is not the plugin&#8217;s whole reach, and reading it as one will mislead you in both directions. A plugin with an empty <code>db_tables</code> and three migrations of its own reaches three tables. And a plugin can reach a table another plugin created, which is allowed and is sometimes the only sensible arrangement, but only by writing that table&#8217;s name in a file somebody reviews.</p>
 
-      <p>The plugin that runs this site is the second kind. It ships no migrations, so its manifest is its entire database reach: <code>item</code> and <code>url_alias</code> to build the listings and the sitemap, both read-only, and <code>item_translation</code>, which is the one table it writes. It writes that one because on this kernel nothing else can. Configuration import cannot put a translation anywhere, the two administrative routes that would are registered for <code>GET</code> and have no templates in the image, and there is no endpoint. So the site carries its translations in configuration and a cron tap copies them into the table on each tick, which is a workaround, written down as one.</p>
+      <p>The plugin that runs this site uses only tables it did not create. It ships no migrations, so its manifest names every table it means to touch: <code>item</code> and <code>url_alias</code> to build the front-page listing, the sitemap and the documentation pages, both read-only, and <code>item_translation</code>, which is the one table it writes. Every query it runs is raw SQL, described below, so the kernel checks none of those names. It writes <code>item_translation</code> because on this kernel nothing else can. Configuration import cannot put a translation where the kernel reads one, the two administrative routes that would are registered for <code>GET</code> and have no templates in the image, and there is no endpoint. So the site carries its translations in configuration and a cron tap copies them into the table on each tick, which is a workaround, written down as one.</p>
 
       <h2>The line that gives some of it back</h2>
 
       <p>Then there is <code>raw_sql</code>, which this site&#8217;s plugin declares.</p>
 
-      <p>With it, a plugin may call the raw query functions, and what it sends is not checked against the table allowlist. The kernel gates the capability instead of parsing the SQL, and that is a deliberate choice rather than an unfinished one: reliably confining arbitrary SQL by reading it is not a thing the kernel is willing to claim it does, so it does not pretend to, and the flag is documented as weakening the guarantee for the plugin that holds it.</p>
+      <p>With it, a plugin may call the raw query functions, and what it sends is not checked against the table allowlist. The kernel gates the capability instead of parsing the SQL, and that is deliberate: the kernel does not claim it can reliably confine arbitrary SQL by reading it, and the flag is documented as weakening the guarantee for the plugin that holds it.</p>
 
-      <p>This plugin holds it for a dull reason. Its front-page listing is one query ordered across two content types, each joined to its alias, with a limit on the result. The structured item API cannot express that in a single call, and the alternative is several calls and a sort in the plugin, which is slower and no safer.</p>
+      <p>This plugin holds it for a dull reason. Its front-page listing is one query that sorts posts of two content types (kinds of content) together and joins each post to its URL alias (the readable path it is served at), with a limit on the result. The structured item API cannot express that in a single call, and the alternative is several calls and a sort in the plugin, which is slower. Its sitemap and documentation queries join <code>item</code> and <code>url_alias</code> the same way, so they need the flag for the same reason, and its translation queries use it as well.</p>
 
-      <p>It is fair to ask what a table allowlist is worth when a plugin can declare its way around it. The answer is not that nobody does. It is that doing it is a line in a manifest, in a repository, in a change somebody approved, and that you can go and look at which plugins on a site have that line. A capability that had to be declared and reviewed is a different thing from one that was simply available, even when the end state is the same. The failure the design rules out is not a plugin with broad access. It is a plugin with broad access that nobody decided to give it.</p>
+      <p>So what is a table allowlist worth when a plugin can declare its way around it? Declaring it is a line in a manifest, in a repository, in a change somebody approved, and you can go and look at which plugins on a site have that line. A capability that had to be declared and reviewed differs from one that was simply available, even when the end state is the same: the design rules out a plugin with broad access that nobody decided to give it.</p>
 
       <h2>Reading a manifest</h2>
 

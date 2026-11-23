@@ -8,31 +8,29 @@ changed: 1785542400
 fields:
   body:
     value: |
-      <p>Comments are open to anyone with an account. This page says what happens to one after you post it.</p>
-      
-      <h2>What is held, and for how long</h2>
-      
-      <p>A new comment is not published straight away. It is held, reviewed, and then published or not. Once an account has three approved comments, its comments publish immediately.</p>
-      
-      <p>The review is automated first and human second. An automated classifier reads the comment, the title of the thing it is a comment on, and a few cheap signals about the account, and returns one of three verdicts: publish, hold for a person, or spam. The classifier runs on every comment, including the ones from accounts that publish immediately, so a comment that publishes on the way in can still be unpublished afterwards.</p>
-      
-      <h2>What happens when the classifier cannot answer</h2>
-      
-      <p>The comment stays held and waits for a person. If the provider is down, if the job fails, if it is retried and fails again, the answer is always the same: nothing publishes. There is no path through this system where a failure results in a comment appearing. That is a design decision and there is a test that fails if it stops being true.</p>
-      
+      <p>Anyone with an account can comment.</p>
+
+      <h2>What gets held</h2>
+
+      <p>A comment from a new account isn&#8217;t published straight away. It&#8217;s held, reviewed, and then published or not. Once an account has three approved comments, its new comments publish immediately.</p>
+
+      <p>No AI provider is configured today, so for now every held comment waits for a person to read it. Once a provider is configured, review will be automated first and human second. A classifier will read each comment and return one of three verdicts: publish, hold for a person, or spam. It will run on every comment, including those from accounts that publish immediately, so a published comment could still be taken down later.</p>
+
+      <h2>When the classifier can&#8217;t answer</h2>
+
+      <p>If the classifier can&#8217;t return a verdict (no provider is configured, the provider is down, or the background job that runs the classifier fails on every retry), a held comment stays held until a person reviews it. No classifier failure publishes a comment. The site&#8217;s build checks this. With no AI provider configured, every classification job fails, and the build relies on that: it posts a comment from an account with no approved comments yet and fails if that comment is published.</p>
+
       <h2>What gets removed</h2>
-      
-      <p>Spam. Abuse aimed at a person. Anything posted to make a point about the moderation rather than about the subject.</p>
-      
-      <p>Disagreement is not on that list. A comment that says the design is wrong, or that I have made a mistake, or that another CMS does this better, is a comment worth having. The bar is whether it is addressed to the argument.</p>
-      
+
+      <p>The maintainer removes spam, abuse aimed at a person, and comments that argue about moderation instead of the post they&#8217;re on. Questions about moderation belong in <a href="/contact">the contact form</a>.</p>
+
+      <p>Disagreement is not on that list. A comment saying that the design is wrong, that the project made a mistake, or that another CMS does this better is welcome, as long as it deals with what the post actually says.</p>
+
       <h2>Who decides</h2>
-      
-      <p>I do. There is no appeals process because there is nobody to appeal to. If I have got it wrong, <a href="/contact">the contact form</a> reaches me, and I would rather hear it than not.</p>
-      
+
+      <p>The maintainer makes the final call. There&#8217;s no appeals process, but if you think a decision was wrong, the contact form is the place to say so.</p>
+
       <h2>Where your comment goes</h2>
-      
-      <p>When an AI provider is configured, the comment text, the title of the thing it is a comment on, and a few cheap signals about the account are sent to that provider to be classified. That is the only place a comment goes that is not this site, and every verdict it returns is logged, so a comment that was held or removed has a reason attached to it that I can look up.</p>
-      
-      <p>No provider is configured today. Nothing you write leaves this server, no classification happens, and every comment from an account that has not had three approved waits for me to read it. When that changes this page changes with it and names the provider.</p>
+
+      <p>Today no comment leaves this server. When an AI provider is configured, each comment&#8217;s text, the ID of the page it&#8217;s on and the ID of the account that wrote it will be sent to that provider for classification. That will be the only place a comment goes outside this site. Every verdict the classifier returns will be logged with the comment&#8217;s ID. When a provider is added, this page will name it.</p>
     format: filtered_html

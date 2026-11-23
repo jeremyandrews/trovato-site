@@ -8,9 +8,9 @@ changed: 1785542400
 fields:
   body:
     value: |
-      <p>I have worked with Drupal since 2002 and I run <a href="https://www.tag1.com">Tag1 Consulting</a>. Trovato is mine, written outside that work.</p>
+      <p>I have worked with Drupal, a content management system written in PHP, since 2002 and I run <a href="https://www.tag1.com">Tag1 Consulting</a>. Trovato, a content management system written in Rust, is mine, written outside that work.</p>
       
-      <p>The short version of why it exists is on <a href="/why">the Why page</a>: Drupal 6 got the content model right and paid for it in joins, and I wanted to know what that model looks like when the storage is not fighting it.</p>
+      <p>The short version of why it exists is on <a href="/why">the Why page</a>: Drupal 6 got the content model right (site builders define their own kinds of content, each with whatever fields it needs) and paid for it in joins, because one piece of content was spread across tables and put back together to load it. I wanted to know what that model looks like when the storage is not fighting it.</p>
       
       <p>I write here about how Trovato works and why it is built the way it is, on <a href="/blog">the blog</a>. Releases and changes go to <a href="/news">news</a>. <a href="/contact">The contact form</a> reaches me.</p>
     format: filtered_html

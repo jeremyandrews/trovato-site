@@ -8,54 +8,51 @@ changed: 1785542400
 fields:
   body:
     value: |
-      <p>Drupal 6 got the mental model right. Everything is a node. You add fields to any content type without writing a schema. You query content through a builder instead of writing SQL. You extend the system by implementing a few named functions, and the system calls them for you. I have worked with Drupal since 2002 and that model has held up better than anything that replaced it.</p>
-      
-      <p>What did not hold up was the implementation. It ran on PHP and MySQL, and CCK gave every field its own table, so loading a node with twenty fields meant twenty joins. The abstraction was good and the cost of it was paid on every page view forever.</p>
-      
-      <p>Trovato keeps the model and replaces the implementation.</p>
-      
+      <p>Trovato is a content management system written in Rust. It takes its content model from Drupal, which is written in PHP and got that model right. In Drupal you add fields to a content type (a kind of content, such as an article) without writing a schema, you build listings with Views, Drupal&#8217;s visual query builder, instead of SQL, and you extend the system with hooks that it calls for you. The cost shows up in storage. Drupal keeps each field in its own table, so content with twenty fields is spread over twenty tables, and loading it from the database means reading every one of them.</p>
+
+      <p>Trovato keeps the model and changes the implementation.</p>
+
       <h2>Content is one row</h2>
-      
-      <p>An item is a single row in one table, with its fields in one JSONB column. A content type with twenty fields is twenty keys in that column, and loading the item is one read. Adding a field to a type does not change the schema, because the schema does not describe the fields.</p>
-      
-      <p>Revisions and staging are in the write path rather than added on top of it. Every save writes a revision. Every item carries a stage. An editorial workflow is therefore a property of how content is stored, not a plugin that has to be told about every code path that writes.</p>
-      
-      <h2>Plugins run in a sandbox and reach what they declared</h2>
-      
-      <p>A plugin is a WebAssembly module with a manifest, and the manifest is the whole of what it may reach. The kernel reads the list of host interfaces and builds that plugin's linker from it: the plugin receives those imports and no others. A plugin that declares nothing is handed an empty linker.</p>
-      
-      <p>There is no filesystem. The runtime hand-writes five WASI stubs and opens no directories, so a plugin that asks to write a file gets <code>ENOSYS</code>. There is no path from one plugin's memory into another's. A plugin that wants the database also declares which tables it touches, and the kernel enforces that list on every structured call.</p>
-      
+
+      <p>Trovato calls one piece of content an item and stores each item as one row, with its fields in one JSONB column (PostgreSQL&#8217;s JSON type). Loading an item with twenty fields is one read, and you still add fields from the admin without a schema change.</p>
+
+      <p>Trovato also keeps each saved version of an item as a revision you can go back to, and no extra code has to opt in: every save through the editor or the item API (Trovato&#8217;s functions for reading and writing content) writes one. Every item also carries a stage (live, or one the site defines, such as draft), the basis for preparing content before it goes live. Nothing moves an item between stages yet, so the editor saves to live.</p>
+
+      <h2>Plugins reach only what they declare</h2>
+
+      <p>Plugins add features to Trovato without changing its core, the kernel. A plugin implements named functions that the kernel calls, the way a Drupal module implements hooks. The difference is in what it can touch. A plugin is a WebAssembly module with a manifest, a short file listing every host interface (a group of kernel functions, such as database access or logging) the plugin may use. The kernel connects each plugin to those interfaces and to five minimal system stubs every plugin gets, and to nothing else. A plugin that wants the database also lists the tables it needs beyond its own, and the kernel enforces that list on every structured database call.</p>
+
       <figure>
-      <img src="/static/art/diagram-sandbox.svg" width="720" height="400" alt="A plugin's two declared interfaces pass through gates in the kernel wall; an undeclared call stops at the wall.">
-      <figcaption>The manifest, drawn: the declared interfaces pass the wall, the undeclared call stops at it.</figcaption>
+      <img src="/static/art/diagram-sandbox.svg" width="720" height="400" alt="A plugin&#8217;s two declared interfaces pass through gates in the kernel wall; an undeclared one stops at the wall.">
+      <figcaption>The manifest, drawn: the declared interfaces pass the wall, and an undeclared one has no way through it.</figcaption>
       </figure>
 
-      <p>This is the part of the design I am most confident about, and it is the part that is hardest to add later. It is a property of how plugins are loaded, not a policy applied to them.</p>
+      <p>The kernel applies the manifest each time it loads a plugin. A sandbox like that is much harder to add to a CMS later than to build in from the start. <a href="/">The front page</a> walks through a real manifest line by line, including the one flag that lets a plugin skip the table check.</p>
 
-      <h2>Queries are built, not written</h2>
+      <h2>Listings come from Gather</h2>
 
-      <p>Gather fills the role Views did. A query is a definition: a base table, filters, sorts, relationships, and a display. It is stored as configuration, so it can be exported to a file, reviewed in a pull request, and imported into another environment. It has a visual builder for the people who want one and a YAML file for the people who do not.</p>
+      <p>Gather builds the lists of content a site shows, and it does the job Views does in Drupal; if you&#8217;ve built a View, most of it will look familiar. Each list is a Gather query: a definition (base table, filters, sorts, relationships, display) stored as configuration, so it moves between environments as a reviewed file.</p>
 
       <figure>
       <img src="/static/docs/images/part-03/gather-queries-admin.png" width="1280" height="2046" alt="The Gather queries admin on the tutorial's site: a table of queries with labels, base tables, owning plugins and operations.">
-      <figcaption>Every listing the tutorial&#8217;s site serves, in one admin table. Each row is a definition you can open, export and review.</figcaption>
+      <figcaption>The Gather queries of the tutorial&#8217;s site, in one admin table. Each row is a definition you can open, export and review.</figcaption>
       </figure>
-      
-      <h2>What is not done</h2>
-      
-      <p>Trovato is at 0.101.0 and working toward 1.0. The plugin contract is frozen. The version number is below 1.0 because the CMS around that contract is not finished, and the honest list of what is missing is worth more than the list of what works.</p>
-      
+
+      <h2>What isn&#8217;t done yet</h2>
+
+      <p>Trovato is working toward 1.0. The plugin contract, what a plugin and the kernel agree on, is frozen, so a plugin written today keeps working on every release before 1.0. The CMS around that contract isn&#8217;t finished:</p>
+
       <ul>
-      <li><strong>There is no plugin registry and no package format.</strong> A plugin is built from a directory on disk and installed from there. There is no way to publish one and no way to install somebody else's by name.</li>
-      <li><strong>Some administration happens through config import rather than through forms.</strong> Roles, permissions, stages and system configuration are edited as YAML and imported. That is a real workflow and it is not a replacement for the screens that are missing.</li>
-      <li><strong>Migrations only move forward.</strong> There is no rollback. An upgrade that goes wrong is restored from a backup, which is why the deployment documentation puts the backup drill before the upgrade procedure.</li>
-      <li><strong>Semantic search compares vectors exactly.</strong> There is no approximate index, so the cost of a semantic query grows with the size of the corpus.</li>
+      <li><strong>There&#8217;s no plugin registry or package format.</strong> A plugin is built from a directory and installed from there. There&#8217;s nowhere to publish one, and no way to install someone else&#8217;s from a URL or an index.</li>
+      <li><strong>Some settings have no admin screen.</strong> Settings that plugins define, and the custom robots.txt, can only be changed by editing the site&#8217;s configuration files and importing them.</li>
+      <li><strong>Migrations only move forward.</strong> There&#8217;s no rollback, so a failed upgrade is restored from a backup. Back up before every upgrade.</li>
+      <li><strong>Content can&#8217;t move between stages yet.</strong> Every item carries a stage, but nothing moves content from one stage to another.</li>
+      <li><strong>Semantic search compares every vector.</strong> Search by meaning, which ranks content by comparing embedding vectors, has no approximate index yet, so each query compares against every stored vector and gets slower as the site grows.</li>
       </ul>
-      
-      <p>The full list is in <a href="/learn/known-issues">Known issues</a>, and <a href="/learn/roadmap">the roadmap</a> says what happens to it.</p>
-      
+
+      <p><a href="/learn/known-issues">Known issues</a> lists more, and <a href="/learn/roadmap">the roadmap</a> says what comes next.</p>
+
       <h2>What this site is</h2>
-      
-      <p>This website runs on a published Trovato release. It is an external application: a plugin, some templates, a configuration set and its own static files, layered on through the search paths the kernel already reads. It patches nothing in the kernel. Where it needed something the kernel does not have, that is written down rather than worked around, and the writing down is in the site's own repository.</p>
+
+      <p>This site runs on a published Trovato release, built the way any Trovato site is: a plugin, some templates, a configuration set and its own static files, layered over the kernel without patching it. Where the site needed something the kernel doesn&#8217;t have yet, the gap and any workaround are written down in <a href="https://github.com/jeremyandrews/trovato-site">the site&#8217;s repository</a>.</p>
     format: filtered_html

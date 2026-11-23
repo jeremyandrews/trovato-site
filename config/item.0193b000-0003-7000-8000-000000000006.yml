@@ -8,7 +8,7 @@ changed: 1785542400
 fields:
   body:
     value: |
-      <p>Trovato is written in Rust. This page is the stack by name, the rules the project holds itself to, and enough of the plugin contract to see whether you want to write one. Every component in the table links to its home: a project that stands on other people&#8217;s work should say so right where the names are.</p>
+      <p>Trovato is a content management system written in Rust, on top of the projects in the table below.</p>
 
       <h2>The stack</h2>
 
@@ -17,44 +17,44 @@ fields:
       <tbody>
       <tr><td>HTTP</td><td><a href="https://github.com/tokio-rs/axum">axum</a> 0.8, on <a href="https://github.com/tower-rs/tower">tower</a> 0.5</td><td>Routing, middleware, extractors</td></tr>
       <tr><td>Runtime</td><td><a href="https://tokio.rs/">tokio</a> 1</td><td>Everything asynchronous</td></tr>
-      <tr><td>Database</td><td><a href="https://github.com/launchbadge/sqlx">sqlx</a> 0.8, <a href="https://www.postgresql.org/">PostgreSQL</a></td><td>Queries checked against a real schema</td></tr>
-      <tr><td>Templates</td><td><a href="https://keats.github.io/tera/">tera</a> 1</td><td>The theme layer, with template suggestions</td></tr>
+      <tr><td>Database</td><td><a href="https://github.com/launchbadge/sqlx">sqlx</a> 0.8, <a href="https://www.postgresql.org/">PostgreSQL</a></td><td>Async PostgreSQL access, parameterised queries</td></tr>
+      <tr><td>Templates</td><td><a href="https://keats.github.io/tera/">tera</a> 1</td><td>The theme layer, which uses the most specific template file that exists for a page</td></tr>
       <tr><td>Cache</td><td><a href="https://github.com/moka-rs/moka">moka</a> 0.12 in process, <a href="https://github.com/redis-rs/redis-rs">redis</a> 0.27 shared</td><td>Two tiers, deliberately</td></tr>
-      <tr><td>Plugins</td><td><a href="https://wasmtime.dev/">wasmtime</a> 47</td><td>One sandbox per plugin per request</td></tr>
+      <tr><td>Plugins</td><td><a href="https://wasmtime.dev/">wasmtime</a> 47</td><td>One sandbox per plugin per call</td></tr>
       <tr><td>Passwords</td><td><a href="https://github.com/RustCrypto/password-hashes/tree/master/argon2">argon2</a> 0.5</td><td>Hashing</td></tr>
-      <tr><td>Sanitising</td><td><a href="https://github.com/rust-ammonia/ammonia">ammonia</a> 4</td><td>The filtered HTML text format</td></tr>
+      <tr><td>Sanitising</td><td><a href="https://github.com/rust-ammonia/ammonia">ammonia</a> 4</td><td>Cleaning the HTML that users submit before it is shown</td></tr>
       </tbody>
       </table>
 
-      <p>This website adds a few names of its own on top of the kernel&#8217;s: <a href="https://rsms.me/inter/">Inter</a> and <a href="https://www.jetbrains.com/lp/mono/">JetBrains Mono</a>, self-hosted, are the faces you are reading; <a href="https://github.com/trishume/syntect">syntect</a> highlights the mirrored documentation&#8217;s code at import time and <a href="https://github.com/pulldown-cmark/pulldown-cmark">pulldown-cmark</a> renders its markdown; the gates described on <a href="/accessibility">the accessibility page</a> run on <a href="https://github.com/dequelabs/axe-core">axe-core</a> and <a href="https://playwright.dev/">Playwright</a>.</p>
-      
-      <h2>The toolchain, and how it moves</h2>
-      
-      <p>The toolchain is pinned to one version in <code>rust-toolchain.toml</code>, and CI carries the same version in its own configuration because the toolchain action does not read that file. Both pins move together or neither does. There is no separately declared minimum supported Rust version: the pin is the answer to that question.</p>
-      
-      <p>The reason the protocol exists is that CI once floated to a newer stable that added clippy lints while local development stayed on the old one, so every local gate passed green while CI failed. Bumping the channel now means editing both pins in one commit, running the full local gate on the new toolchain, fixing whatever lints it surfaces, and running <code>cargo audit</code> again because a toolchain bump can change the resolved dependency set. The person who bumps it absorbs the lints instead of ambushing the next unrelated change.</p>
-      
-      <p>Plugins compile to <code>wasm32-wasip1</code>, and the target is listed in the same pin, so anyone who picks up the toolchain gets it.</p>
-      
+      <p>This site adds a few projects of its own: <a href="https://rsms.me/inter/">Inter</a> and <a href="https://www.jetbrains.com/lp/mono/">JetBrains Mono</a>, self-hosted, are the fonts you&#8217;re reading; <a href="https://github.com/trishume/syntect">syntect</a> highlights code in the documentation copied in from Trovato&#8217;s repository and <a href="https://github.com/pulldown-cmark/pulldown-cmark">pulldown-cmark</a> renders its Markdown; the browser checks on <a href="/accessibility">the accessibility page</a> run on <a href="https://github.com/dequelabs/axe-core">axe-core</a> and <a href="https://playwright.dev/">Playwright</a>.</p>
+
+      <h2>The toolchain</h2>
+
+      <p>The toolchain is pinned to one version in <code>rust-toolchain.toml</code>. CI pins the same version in its own configuration, because the toolchain action doesn&#8217;t read that file. No <code>rust-version</code> is declared: the pinned toolchain is the only stable release the project builds and tests on.</p>
+
+      <p>The two pins move together because CI once floated to a newer stable release with new clippy lints, and every local check passed while CI failed. Moving the pin means editing both in one commit, running the full local check suite on the new toolchain, fixing any new lints, and running <code>cargo audit</code> again in case the dependency set changed.</p>
+
+      <p>Plugins compile to <code>wasm32-wasip1</code>, and that target is part of the same pin.</p>
+
       <h2>What CI enforces</h2>
-      
+
       <ul>
-      <li><code>cargo fmt --check</code> and <code>cargo clippy</code> with warnings denied.</li>
-      <li>The test suite, sharded three ways, against a real PostgreSQL and Redis.</li>
-      <li>Coverage, reported rather than gated.</li>
-      <li><code>cargo audit</code>, against the advisory database.</li>
-      <li><code>cargo semver-checks</code> on the plugin SDK, which fails when the SDK's public surface breaks without a version bump. The plugin contract being frozen is a claim, and this is the thing that keeps it true.</li>
-      <li>A guard against new raw SQL expressions added without justification.</li>
+      <li><code>cargo fmt --check</code>, and <code>cargo clippy</code> with warnings denied.</li>
+      <li>The test suite, split three ways, against a real PostgreSQL and Redis.</li>
+      <li>Coverage, reported but not gated.</li>
+      <li><code>cargo audit</code> against the advisory database.</li>
+      <li><code>cargo semver-checks</code> on the plugin SDK, which fails a breaking change that ships without the version bump semver requires. Before 1.0 a minor bump is enough to pass it, so until then the check doesn&#8217;t hold the plugin contract (what plugins and Trovato&#8217;s core agree on) frozen; the maintainer does, by reviewing every change to it. From 1.0 a breaking change needs a major version bump, and the check enforces that.</li>
+      <li>A check that counts the places under <code>crates/</code> where custom SQL is spliced into a built query without bound parameters, and fails if the count rises, unless the pull request raises the baseline and says why.</li>
       </ul>
-      
+
       <h2>Licence</h2>
-      
-      <p>Dual licensed under <a href="https://github.com/jeremyandrews/trovato/blob/main/LICENSE-MIT">MIT</a> or <a href="https://github.com/jeremyandrews/trovato/blob/main/LICENSE-APACHE">Apache-2.0</a>, at your option. That is the ordinary Rust convention and it is deliberate: Apache-2.0 carries a patent grant, MIT is short enough to read, and taking either means nobody has to argue about it.</p>
-      
+
+      <p>Trovato is dual licensed under <a href="https://github.com/jeremyandrews/trovato/blob/main/LICENSE-MIT">MIT</a> or <a href="https://github.com/jeremyandrews/trovato/blob/main/LICENSE-APACHE">Apache-2.0</a>, at your option, which is the usual choice for Rust projects. Apache-2.0 includes a patent grant, and MIT is short enough to read in a minute.</p>
+
       <h2>Writing a plugin</h2>
-      
-      <p>A plugin implements named functions and declares what it may reach. Here is a whole tap, from the blog plugin that ships with the kernel:</p>
-      
+
+      <p>Plugins are how you extend Trovato. A plugin implements named functions, called taps, and the kernel (Trovato&#8217;s core) calls them at set points, such as when it needs to know your content types (the kinds of content your site holds, such as articles or events) or when a piece of content is saved. Here&#8217;s a complete tap from the blog plugin that ships with Trovato:</p>
+
       <pre><code>#[plugin_tap]
       pub fn tap_item_info() -&gt; Vec&lt;ContentTypeDefinition&gt; {
           vec![ContentTypeDefinition {
@@ -75,19 +75,19 @@ fields:
               ],
           }]
       }</code></pre>
-      
-      <p>That is the whole of defining a content type. No schema migration, no table, no form definition.</p>
-      
-      <p>What the plugin may reach is a separate declaration, in its manifest. This one is the AI comment moderation plugin, and it is worth reading closely because every line of it is a restriction:</p>
-      
+
+      <p>That defines a content type. You don&#8217;t write a schema migration or a form for it.</p>
+
+      <p>What a plugin may reach is declared separately, in its manifest, a short TOML file that ships with the plugin. These are the capabilities of the AI comment moderation plugin:</p>
+
       <pre><code>[capabilities]
       host_interfaces = ["logging", "queue", "ai-api", "db"]
       ai_background = true
       db_tables = ["comment"]</code></pre>
-      
-      <p>It may log, use the job queue, call the configured AI provider, and touch the database. It owns no migrations, so <code>db_tables</code> is its entire database reach: the <code>comment</code> table, and nothing else. It does not declare <code>raw_sql</code>, so it cannot write a query the kernel has not parsed, and the table guarantee holds. <code>ai_background</code> says the provider call happens under the background principal rather than inside a web request.</p>
-      
-      <p>Nothing in that manifest is advisory. The kernel builds the linker from it.</p>
-      
-      <p><a href="/learn/plugin-development">The plugin development guide</a> is the long version, <a href="/learn/plugin-quick-reference">the quick reference</a> is the short one, and <a href="/learn/design-plugin-system">the plugin system design document</a> says why it is shaped this way.</p>
+
+      <p>It can log, use the job queue, call the configured AI provider, and use the database. A plugin can always use the tables its own migrations create; this one creates none, so <code>db_tables</code> is its entire database reach: the <code>comment</code> table and nothing else. It doesn&#8217;t set <code>raw_sql</code>, the flag that would let it skip the table check, so every query it runs is checked. <code>ai_background</code> lets it call the AI provider from a queue job, where there&#8217;s no logged-in user whose permissions would cover the call.</p>
+
+      <p>The kernel enforces both lists: it connects the plugin only to the interfaces in <code>host_interfaces</code>, and checks every structured database call against <code>db_tables</code>.</p>
+
+      <p><a href="/learn/plugin-development">The plugin development guide</a> is the long version, <a href="/learn/plugin-quick-reference">the quick reference</a> is the short one, and <a href="/learn/design-plugin-system">the plugin system design</a> explains why it works this way.</p>
     format: filtered_html

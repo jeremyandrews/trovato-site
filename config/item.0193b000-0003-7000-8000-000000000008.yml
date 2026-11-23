@@ -8,46 +8,44 @@ changed: 1785542400
 fields:
   body:
     value: |
-      <p>The target is WCAG 2.2 AA. This page says what is actually checked, how, and what is known to be missing. It is written the way an engineering page should be, because a statement that only says "we are committed to accessibility" tells you nothing you can act on.</p>
-      
-      <h2>What is checked automatically, on every build</h2>
-      
+      <p>This site targets WCAG 2.2 AA.</p>
+
+      <h2>Checked automatically on every build</h2>
+
       <ul>
-      <li><strong>axe-core, on one page per template family, in both colour schemes.</strong> The front page, a content page, both listings, the documentation index, a documentation page, the contact form, the search page, the log-in page and the Italian front page: twenty page renders, checked against the WCAG 2.0, 2.1 and 2.2 A and AA rule sets plus axe's best-practice rules. Nothing is on an allowlist. A violation fails the build, because an accepted violation is one nobody looks at again.</li>
-      <li><strong>Colour contrast, separately and by hand.</strong> Every colour pairing the site uses is declared in the stylesheet and verified by the test suite: body text, muted text, links, control borders and focus rings, against both surfaces, in both schemes, plus seven syntax-highlighting colours against the surface a code block sits on. This runs without a browser, so it fails in the unit tests rather than at the end.</li>
-      <li><strong>Horizontal overflow.</strong> Every page in the check set is rendered at 360 and 1280 pixels wide, in both schemes, and the build fails if the document scrolls sideways at either width.</li>
-      <li><strong>Unthemed elements.</strong> The same pass measures every visible element and fails if any of them carries a background from the wrong colour scheme. This is what catches a control that a template the site does not own left at its browser default.</li>
-      <li><strong>Off-origin requests.</strong> The same pass records every request each page makes and fails if any of them leaves this site. Nothing here loads a font, a script or an image from anywhere else.</li>
-      <li><strong>Structure.</strong> A crawl of every page reachable from the front page checks that each one has a main landmark, a skip link and a labelled main navigation, and that no page came back as a template-failure fallback.</li>
+      <li><strong>axe-core on one page of each kind, in both colour schemes.</strong> The front page, a content page, both listings, the documentation index, a documentation page, the contact form, the search page, the log-in page and the Italian front page: twenty renders, checked against the WCAG 2.0 and 2.1 A and AA rules, the WCAG 2.2 AA rules, and axe&#8217;s best-practice rules. There&#8217;s no allowlist, and any violation fails the build.</li>
+      <li><strong>Colour contrast.</strong> The test suite checks the colour pairings the site declares in its stylesheet, in both schemes: body text, muted text, links, control borders and focus rings against the page background and against the inset background, and button text against its fill. It also checks seven syntax highlighting colours against the code block background. This runs without a browser, so a contrast failure shows up in <code>cargo test</code>.</li>
+      <li><strong>Horizontal overflow.</strong> Every page in the check set is rendered at 360 and 1280 pixels wide, in both schemes, and the build fails if a page scrolls sideways at either width.</li>
+      <li><strong>Unthemed elements.</strong> The same pass fails if any visible element has a background from the wrong colour scheme, which catches controls left at the browser default.</li>
+      <li><strong>Off-site requests.</strong> The same pass records every request each page makes and fails if any leaves this site, so every font, script and image on those pages comes from here.</li>
+      <li><strong>Structure.</strong> A crawl of every page reachable from the front page checks that each has a main landmark, a skip link and a labelled main navigation, and that no page came back as the raw fallback page that Trovato (the content management system this site runs on) serves when a template fails.</li>
       </ul>
-      
-      <h2>What the site does deliberately</h2>
-      
+
+      <h2>Built in on purpose</h2>
+
       <ul>
-      <li>Every navigation is labelled, so a screen reader lists them apart rather than reading four unnamed navs. The two search forms on the search page are labelled separately for the same reason.</li>
-      <li>The current page carries <code>aria-current="page"</code>, not only a styling class, because a class is invisible to assistive technology.</li>
-      <li>The narrow-screen menu is a disclosure element, not a scripted menu button. It opens by click or by keyboard, announces its own expanded state, and works with JavaScript switched off.</li>
-      <li>Search is a form that submits to the server. The instant search layered on top of it is an enhancement; without JavaScript the form still returns results.</li>
-      <li>The site name is text inside its link, not the alternative text of an image. The first version put it on the image, and in dark mode the stylesheet hid that image and left the link with no accessible name at all. A name that depends on which stylesheet rule won is not a name.</li>
-      <li>A code block that scrolls sideways can take keyboard focus and has a name, so it can be scrolled without a mouse. It is not marked as a landmark: a mirrored documentation page has more than a hundred code blocks, and a hundred landmarks is not a landmark list.</li>
-      <li>Focus is visible everywhere, with an outline that meets the contrast threshold for a user interface component in both colour schemes.</li>
-      <li>Motion is small and it stops. The front page plays one entrance when it loads, cards lift on hover, and moving between pages crossfades where the browser supports it. All of it sits behind <code>prefers-reduced-motion: no-preference</code> or is switched off in the reduce block, the view-transition pseudo-elements included, so a reader who asked for less motion gets a page that does not move at all.</li>
-      <li>The imagery is either the site&#8217;s own SVG line drawings, each carrying its own palette for both colour schemes, or the tutorial&#8217;s real screenshots, mirrored from the kernel repository at the pinned release with their original alternative text. Both are served from this origin. None of them is the only place a fact lives.</li>
-      <li>Long unbreakable text wraps rather than pushing the page sideways. Code blocks scroll inside their own box instead, so the source stays selectable.</li>
+      <li>Every navigation region has its own label, which is how a screen reader tells them apart. The two search forms on the search page are labelled separately for the same reason.</li>
+      <li>The current page is marked with <code>aria-current="page"</code>, so a screen reader announces which page you&#8217;re on.</li>
+      <li>The narrow-screen menu is a native disclosure element. It opens by click or keyboard, announces whether it&#8217;s open, and works without JavaScript.</li>
+      <li>Search is a form that submits to the server. Instant results are added on top, and without JavaScript the form still works.</li>
+      <li>The site name in the header is text inside the link, not an image&#8217;s alt text, so the link keeps its name in both colour schemes.</li>
+      <li>A code block in the documentation copied in from Trovato&#8217;s repository takes keyboard focus and has a name, so you can scroll it without a mouse. Code blocks aren&#8217;t landmarks, because some documentation pages have dozens of them.</li>
+      <li>Focus is always visible, with an outline that meets the contrast requirement for interface components in both colour schemes.</li>
+      <li>Motion is small, and none of it loops. The front page plays one entrance animation, cards lift on hover, and page changes crossfade where the browser supports it. With reduced motion on, the entrance and the crossfade are off, and a card still shifts slightly on hover but no longer animates.</li>
+      <li>Images are either the site&#8217;s own SVG drawings, which follow your colour scheme, or real screenshots from the tutorial. Every screenshot has alt text that describes what it shows, and a drawing that only decorates a page is hidden from screen readers. All are served from this site.</li>
+      <li>Long words and URLs wrap, and the page never widens. Code blocks don&#8217;t wrap; a long line scrolls inside the block&#8217;s own box.</li>
       </ul>
-      
-      <h2>What is not checked, and what is known to be wrong</h2>
-      
+
+      <h2>Not checked yet, and known problems</h2>
+
       <ul>
-      <li><strong>A screen reader has not been used on this site.</strong> Not VoiceOver, not NVDA, not JAWS. Automated checking finds missing labels and bad contrast; it does not tell you whether a page is comprehensible when it is read aloud. Until somebody sits down with one, this page will say so.</li>
-      <li><strong>The contact form does not associate its errors with its fields.</strong> A failed submission returns a list of what went wrong above the form, and the fields themselves carry no <code>aria-invalid</code> and no <code>aria-describedby</code>, so a screen reader is told there is a problem but not which field has it. That form's markup belongs to a plugin in the Trovato kernel rather than to this site, and this site does not patch the kernel. It is reported there.</li>
-      <li><strong>Automated checking sees a form at rest, not a form that has just failed.</strong> The accessibility pass loads each page and checks it; it does not submit anything. The gap above was found by hand, and there may be others of the same kind.</li>
-      <li><strong>Keyboard navigation has been verified in two places, not everywhere.</strong> The disclosure menu is opened by keyboard in the automated pass, and code blocks are focusable. The rest of the site has not had a deliberate tab-through.</li>
+      <li><strong>No one has tested this site with a screen reader yet</strong>, whether VoiceOver, NVDA or JAWS. Automated checks can find a missing label or poor contrast, but they can&#8217;t tell whether a page makes sense read aloud.</li>
+      <li><strong>The contact form doesn&#8217;t tie its errors to its fields.</strong> After a failed submission, a list of errors appears above the form, but the fields carry no <code>aria-invalid</code> or <code>aria-describedby</code>, so a screen reader announces a problem without saying which field has it. The form comes from a plugin that ships with Trovato, so the fix belongs in Trovato itself.</li>
+      <li><strong>Automated checks see forms before submission, not after.</strong> The accessibility pass loads each page; it doesn&#8217;t submit forms. The problem above was found by hand, and there may be others like it.</li>
+      <li><strong>Keyboard navigation is only partly checked.</strong> Code blocks in the documentation pages are generated so they take keyboard focus, and a unit test checks that; the code blocks on this site&#8217;s own pages don&#8217;t take focus yet. No automated check opens the menu by keyboard, and the site hasn&#8217;t had a full keyboard walk-through.</li>
       </ul>
-      
+
       <h2>Reporting a problem</h2>
-      
-      <p>If something here does not work for you, <a href="/contact">the contact form</a> reaches me. Tell me what you were using and what happened. A report about a page being unusable is more useful than a report about a rule being violated, and both are welcome.</p>
-      
-      <p>This page is kept in step with what the build actually checks. Every claim above is either in the test suite or in the list of what is not checked.</p>
+
+      <p>If something here doesn&#8217;t work for you, use <a href="/contact">the contact form</a>. Say what you were using and what happened. A report that a page is hard to use is more useful than a report that a rule is broken, and both are welcome.</p>
     format: filtered_html
