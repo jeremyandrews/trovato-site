@@ -8,9 +8,9 @@ changed: 1784505600
 fields:
   body:
     value: |
-      <p>The set of taps a plugin implements, the manifest that declares what it may reach, and the host interfaces behind that declaration are now fixed. A plugin written today keeps working through 1.0.</p>
+      <p>A plugin built today for Trovato, a content management system written in Rust, keeps working on every release before 1.0. Plugins are how you add features to Trovato without changing its core, the kernel, and the plugin contract is what the two agree on. It covers taps, the named points where the kernel calls into a plugin; the manifest, a short file in which a plugin declares what it may reach; host interfaces, the groups of functions the kernel offers a plugin, such as database access or logging; and the SDK and error codes a plugin is built against. All of it is now fixed: releases before 1.0 can add to it, but not break it.</p>
       <p>The version number stays below 1.0 because the CMS around the contract is not finished. <a href="https://github.com/jeremyandrews/trovato/blob/main/KNOWN-ISSUES.md">KNOWN-ISSUES.md</a> is the list of what is left.</p>
     format: filtered_html
   summary:
-    value: Taps, manifests and host interfaces are fixed. What is left is the CMS around them.
+    value: Plugins written today keep working on every release before 1.0. What is left to finish is the rest of the CMS.
     format: plain_text

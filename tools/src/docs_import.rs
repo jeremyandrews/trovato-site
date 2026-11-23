@@ -440,7 +440,7 @@ fn docs_index_query() -> String {
          # order the documents are meant to be read rather than alphabetically.\n\
          query_id: trovato_site.docs_index\n\
          label: Learn\n\
-         description: The Trovato documentation, mirrored from the kernel repository at {TAG}.\n\
+         description: The Trovato documentation, copied from Trovato’s repository at release {TAG}.\n\
          definition:\n\
          \x20 base_table: item\n\
          \x20 item_type: docs\n\

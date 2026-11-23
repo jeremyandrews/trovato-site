@@ -8,44 +8,44 @@ changed: 1785542400
 fields:
   body:
     value: |
-      <p>Two ways in. Docker needs no Rust toolchain and gets you a running site. Building from source needs the toolchain and gets you something you can change.</p>
-      
+      <p>Trovato is a content management system written in Rust, and there are two ways in: Docker gets you a running site without installing Rust, and building from source is the way to go if you plan to change Trovato itself.</p>
+
       <h2>With Docker</h2>
-      
-      <p>PostgreSQL, Redis and the kernel come up together.</p>
-      
+
+      <p>These four commands bring up PostgreSQL, Redis and Trovato together:</p>
+
       <pre><code>git clone https://github.com/jeremyandrews/trovato
       cd trovato
       cp .env.example .env
       docker compose --profile full up</code></pre>
-      
-      <p>Open <code>http://localhost:3001</code> and follow the installer. It asks for an administrator account and a site name, and then the site is yours.</p>
+
+      <p>Open <code>http://localhost:3001</code> and follow the installer. It asks for an administrator account and a site name, and then the site&#8217;s yours.</p>
 
       <figure>
       <img src="/static/docs/images/part-01/installer-welcome.png" width="1200" height="800" alt="The installer's welcome step, confirming PostgreSQL and Redis are connected and migrations have run, with a continue button.">
       <figcaption>The installer&#8217;s first screen, from <a href="/learn/tutorial-01-hello-trovato">the tutorial</a>: your databases, checked, before it asks you for anything.</figcaption>
       </figure>
-      
-      <p>The <code>full</code> profile is what starts the Trovato container. Without it, <code>docker compose up</code> brings up PostgreSQL and Redis alone, which is what you want when you are running the server natively on port 3000.</p>
-      
+
+      <p>The <code>full</code> profile is what starts the Trovato container. Without it, <code>docker compose up</code> starts only PostgreSQL and Redis, which is what you want when you run the server natively on port 3000.</p>
+
       <h2>From source</h2>
-      
-      <p>You need Rust, PostgreSQL 16 or newer, and Redis 7 or newer. The toolchain is pinned in <code>rust-toolchain.toml</code>, so rustup will fetch the right version on its own.</p>
-      
+
+      <p>You need Rust, PostgreSQL 15 or newer, and Redis 7 or newer; CI tests on PostgreSQL 16. The toolchain is pinned in <code>rust-toolchain.toml</code>, so rustup fetches the right version for you. Clone the repository as in the Docker steps, then run:</p>
+
       <pre><code>docker compose up -d          # PostgreSQL and Redis
       cargo build --release
       cp .env.example .env
       cargo run --release --bin trovato</code></pre>
-      
-      <p>Migrations run on startup. <a href="/learn/install">Installing Trovato</a> has the details, including running the databases yourself instead of in containers.</p>
-      
+
+      <p>Migrations run on startup. Open <code>http://localhost:3000</code> and follow the installer. <a href="/learn/install">Installing Trovato</a> has the details, including running the databases without containers.</p>
+
       <h2>Then what</h2>
-      
-      <p><a href="/learn/building-your-first-site">Building your first site</a> walks through pages, a blog and navigation on a fresh install. <a href="/learn/tutorial-01-hello-trovato">The tutorial</a> is longer: nine parts that build one real site from an empty database, ending with translations, search and a production deployment.</p>
-      
-      <h2>Before you put it somewhere that matters</h2>
-      
-      <p>Trovato is at 0.101.0. The plugin contract is frozen, so a plugin you write now will keep working. The rest is not finished: there is no plugin registry, parts of administration are done by importing YAML rather than filling in a form, and migrations only move forward, so an upgrade that goes wrong is recovered from a backup.</p>
-      
-      <p><a href="/learn/known-issues">Known issues</a> is the list, kept honestly. <a href="/why">Why Trovato</a> is the argument for the design. Neither is marketing, and if one of them talks you out of it that is a good outcome.</p>
+
+      <p><a href="/learn/building-your-first-site">Building your first site</a> walks through pages, a blog and navigation on a fresh install. <a href="/learn/tutorial-01-hello-trovato">The tutorial</a> goes further, with nine parts that build one real site from an empty database. Its last three cover translations and a REST API, production hardening (caching, file storage, metrics and tests), and AI and search. Part 2 is out of date because Ritrovo, the site the tutorial builds, moved to its own repository; <a href="/learn/known-issues">Known issues</a> explains.</p>
+
+      <h2>Before you rely on it</h2>
+
+      <p>Trovato isn&#8217;t at 1.0 yet. The plugin contract, what plugins and Trovato&#8217;s core agree on, is frozen, so a plugin you write now keeps working on every release before 1.0. The rest is still moving. There&#8217;s no plugin registry, some settings can only be changed by editing the site&#8217;s configuration files and importing them, and migrations only move forward, so a failed upgrade is recovered from a backup.</p>
+
+      <p><a href="/learn/known-issues">Known issues</a> lists what&#8217;s missing, and <a href="/why">Why Trovato</a> explains the design. Read both before you put a site you care about on it.</p>
     format: filtered_html

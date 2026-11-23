@@ -1209,3 +1209,34 @@ Nothing broke on the bump. The one thing that had to be fixed was a defect of th
 site's own that 0.102.0 made visible by building new output out of it, and the
 plugin that the whole repository exists to ship compiled against the new SDK
 without a line changing.
+
+## Gate 12: the v24 copy, a sentence audit, and a review site on k3s
+
+**Attempt 1, 2026-11-23: copy applied, loop stopped at its cap of 12 rounds**
+
+**Goal:** every sentence the site renders says what a thing is and why a reader
+cares before how it works, carries no stock writing tells, and is factually right
+against the kernel at `v0.102.0`; and the site runs on the home k3s cluster for
+review. The kernel and its pin are unchanged.
+
+| Check | Result |
+|---|---|
+| The v24 copy on the seven main pages and the six other items | Applied; the five Italian overlays retranslated |
+| "This site runs on a released Trovato" dated 2026-09-18 | Done (`created: 1789689600`) |
+| Every sentence the repository authors audited | Done: 13 items, 5 overlays, templates, menu and Gather strings, plugin strings, alt text and captions |
+| Writing loop (facts, newcomer reader, voice) | 12 rounds, must fixes by round: 70, 26, 7, 9, 7, 9, 5, 5, 6, 4, 1, 1; no two clean rounds in a row before the cap; round 12's one must fix applied and checked in the closing facts pass |
+| Fact errors fixed beyond the appendix | Among them: the search explainer (search here is server-side PostgreSQL full-text only), the security reporting route (the advisory form is disabled), the config counts (72 more in `config/docs/`), the manifest length (42 lines), what 0.101.0 enabled, the four parts of the frozen contract, `plugin-api` and `request-context` descriptions |
+| No dash in shipped prose | PASS, `checks/tests/content.rs` |
+| `cargo fmt`, `clippy -D warnings`, `cargo test`, `docs-import --check`, wasm build | PASS locally and in CI |
+| About at `/about` | Done: a second alias, canonical, with `/authors/jeremy-andrews` still answering; the plugin's queries join only each item's canonical alias, so nothing is listed twice |
+| Review site | `deploy/k3s/`: namespace `trovato-site`, site, Postgres and Redis with their own volumes, LoadBalancer on `10.20.250.17` with `externalTrafficPolicy: Local`; crawl, a11y, shoot, round-trip and moderation run against it with `deploy/k3s/gate.sh` |
+
+### Left open
+
+- The appendix note that a normal web page must work without custom SQL is not
+  solved by copy: the front-page listing still needs `raw_sql`, and fixing that
+  is plugin or kernel work.
+- `docs/REPORT.md` still says the documentation mirror is at `v0.101.0`; it is
+  at `v0.102.0`.
+- The `/learn` pages mirrored from the kernel were read with the same checklist
+  and not edited; the findings belong in the kernel repository.

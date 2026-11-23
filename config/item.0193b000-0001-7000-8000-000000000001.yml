@@ -8,9 +8,9 @@ changed: 1787097600
 fields:
   body:
     value: |
-      <p>0.101.0 adds the contact form plugin, the first plugin to use the mail host interface, the <code>_token</code> form field and themed plugin pages. It also adds <code>trovato_book</code>, which gives a set of pages an ordered hierarchy with previous, next and up links.</p>
-      <p>The plugin contract is unchanged. A plugin built against 0.99 or 0.100 loads on 0.101 without rebuilding: the kernel accepts a plugin whose major version matches and whose minor version is no higher than its own.</p>
+      <p>Trovato 0.101.0 (Trovato is a content management system written in Rust) adds a contact form, so a visitor can write to the site owner. The form is a plugin, the first plugin that sends mail. Three smaller changes made it possible: plugins gained a mail interface that sends only to the site&#8217;s own address, a plugin can now serve its own pages inside the site&#8217;s theme, and it can serve a plain HTML form that works without JavaScript, with its security token in a hidden <code>_token</code> field. 0.100.0, released the same day, added <code>trovato_book</code>, which gives a set of pages an ordered hierarchy with previous, next and up links.</p>
+      <p>0.101.0 adds to the plugin contract, what a plugin and the kernel (Trovato&#8217;s core) agree on, without changing anything already in it. A plugin built against 0.99 or 0.100 loads on 0.101 without rebuilding: the kernel accepts a plugin built against a release whose major version is the same as the kernel&#8217;s and whose minor version is no higher.</p>
     format: filtered_html
   summary:
-    value: The contact form and book page trees, with no change to the plugin contract.
+    value: The contact form, and nothing that breaks an existing plugin.
     format: plain_text

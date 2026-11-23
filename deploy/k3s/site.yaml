@@ -1,0 +1,248 @@
+# The site: the kernel with the site overlay baked in, Caddy in front of it in
+# the same pod, and the cron poker beside them.
+#
+# apply.sh fills in four placeholders before this reaches the cluster:
+#   __SITE_IMAGE__   the image it just built and pushed
+#   __LB_IP__        the LAN address of the Service below
+#   __SITE_HOST__    the host name SITE_URL carries (see SITE_URL below)
+#   __CADDY_HASH__   a hash of the Caddy config, so a change to it rolls the pod
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: trovato-site-uploads
+  namespace: trovato-site
+  labels:
+    app: trovato-site
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: trovato-site
+  namespace: trovato-site
+  labels:
+    app: trovato-site
+spec:
+  replicas: 1
+  # One kernel at a time: the uploads volume is ReadWriteOnce, and two kernels
+  # against one database during a rollout would both run their startup work.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: trovato-site
+  template:
+    metadata:
+      labels:
+        app: trovato-site
+      annotations:
+        trovato.rs/caddy-config-hash: "__CADDY_HASH__"
+    spec:
+      enableServiceLinks: false
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/arch
+                    operator: In
+                    values: [arm64]
+                  - key: kubernetes.io/hostname
+                    operator: NotIn
+                    values: [ks2.pozza, ks3.pozza]
+      initContainers:
+        # Caddy serves the site's /static itself, from the same files the
+        # kernel has, so they are copied out of the site image at start.
+        - name: static-copy
+          image: __SITE_IMAGE__
+          command: ["sh", "-c", "cp -a /site/static/. /srv/public/static/"]
+          resources:
+            requests:
+              cpu: 50m
+              memory: 32Mi
+              ephemeral-storage: 64Mi
+            limits:
+              cpu: 500m
+              memory: 128Mi
+              ephemeral-storage: 128Mi
+          volumeMounts:
+            - name: static
+              mountPath: /srv/public/static
+      containers:
+        - name: site
+          image: __SITE_IMAGE__
+          ports:
+            - containerPort: 3000
+              name: kernel
+          env:
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: trovato-site-secrets
+                  key: POSTGRES_PASSWORD
+            - name: DATABASE_URL
+              value: postgres://trovato:$(POSTGRES_PASSWORD)@postgres:5432/trovato
+            - name: REDIS_URL
+              value: redis://redis:6379
+            - name: PORT
+              value: "3000"
+            # A host name, not the bare address. The kernel derives its WebAuthn
+            # relying party ID from this host and refuses to start when it is an
+            # IP address. The default, <address>.nip.io, is wildcard DNS that
+            # answers with the address itself, so absolute links still reach
+            # this Service and no DNS record has to exist anywhere.
+            - name: SITE_URL
+              value: http://__SITE_HOST__
+            # Caddy is in this pod and reaches the kernel over loopback, so
+            # 127.0.0.1 is the one address whose X-Forwarded-For is believed.
+            # Without it every visitor shares one rate-limit bucket.
+            - name: TRUSTED_PROXIES
+              value: 127.0.0.1
+            - name: CRON_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: trovato-site-secrets
+                  key: CRON_KEY
+            - name: RUST_LOG
+              value: info,tower_http=info,sqlx=warn
+            - name: PLUGINS_DIR
+              value: /app/plugins:/site/plugins
+            - name: TEMPLATES_DIR
+              value: /app/templates:/site/templates
+            - name: STATIC_DIR
+              value: /app/static:/site/static
+            - name: UPLOADS_DIR
+              value: /site-uploads
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            periodSeconds: 2
+            failureThreshold: 90
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            periodSeconds: 10
+            timeoutSeconds: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 6
+          resources:
+            requests:
+              cpu: 200m
+              memory: 256Mi
+              ephemeral-storage: 256Mi
+            limits:
+              cpu: "2"
+              memory: 2Gi
+              ephemeral-storage: 1Gi
+          volumeMounts:
+            - name: uploads
+              mountPath: /site-uploads
+        - name: proxy
+          image: caddy:2.10-alpine
+          ports:
+            - containerPort: 80
+              name: http
+          readinessProbe:
+            tcpSocket:
+              port: 80
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: 80
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+              ephemeral-storage: 64Mi
+            limits:
+              cpu: "1"
+              memory: 256Mi
+              ephemeral-storage: 256Mi
+          volumeMounts:
+            - name: caddy-config
+              mountPath: /etc/caddy
+              readOnly: true
+            - name: static
+              mountPath: /srv/public/static
+              readOnly: true
+            - name: caddy-data
+              mountPath: /data
+            - name: caddy-state
+              mountPath: /config
+        # The site's clock, as the `cron` service in docker-compose.yml.
+        - name: cron
+          image: curlimages/curl:8.11.1
+          env:
+            - name: CRON_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: trovato-site-secrets
+                  key: CRON_KEY
+            - name: CRON_INTERVAL
+              value: "60"
+          command:
+            - /bin/sh
+            - -c
+            # The trap and the backgrounded sleep let it stop at once on
+            # SIGTERM, instead of holding every restart for the grace period.
+            - 'trap "exit 0" TERM; while true; do curl -fsS -m 30 -X POST "http://127.0.0.1:3000/cron/$CRON_KEY" >/dev/null || true; sleep "$CRON_INTERVAL" & wait $!; done'
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+              ephemeral-storage: 16Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+              ephemeral-storage: 64Mi
+      volumes:
+        - name: uploads
+          persistentVolumeClaim:
+            claimName: trovato-site-uploads
+        - name: static
+          emptyDir:
+            sizeLimit: 128Mi
+        - name: caddy-config
+          configMap:
+            name: trovato-site-caddy
+        - name: caddy-data
+          emptyDir:
+            sizeLimit: 64Mi
+        - name: caddy-state
+          emptyDir:
+            sizeLimit: 16Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: trovato-site
+  namespace: trovato-site
+  labels:
+    app: trovato-site
+  # The address is fixed by the annotation alone. MetalLB refuses a Service
+  # that also sets spec.loadBalancerIP ("service can not have both"), and the
+  # other Services on this cluster use the annotation.
+  annotations:
+    metallb.io/loadBalancerIPs: __LB_IP__
+spec:
+  type: LoadBalancer
+  externalTrafficPolicy: Local
+  selector:
+    app: trovato-site
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80

@@ -112,7 +112,7 @@ pub fn tap_item_info() -> Vec<ContentTypeDefinition> {
         ContentTypeDefinition {
             machine_name: DOCS_TYPE.into(),
             label: "Documentation".into(),
-            description: "A page of the Trovato documentation, mirrored from the kernel repository. Generated — edit the source there, not here.".into(),
+            description: "A page of the Trovato documentation, mirrored from the kernel repository. Generated: edit the source there, not here.".into(),
             title_label: None,
             // `html` and not `body`: the field holds markdown already rendered
             // and syntax-highlighted, and every rendering path the kernel offers
@@ -247,12 +247,20 @@ fn recent_posts(limit: i64) -> Vec<Post> {
 ///
 /// The LEFT JOIN is what lets a post link to its friendly path. A post with no
 /// alias still belongs in the list and falls back to `/item/{uuid}`.
+///
+/// An item can answer at more than one alias (About is served at both
+/// `/authors/jeremy-andrews` and `/about`). Every query here joins only the
+/// newest one, which is the alias the kernel itself treats as canonical
+/// (`get_canonical_alias_with_context`, ordered by `created DESC, id DESC`), so
+/// a second alias never lists a page twice or links it at a path the kernel
+/// does not call its own.
 const LISTING_SQL: &str = "SELECT i.id, i.title, i.type AS kind, i.created, a.alias \
      FROM item i \
-     LEFT JOIN url_alias a \
-       ON a.source = '/item/' || i.id::text \
-      AND a.language = COALESCE(i.language, 'en') \
-      AND a.stage_id = $1::uuid \
+     LEFT JOIN LATERAL (SELECT u.alias FROM url_alias u \
+       WHERE u.source = '/item/' || i.id::text \
+         AND u.language = COALESCE(i.language, 'en') \
+         AND u.stage_id = $1::uuid \
+       ORDER BY u.created DESC, u.id DESC LIMIT 1) a ON true \
      WHERE i.status = 1 \
        AND i.type IN ('blog', 'news') \
        AND i.stage_id = $1::uuid \
@@ -474,10 +482,11 @@ pub fn sitemap() -> String {
 /// `ROUTE_PATHS`.
 const SITEMAP_SQL: &str = "SELECT i.id, i.title, i.type AS kind, i.created, i.changed, a.alias \
      FROM item i \
-     LEFT JOIN url_alias a \
-       ON a.source = '/item/' || i.id::text \
-      AND a.language = COALESCE(i.language, 'en') \
-      AND a.stage_id = $1::uuid \
+     LEFT JOIN LATERAL (SELECT u.alias FROM url_alias u \
+       WHERE u.source = '/item/' || i.id::text \
+         AND u.language = COALESCE(i.language, 'en') \
+         AND u.stage_id = $1::uuid \
+       ORDER BY u.created DESC, u.id DESC LIMIT 1) a ON true \
      WHERE i.status = 1 \
        AND i.stage_id = $1::uuid \
        AND i.type <> 'front_page' \
@@ -813,13 +822,14 @@ pub fn llms_txt() -> String {
     let base = base_url();
     let mut out = String::from("# Trovato\n\n");
     out.push_str(
-        "> A content management system written in Rust. Content is one JSONB row per item \
-         rather than a join per field; plugins are WebAssembly modules that reach only what \
-         they declare; queries are built with Gather, a type-safe query engine.\n\n",
+        "> A content management system written in Rust. Content is one row per item, with \
+         all its fields in one JSONB column rather than a table per field; plugins are \
+         WebAssembly modules that reach only what they declare; queries are built with \
+         Gather, a type-safe query engine.\n\n",
     );
     out.push_str(
         "This file lists the site's documentation and the markdown each page was rendered \
-         from. Every `.md` link below is the source text, unrendered.\n\n",
+         from. Each \"markdown at\" link below is the source text, unrendered.\n\n",
     );
 
     out.push_str("## Documentation\n\n");
@@ -859,7 +869,7 @@ pub fn llms_txt() -> String {
         ),
         (
             "/community",
-            "Contributing, the code of conduct, and how this is built.",
+            "Contributing, the code of conduct, and how Trovato is built.",
         ),
         (
             "/accessibility",
@@ -885,10 +895,11 @@ pub fn llms_txt() -> String {
 /// Every documentation page, in reading order, with its alias.
 const DOCS_SQL: &str = "SELECT i.title, a.alias, i.fields->>'weight' AS weight \
      FROM item i \
-     JOIN url_alias a \
-       ON a.source = '/item/' || i.id::text \
-      AND a.language = COALESCE(i.language, 'en') \
-      AND a.stage_id = $1::uuid \
+     JOIN LATERAL (SELECT u.alias FROM url_alias u \
+       WHERE u.source = '/item/' || i.id::text \
+         AND u.language = COALESCE(i.language, 'en') \
+         AND u.stage_id = $1::uuid \
+       ORDER BY u.created DESC, u.id DESC LIMIT 1) a ON true \
      WHERE i.status = 1 \
        AND i.type = 'docs' \
        AND i.stage_id = $1::uuid \
@@ -1119,12 +1130,37 @@ mod tests {
         // url_alias.stage_id is text and item.stage_id is a uuid. Binding them
         // from two different literals is how the alias join silently matches
         // nothing and every link in the listing falls back to /item/{uuid}.
-        assert!(LISTING_SQL.contains("a.stage_id = $1::uuid"));
+        assert!(LISTING_SQL.contains("u.stage_id = $1::uuid"));
         assert!(LISTING_SQL.contains("i.stage_id = $1::uuid"));
         assert!(
             !LISTING_SQL.contains("'live'"),
             "the alias stage must come from the parameter, not a literal"
         );
+    }
+
+    #[test]
+    fn every_alias_join_takes_only_the_canonical_alias() {
+        // A plain join to url_alias returns one row per alias, so an item with
+        // two aliases appeared twice in the sitemap and in llms.txt. Each query
+        // must pick the newest alias, the one the kernel calls canonical.
+        for (name, sql) in [
+            ("LISTING_SQL", LISTING_SQL),
+            ("SITEMAP_SQL", SITEMAP_SQL),
+            ("DOCS_SQL", DOCS_SQL),
+        ] {
+            assert!(
+                sql.contains("JOIN LATERAL (SELECT u.alias FROM url_alias u"),
+                "{name} joins url_alias without choosing one alias per item"
+            );
+            assert!(
+                sql.contains("ORDER BY u.created DESC, u.id DESC LIMIT 1) a ON true"),
+                "{name} does not take the newest alias"
+            );
+            assert!(
+                !sql.contains("JOIN url_alias a"),
+                "{name} still joins every alias"
+            );
+        }
     }
 
     #[test]

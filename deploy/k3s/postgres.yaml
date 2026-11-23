@@ -1,0 +1,104 @@
+# PostgreSQL for the review site: the same image docker-compose.yml runs.
+#
+# local-path storage binds the volume to the node the pod first lands on, which
+# is fine because every pod in this namespace is pinned to ks1 (arm64, and not
+# ks2 or ks3, which carry load tests and the Minecraft servers).
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: trovato-site
+  labels:
+    app: trovato-postgres
+spec:
+  clusterIP: None
+  selector:
+    app: trovato-postgres
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 5432
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  namespace: trovato-site
+  labels:
+    app: trovato-postgres
+spec:
+  serviceName: postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: trovato-postgres
+  template:
+    metadata:
+      labels:
+        app: trovato-postgres
+    spec:
+      enableServiceLinks: false
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/arch
+                    operator: In
+                    values: [arm64]
+                  - key: kubernetes.io/hostname
+                    operator: NotIn
+                    values: [ks2.pozza, ks3.pozza]
+      containers:
+        - name: postgres
+          image: pgvector/pgvector:pg17
+          ports:
+            - containerPort: 5432
+              name: postgres
+          env:
+            - name: POSTGRES_USER
+              value: trovato
+            - name: POSTGRES_DB
+              value: trovato
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: trovato-site-secrets
+                  key: POSTGRES_PASSWORD
+            # A subdirectory, so initdb never meets anything the volume
+            # provisioner left at the mount point.
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "trovato", "-d", "trovato"]
+            periodSeconds: 5
+            timeoutSeconds: 5
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "trovato", "-d", "trovato"]
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 6
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+              ephemeral-storage: 256Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+              ephemeral-storage: 1Gi
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ReadWriteOnce]
+        storageClassName: local-path
+        resources:
+          requests:
+            storage: 5Gi

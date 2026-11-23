@@ -1,0 +1,153 @@
+# A disposable second site for scripts/check-moderation.sh, which registers an
+# account and posts a comment and so must never run against the review site.
+#
+# One pod holding PostgreSQL, Redis and the kernel, all on emptyDir, so deleting
+# the pod deletes every trace. Distinct names and the label
+# app=trovato-modcheck keep it apart from the review site, and the cleanup in
+# check-moderation.sh deletes by that label. No Service: the check reaches it
+# through kubectl port-forward.
+#
+# PostgreSQL and Redis are native sidecars (init containers that keep running)
+# with startup probes, so the kernel starts only once both answer.
+#
+# check-moderation.sh fills in __SITE_IMAGE__ with the image the review site
+# runs, and creates the Secret trovato-modcheck-secrets beforehand.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: trovato-modcheck
+  namespace: trovato-site
+  labels:
+    app: trovato-modcheck
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: trovato-modcheck
+  template:
+    metadata:
+      labels:
+        app: trovato-modcheck
+    spec:
+      enableServiceLinks: false
+      terminationGracePeriodSeconds: 5
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/arch
+                    operator: In
+                    values: [arm64]
+                  - key: kubernetes.io/hostname
+                    operator: NotIn
+                    values: [ks2.pozza, ks3.pozza]
+      initContainers:
+        - name: postgres
+          image: pgvector/pgvector:pg17
+          restartPolicy: Always
+          env:
+            - name: POSTGRES_USER
+              value: trovato
+            - name: POSTGRES_DB
+              value: trovato
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: trovato-modcheck-secrets
+                  key: POSTGRES_PASSWORD
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          startupProbe:
+            exec:
+              command: ["pg_isready", "-h", "127.0.0.1", "-U", "trovato", "-d", "trovato"]
+            periodSeconds: 2
+            failureThreshold: 60
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+              ephemeral-storage: 128Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+              ephemeral-storage: 256Mi
+          volumeMounts:
+            - name: pgdata
+              mountPath: /var/lib/postgresql/data
+        - name: redis
+          image: redis:7-alpine
+          restartPolicy: Always
+          args: ["--save", "", "--appendonly", "no"]
+          startupProbe:
+            exec:
+              command: ["redis-cli", "ping"]
+            periodSeconds: 2
+            failureThreshold: 30
+          resources:
+            requests:
+              cpu: 20m
+              memory: 32Mi
+              ephemeral-storage: 16Mi
+            limits:
+              cpu: 250m
+              memory: 128Mi
+              ephemeral-storage: 64Mi
+      containers:
+        - name: site
+          image: __SITE_IMAGE__
+          env:
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: trovato-modcheck-secrets
+                  key: POSTGRES_PASSWORD
+            - name: DATABASE_URL
+              value: postgres://trovato:$(POSTGRES_PASSWORD)@127.0.0.1:5432/trovato
+            - name: REDIS_URL
+              value: redis://127.0.0.1:6379
+            - name: PORT
+              value: "3000"
+            - name: SITE_URL
+              value: http://localhost
+            - name: CRON_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: trovato-modcheck-secrets
+                  key: CRON_KEY
+            - name: RUST_LOG
+              value: info,tower_http=info,sqlx=warn
+            - name: PLUGINS_DIR
+              value: /app/plugins:/site/plugins
+            - name: TEMPLATES_DIR
+              value: /app/templates:/site/templates
+            - name: STATIC_DIR
+              value: /app/static:/site/static
+            - name: UPLOADS_DIR
+              value: /site-uploads
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+              ephemeral-storage: 128Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+              ephemeral-storage: 512Mi
+          volumeMounts:
+            - name: uploads
+              mountPath: /site-uploads
+      volumes:
+        - name: pgdata
+          emptyDir:
+            sizeLimit: 1Gi
+        - name: uploads
+          emptyDir:
+            sizeLimit: 64Mi

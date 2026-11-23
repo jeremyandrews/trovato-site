@@ -10,6 +10,6 @@ changed: 1785110400
 fields:
   field_body:
     value: |
-      <p>In Drupal 6, CCK gave every field its own table. A content type with twenty fields was twenty tables, and loading one node was twenty joins. The model was right and the storage was expensive.</p>
-      <p>Trovato keeps the model. An item is one row with one JSONB column, so twenty fields is twenty keys in that column and loading the item is one read. Revisions and staging are in the write path rather than bolted on: every save writes a revision, and every item carries a stage.</p>
+      <p>Drupal is a content management system written in PHP. In Drupal a site builder defines a content type, a kind of content such as an article, by adding fields to it, without writing code. Drupal keeps each field in its own table, so a content type with twenty fields is spread over twenty tables, and loading one piece of content means reading all of them.</p>
+      <p>Trovato, a content management system written in Rust, keeps that model, which Drupal got right, so you still define content types by adding fields, but it stores those fields differently. Trovato calls one piece of content an item, and an item is one row whose fields share one JSONB column (PostgreSQL&#8217;s JSON type), so twenty fields is twenty keys in that column and loading the item is one read. Trovato also keeps each saved version of an item as a revision you can go back to: every save through the editor or the item API (Trovato&#8217;s functions for reading and writing content) writes one. And every item carries a stage (live, or one the site defines, such as draft), the basis for preparing content before it goes live. Nothing moves content between stages yet, so the editor saves to live.</p>
     format: filtered_html

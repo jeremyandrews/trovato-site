@@ -1,0 +1,85 @@
+# Redis 7, as docker-compose.yml runs it, with its snapshot directory on a
+# volume so sessions survive a restart of the pod.
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: trovato-site
+  labels:
+    app: trovato-redis
+spec:
+  clusterIP: None
+  selector:
+    app: trovato-redis
+  ports:
+    - name: redis
+      port: 6379
+      targetPort: 6379
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis
+  namespace: trovato-site
+  labels:
+    app: trovato-redis
+spec:
+  serviceName: redis
+  replicas: 1
+  selector:
+    matchLabels:
+      app: trovato-redis
+  template:
+    metadata:
+      labels:
+        app: trovato-redis
+    spec:
+      enableServiceLinks: false
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/arch
+                    operator: In
+                    values: [arm64]
+                  - key: kubernetes.io/hostname
+                    operator: NotIn
+                    values: [ks2.pozza, ks3.pozza]
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          ports:
+            - containerPort: 6379
+              name: redis
+          readinessProbe:
+            exec:
+              command: ["redis-cli", "ping"]
+            periodSeconds: 5
+          livenessProbe:
+            exec:
+              command: ["redis-cli", "ping"]
+            initialDelaySeconds: 15
+            periodSeconds: 15
+            failureThreshold: 6
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+              ephemeral-storage: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+              ephemeral-storage: 256Mi
+          volumeMounts:
+            - name: data
+              mountPath: /data
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ReadWriteOnce]
+        storageClassName: local-path
+        resources:
+          requests:
+            storage: 1Gi

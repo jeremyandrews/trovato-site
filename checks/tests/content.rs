@@ -502,3 +502,122 @@ fn the_documentation_index_sorts_the_same_by_text_and_by_number() {
     unique.dedup();
     assert_eq!(unique.len(), numeric.len(), "two documents share a weight");
 }
+
+/// A `plain_text` field is escaped when it is rendered, so an HTML character
+/// reference in one reaches the reader as its literal text: the news listing
+/// showed `Trovato&#8217;s` where it meant `Trovato’s`. Plain text carries the
+/// character itself.
+#[test]
+fn plain_text_fields_carry_no_html_references() {
+    let mut found = Vec::new();
+    for (name, text) in config_files() {
+        if !name.starts_with("item.") {
+            continue;
+        }
+        let Ok(doc) = serde_yml::from_str::<serde_json::Value>(&text) else {
+            continue;
+        };
+        let Some(fields) = doc.get("fields").and_then(|f| f.as_object()) else {
+            continue;
+        };
+        for (key, field) in fields {
+            if field.get("format").and_then(|f| f.as_str()) != Some("plain_text") {
+                continue;
+            }
+            let value = field.get("value").and_then(|v| v.as_str()).unwrap_or("");
+            let has_reference = value.match_indices('&').any(|(at, _)| {
+                let rest = &value[at + 1..];
+                rest.find(';').is_some_and(|end| {
+                    let body = &rest[..end];
+                    !body.is_empty()
+                        && body.len() <= 10
+                        && body
+                            .trim_start_matches('#')
+                            .chars()
+                            .all(|c| c.is_ascii_alphanumeric())
+                })
+            });
+            if has_reference {
+                found.push(format!(
+                    "{name}: {key} is plain_text and carries an HTML reference"
+                ));
+            }
+        }
+    }
+    assert!(found.is_empty(), "\n{}\n", found.join("\n"));
+}
+
+/// The About page answers at `/about`, its canonical address, and still at
+/// `/authors/jeremy-andrews`, so links already made to the old path keep working.
+/// The kernel takes the newest alias of a source as canonical, by `created` and
+/// then by id, and config import stamps an alias with the time it is first
+/// imported, so `/about` has to carry the higher id: on a fresh database both
+/// can be stamped in the same second. The byline links the canonical address.
+#[test]
+fn about_is_canonical_at_slash_about_and_the_author_path_still_answers() {
+    const ABOUT: &str = "/item/0193b000-0003-7000-8000-000000000009";
+    let mut english: Vec<(String, String)> = Vec::new();
+    for (name, text) in config_files() {
+        if name.starts_with("url_alias.")
+            && scalar(&text, "source").as_deref() == Some(ABOUT)
+            && scalar(&text, "language").as_deref() == Some("en")
+        {
+            english.push((
+                scalar(&text, "alias").unwrap_or_default(),
+                scalar(&text, "id").unwrap_or_default(),
+            ));
+        }
+    }
+    let id_of = |path: &str| {
+        english
+            .iter()
+            .find(|(a, _)| a == path)
+            .map(|(_, id)| id.clone())
+    };
+    let about = id_of("/about").expect("no /about alias for the About page");
+    let author = id_of("/authors/jeremy-andrews").expect("the author path no longer answers");
+    assert!(
+        about > author,
+        "/about ({about}) must sort after /authors/jeremy-andrews ({author}) to be canonical"
+    );
+
+    let byline = std::fs::read_to_string(
+        Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("..")
+            .join("templates")
+            .join("elements")
+            .join("item--blog.html"),
+    )
+    .unwrap();
+    assert!(byline.contains("rel=\"author\" href=\"/about\""));
+}
+
+/// The news post that counts the files in `config/` has to count what is there.
+#[test]
+fn the_config_inventory_in_the_news_post_matches_config() {
+    let post =
+        std::fs::read_to_string(config_dir().join("item.0193b000-0001-7000-8000-000000000003.yml"))
+            .unwrap();
+    let count = |prefix: &str| {
+        std::fs::read_dir(config_dir())
+            .unwrap()
+            .filter_map(Result::ok)
+            .filter(|e| {
+                let n = e.file_name().to_string_lossy().into_owned();
+                n.starts_with(prefix) && n.ends_with(".yml")
+            })
+            .count()
+    };
+    for (prefix, label) in [
+        ("url_alias.", "URL aliases"),
+        ("menu_link.", "menu links"),
+        ("item.", "content items"),
+        ("gather_query.", "Gather queries"),
+    ] {
+        let claim = format!("{} {label}", count(prefix));
+        assert!(
+            post.contains(&claim),
+            "the news post does not say \"{claim}\""
+        );
+    }
+}
