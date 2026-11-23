@@ -31,7 +31,7 @@ changed: 1789725600
 fields:
   field_body:
     value: |
-      <p>Trovato is a content management system written in Rust, and much of what a Trovato site does comes from plugins: the blog and the contact form are plugins, and so is this site&#8217;s own code. What a plugin is allowed to touch in the kernel is also the most a buggy or hostile one can reach there. Each plugin ships a manifest, a short TOML file listing what it needs from the kernel, Trovato&#8217;s core. This post explains, in full, the capabilities section of this site&#8217;s own plugin manifest, which the front page shows: what a plugin can ask for, what it gets without asking, what it cannot have at any price, and the one line that lets its SQL skip the check on which tables it may touch.</p>
+      <p>Trovato is a content management system written in Rust, and much of what a Trovato site does comes from plugins: the blog and the contact form are plugins, and so is this site&#8217;s own code. Each plugin ships a manifest, a short TOML file listing what it needs from the kernel, Trovato&#8217;s core. What a plugin is allowed to touch in the kernel is also the most a buggy or hostile one can reach there. This post explains, in full, the capabilities section of this site&#8217;s own plugin manifest, which the front page shows: what a plugin can ask for, what it gets without asking, what it cannot have at any price, and the one line that lets its SQL skip the check on which tables it may touch.</p>
 
       <h2>The linker is the enforcement</h2>
 
@@ -52,7 +52,7 @@ fields:
         <li><code>request-context</code>: a key and value store scoped to the current request and to the calling plugin, for state that one plugin&#8217;s taps on that request need to share.</li>
         <li><code>user-api</code>: two questions. Who is the current user, and do they have this permission.</li>
         <li><code>cache-api</code>: get and set by bin and key, and invalidate by tag, so a plugin doing expensive work can stop doing it twice.</li>
-        <li><code>plugin-api</code>: calling another plugin, and asking whether one is installed. With it a plugin can call other plugins as well as be called by the kernel, and a plugin gets it only by naming it.</li>
+        <li><code>plugin-api</code>: calling another plugin, and asking whether a plugin can be called. With it a plugin can call other plugins as well as be called by the kernel, and a plugin gets it only by naming it.</li>
         <li><code>logging</code>: the log. Cheap, and worth declaring, because without it a plugin cannot report a failure: when a query fails in this site&#8217;s plugin, the log line is the only sign, and the page just shows an empty listing.</li>
         <li><code>ai-api</code>: one call into the kernel&#8217;s provider registry. The plugin sends a request, the kernel picks the provider and adds the credentials, and the API key never crosses into the plugin at all.</li>
         <li><code>crypto-api</code>: SHA-256, HMAC-SHA256, secure random bytes and a constant-time comparison, so that a plugin needing any of them does not bundle its own into WebAssembly.</li>
