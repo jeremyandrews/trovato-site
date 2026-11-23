@@ -55,11 +55,11 @@ fields:
 
       <p>Building this site found twenty-two things wrong with or missing from the kernel. They are listed in <code>docs/REPORT.md</code> in the site&#8217;s repository, each with its status re-derived against the release the site now runs: three fixed at 0.102.0, eighteen still open, and one that could not be reproduced and is recorded as such.</p>
 
-      <p>Each was worked around in the site&#8217;s own layer, with no patch to the kernel, and written down.</p>
+      <p>Where the site could work around one, it did so in its own layer, with no patch to the kernel, and every one is written down.</p>
 
       <p>One finding is that static assets are rate-limited as though they were API calls, at 100 requests per minute per address, with no configuration to change it. The 101st request for a stylesheet returns 429. A page here pulls about ten subresources, so a reader gets roughly ten pages in before their fonts stop loading. The site&#8217;s answer is that the front proxy serves <code>/static</code> and the kernel never sees those requests. The site&#8217;s accessibility pass and its crawl both hit the limit while checking this release.</p>
 
-      <p>Another is that nothing in the kernel can write a content translation. Configuration import, the obvious candidate, stores the translations as one map keyed by language inside the item&#8217;s own fields. The renderer looks there for a value, finds a language code instead, and renders nothing in any language. The two administrative routes that would do it are registered only for <code>GET</code> and their templates are not in the image. There is no endpoint. So the site keeps its translations in configuration and its plugin&#8217;s <code>tap_cron</code> writes them into the <code>item_translation</code> table itself. That is why a table called <code>item_translation</code> appears in the manifest of a plugin that otherwise only reads.</p>
+      <p>Another is that nothing in the kernel can write a content translation. Configuration import, the obvious candidate, stores the translations as one map keyed by language inside the item&#8217;s own fields. The renderer looks there for a value, finds a language code instead, and renders nothing in any language. The two administrative routes that would do it are registered only for <code>GET</code> and their templates are not in the image, and there is no API endpoint for it. So the site keeps its translations in configuration and its plugin&#8217;s <code>tap_cron</code> writes them into the <code>item_translation</code> table itself. That is why a table called <code>item_translation</code> appears in the manifest of a plugin that otherwise only reads.</p>
 
       <h2>What that buys</h2>
 

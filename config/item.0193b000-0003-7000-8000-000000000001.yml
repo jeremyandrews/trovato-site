@@ -20,7 +20,7 @@ fields:
 
       <h2>Plugins reach only what they declare</h2>
 
-      <p>Plugins add features to Trovato without changing its core, the kernel. A plugin implements named functions that the kernel calls, the way a Drupal module implements hooks. The difference is in what it can touch. A plugin is a WebAssembly module with a manifest, a short file listing every host interface (a group of kernel functions, such as database access or logging) the plugin may use. The kernel connects each plugin to those interfaces and to five minimal system stubs every plugin gets, and to nothing else. A plugin that wants the database also lists the tables it needs beyond its own, and the kernel enforces that list on every structured database call.</p>
+      <p>Plugins add features to Trovato without changing its core, the kernel. A plugin implements named functions that the kernel calls, the way a Drupal module implements hooks. Unlike a Drupal module, a plugin can touch only what it declares. A plugin is a WebAssembly module with a manifest, a short file listing every host interface (a group of kernel functions, such as database access or logging) the plugin may use. The kernel connects each plugin to those interfaces and to five minimal system stubs every plugin gets, and to nothing else. A plugin that wants the database also lists the tables it needs beyond its own, and the kernel enforces that list on every structured database call.</p>
 
       <figure>
       <img src="/static/art/diagram-sandbox.svg" width="720" height="400" alt="A plugin&#8217;s two declared interfaces pass through gates in the kernel wall; an undeclared one stops at the wall.">
