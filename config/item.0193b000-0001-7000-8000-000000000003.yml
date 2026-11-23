@@ -21,9 +21,9 @@ fields:
     value: |
       <p>This website runs on Trovato (a content management system written in Rust) exactly as released, so moving it to a new release took a change to one pinned version and a run of the site&#8217;s checks.</p>
 
-      <p>A Trovato site lives in its own repository and runs beside the kernel, Trovato&#8217;s core. The kernel ships as a published release image, and this site is a separate repository that runs on that image without altering it, so building a site never involves cloning the kernel, adding your own code to it and running the result. Three environment variables are the whole integration. <code>PLUGINS_DIR</code>, <code>TEMPLATES_DIR</code> and <code>STATIC_DIR</code> are each a search path: a list of directories separated by colons and searched in order. This site sets each to the kernel&#8217;s own directory followed by its own, and a file in a later directory replaces a file of the same name in an earlier one.</p>
+      <p>A Trovato site lives in its own repository and runs beside the kernel, Trovato&#8217;s core. The kernel ships as a published release image, and this site is a separate repository that runs on that image without altering it, so building a site never involves cloning the kernel, adding your own code to it and running the result. The integration is three environment variables and one import command. <code>PLUGINS_DIR</code>, <code>TEMPLATES_DIR</code> and <code>STATIC_DIR</code> are each a search path: a list of directories separated by colons and searched in order. This site sets each to the kernel&#8217;s own directory followed by its own, and a file in a later directory replaces a file of the same name in an earlier one.</p>
 
-      <p>Four things get layered on that way.</p>
+      <p>The site adds four things. Three of them are layered on through those search paths, and the fourth, its configuration, goes in with the kernel&#8217;s config import command.</p>
 
       <h2>A plugin</h2>
 
@@ -63,7 +63,7 @@ fields:
 
       <h2>What that buys</h2>
 
-      <p>Because the kernel image is the published one, unchanged, and everything this site does is a file in a search path or a row in a config set, moving this site from 0.101.0 to 0.102.0 was a change to a pinned version and a run of the gates. The plugin compiled against the new kernel without a line changing, and three of the twenty-two findings were fixed, which meant three workarounds came out: a hardcoded Italian link in the footer of every page became a real per-page switcher, a paragraph of hand-written cross-language links came off the bottom of four Italian pages, and the Italian front page, written three weeks earlier and deliberately not committed because nothing would have read it, went in.</p>
+      <p>Because the kernel image is the published one, unchanged, and everything this site does is a file in a search path or a row in a config set, moving this site from 0.101.0 to 0.102.0 was a change to a pinned version and a run of the gates. The plugin compiled against the new kernel without a line changing, and three of the twenty-two findings were fixed, which meant three workarounds could be undone: a hardcoded Italian link in the footer of every page became a real per-page switcher, a paragraph of hand-written cross-language links came off the bottom of four Italian pages, and the Italian front page, written three weeks earlier and deliberately held back because nothing would have read it, went in.</p>
 
       <p>The move to 0.102.0 also turned up seven things that were not on the original list at all, most of them places where the new release works something out, such as a page&#8217;s language or its translations, but does not pass it all the way to the theme that has to use it. Some of those needed answers of their own. Neither building the site on 0.101.0 nor moving it to 0.102.0 required touching the kernel, so there was no patch to unpick.</p>
 

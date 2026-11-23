@@ -31,7 +31,7 @@ changed: 1789725600
 fields:
   field_body:
     value: |
-      <p>Trovato is a content management system written in Rust, and much of what a Trovato site does comes from plugins: the blog and the contact form are plugins, and so is this site&#8217;s own code. What a plugin is allowed to touch in the kernel is also the most a buggy or hostile one can reach there. Each plugin ships a manifest, a short TOML file listing what it needs from the kernel, Trovato&#8217;s core. This post explains the manifest the front page shows, in full: what a plugin can ask for, what it gets without asking, what it cannot have at any price, and the one line that lets its SQL skip the check on which tables it may touch.</p>
+      <p>Trovato is a content management system written in Rust, and much of what a Trovato site does comes from plugins: the blog and the contact form are plugins, and so is this site&#8217;s own code. What a plugin is allowed to touch in the kernel is also the most a buggy or hostile one can reach there. Each plugin ships a manifest, a short TOML file listing what it needs from the kernel, Trovato&#8217;s core. This post explains, in full, the capabilities section of this site&#8217;s own plugin manifest, which the front page shows: what a plugin can ask for, what it gets without asking, what it cannot have at any price, and the one line that lets its SQL skip the check on which tables it may touch.</p>
 
       <h2>The linker is the enforcement</h2>
 

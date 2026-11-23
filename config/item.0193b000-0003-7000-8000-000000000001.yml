@@ -46,7 +46,7 @@ fields:
       <li><strong>There&#8217;s no plugin registry or package format.</strong> A plugin is built from a directory and installed from there. There&#8217;s nowhere to publish one, and no way to install someone else&#8217;s from a URL or an index.</li>
       <li><strong>Some settings have no admin screen.</strong> Settings that plugins define, and the custom robots.txt, can only be changed by editing the site&#8217;s configuration files and importing them.</li>
       <li><strong>Migrations only move forward.</strong> There&#8217;s no rollback, so a failed upgrade is restored from a backup. Back up before every upgrade.</li>
-      <li><strong>Content can&#8217;t move between stages yet.</strong> Every item carries a stage, but nothing moves content from one stage to another.</li>
+      <li><strong>Content can&#8217;t move between stages yet.</strong> Every item carries a stage, and the editor saves to live.</li>
       <li><strong>Semantic search compares every vector.</strong> Search by meaning, which ranks content by comparing embedding vectors, has no approximate index yet, so each query compares against every stored vector and gets slower as the site grows.</li>
       </ul>
 
