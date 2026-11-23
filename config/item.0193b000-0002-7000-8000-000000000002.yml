@@ -48,12 +48,12 @@ fields:
       <ul>
         <li><code>item-api</code>: the structured way to read and write content. An item is Trovato&#8217;s word for one piece of content. Load an item by id, save one, delete one, or query them, and every save writes a revision. The SDK has no bindings for it yet, so a plugin that wants it has to declare its own, and that gap is one of the kernel problems this site has written down.</li>
         <li><code>db</code>: the database, through the kernel. Structured selects, inserts, updates and deletes, each one checked against the plugin&#8217;s table allowlist before the query is built.</li>
-        <li><code>variables</code>: the site&#8217;s configuration values. Reads are namespaced to the calling plugin, so a plugin asking for another plugin&#8217;s key gets back the default it passed in, with no error. That trap is one of the kernel problems this site has written down.</li>
+        <li><code>variables</code>: the site&#8217;s configuration values. Reads are namespaced to the calling plugin, so a plugin asking for another plugin&#8217;s key gets back the default it passed in, with no error. That trap is also on the site&#8217;s list of kernel problems.</li>
         <li><code>request-context</code>: a key and value store scoped to the current request and to the calling plugin, for state that one plugin&#8217;s taps on that request need to share.</li>
         <li><code>user-api</code>: two questions. Who is the current user, and do they have this permission.</li>
         <li><code>cache-api</code>: get and set by bin and key, and invalidate by tag, so a plugin doing expensive work can stop doing it twice.</li>
         <li><code>plugin-api</code>: calling another plugin, and asking whether a plugin can be called. With it a plugin can call other plugins as well as be called by the kernel, and a plugin gets it only by naming it.</li>
-        <li><code>logging</code>: the log. Cheap, and worth declaring, because without it a plugin cannot report a failure: when a query fails in this site&#8217;s plugin, the log line is the only sign, and the page just shows an empty listing.</li>
+        <li><code>logging</code>: the log. Cheap, and worth declaring, because without it a plugin cannot report a failure: when a query fails in this site&#8217;s plugin, the log line is the only sign, and the listing simply disappears from the front page.</li>
         <li><code>ai-api</code>: one call into the kernel&#8217;s provider registry. The plugin sends a request, the kernel picks the provider and adds the credentials, and the API key never crosses into the plugin at all.</li>
         <li><code>crypto-api</code>: SHA-256, HMAC-SHA256, secure random bytes and a constant-time comparison, so that a plugin needing any of them does not bundle its own into WebAssembly.</li>
         <li><code>http</code>: outbound requests, made by the kernel on the plugin&#8217;s behalf with protection against server-side request forgery, host rules, a timeout and a size cap. A plugin cannot open a socket.</li>
@@ -90,7 +90,7 @@ fields:
 
       <h2>Reading a manifest</h2>
 
-      <p>A plugin&#8217;s manifest is short enough to read in full, and four questions answer most of it. Which host interfaces did it name, and is <code>plugin-api</code> or <code>http</code> among them. What does it create, and what does it merely want. Does it write anything it did not create. And is <code>raw_sql</code> there, and does the reason hold up.</p>
+      <p>A plugin&#8217;s manifest is short enough to read in full, and four questions answer most of it. Which host interfaces did it name, and is <code>plugin-api</code> or <code>http</code> among them? Which tables do its migrations create, and which does it merely want? Does it write anything it did not create? And is <code>raw_sql</code> there, and does the reason hold up?</p>
 
       <p>You can answer each question from the manifest itself, which is in the repository next to the code it describes, and the kernel will not run the plugin in any shape other than the one it declares.</p>
     format: filtered_html

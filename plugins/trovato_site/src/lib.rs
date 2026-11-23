@@ -813,9 +813,10 @@ pub fn llms_txt() -> String {
     let base = base_url();
     let mut out = String::from("# Trovato\n\n");
     out.push_str(
-        "> A content management system written in Rust. Content is one JSONB row per item \
-         rather than a join per field; plugins are WebAssembly modules that reach only what \
-         they declare; queries are built with Gather, a type-safe query engine.\n\n",
+        "> A content management system written in Rust. Content is one row per item, with \
+         all its fields in one JSONB column rather than a table per field; plugins are \
+         WebAssembly modules that reach only what they declare; queries are built with \
+         Gather, a type-safe query engine.\n\n",
     );
     out.push_str(
         "This file lists the site's documentation and the markdown each page was rendered \
