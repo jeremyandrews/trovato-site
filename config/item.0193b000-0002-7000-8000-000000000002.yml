@@ -31,7 +31,7 @@ changed: 1789725600
 fields:
   field_body:
     value: |
-      <p>Trovato is a content management system written in Rust, and much of what a Trovato site does comes from plugins: the blog and the contact form are plugins, and so is this site&#8217;s own code. What a plugin is allowed to touch is also the most a buggy or hostile one can do to your site. Each plugin ships a manifest, a short TOML file listing what it needs from the kernel, Trovato&#8217;s core. This post explains the manifest the front page shows, in full: what a plugin can ask for, what it gets without asking, what it cannot have at any price, and the one line that lets its SQL skip the check on which tables it may touch.</p>
+      <p>Trovato is a content management system written in Rust, and much of what a Trovato site does comes from plugins: the blog and the contact form are plugins, and so is this site&#8217;s own code. What a plugin is allowed to touch in the kernel is also the most a buggy or hostile one can reach there. Each plugin ships a manifest, a short TOML file listing what it needs from the kernel, Trovato&#8217;s core. This post explains the manifest the front page shows, in full: what a plugin can ask for, what it gets without asking, what it cannot have at any price, and the one line that lets its SQL skip the check on which tables it may touch.</p>
 
       <h2>The linker is the enforcement</h2>
 
@@ -39,7 +39,7 @@ fields:
 
       <p>The kernel checks a plugin&#8217;s imports once, when it loads the plugin, and does no per-call check of host functions. A WebAssembly module declares its imports up front, and instantiating it means resolving every one of them against the linker it is handed. If a plugin declared only <code>logging</code> but its module imports <code>db</code>, nothing satisfies that import, so the module never instantiates, and none of its code runs.</p>
 
-      <p>A plugin that declares no interfaces at all is handed a linker with no kernel interfaces in it. Such a plugin can compute and do nothing else, and the kernel has a test that says so: it builds a linker from <code>["logging"]</code>, confirms a module importing <code>logging</code> instantiates, confirms a module importing <code>db</code> does not, and then confirms that an empty declaration links no kernel interface at all.</p>
+      <p>A plugin that declares no interfaces at all is handed a linker with no kernel interfaces in it. Such a plugin can compute and do nothing else, and the kernel has a test that says so: it builds a linker from <code>["logging"]</code>, confirms a module importing <code>logging</code> instantiates, confirms a module importing <code>db</code> does not, and then confirms that with an empty declaration even the <code>logging</code> import goes unlinked.</p>
 
       <h2>The thirteen</h2>
 
@@ -76,7 +76,7 @@ fields:
 
       <p>So <code>db_tables</code> is not the plugin&#8217;s whole reach. A plugin with an empty <code>db_tables</code> and three migrations of its own reaches three tables. And a plugin can reach a table another plugin created, which is allowed and is sometimes the only sensible arrangement, but only by writing that table&#8217;s name in a file somebody reviews.</p>
 
-      <p>The plugin that runs this site uses only tables it did not create. It ships no migrations, so its manifest names every table it means to touch: <code>item</code> and <code>url_alias</code> to build the front-page listing, the sitemap, llms.txt and the Markdown copy of each documentation page, both read-only, and <code>item_translation</code>, which is the one table it writes. Every query it runs is raw SQL, described below, so the kernel checks none of those names. It writes <code>item_translation</code> because on this kernel nothing else can. Configuration import cannot put a translation where the kernel reads one, the two administrative routes that would do it are registered only for <code>GET</code> and have no templates in the image, and there is no endpoint. So the site carries its translations in configuration and a cron tap copies them into the table on each tick, which is a workaround, written down as one.</p>
+      <p>The plugin that runs this site uses only tables it did not create. It ships no migrations, so its manifest names every table it means to touch: <code>item</code> and <code>url_alias</code>, both read-only, to build the front-page listing, the sitemap, llms.txt and the Markdown copy of each documentation page, and <code>item_translation</code>, which is the one table it writes. Every query it runs is raw SQL, described below, so the kernel checks none of those names. It writes <code>item_translation</code> because on this kernel nothing else can. Configuration import cannot put a translation where the kernel reads one, the two administrative routes that would do it are registered only for <code>GET</code> and have no templates in the image, and there is no endpoint. So the site carries its translations in configuration and a cron tap copies them into the table on each tick, which is a workaround, written down as one.</p>
 
       <h2>The line that gives some of it back</h2>
 

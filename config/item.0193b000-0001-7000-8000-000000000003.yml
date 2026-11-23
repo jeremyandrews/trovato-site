@@ -49,7 +49,7 @@ fields:
 
       <p>The kernel ships a <code>static/</code> of its own, so the site&#8217;s entry in <code>STATIC_DIR</code> comes second and its files win by name: <code>tokens.css</code> and <code>site.css</code> for the theme, <code>code.css</code> for the syntax colours, Inter and JetBrains Mono, the brand SVGs, the generated illustrations, and <code>passkey-login.js</code>.</p>
 
-      <p>The fonts live here, in the repository, instead of being fetched from anybody&#8217;s content delivery network, and on every page the gate below checks, nothing else is fetched from another origin either. <code>npm run shoot</code> is that gate: it loads one page of each kind, records every request, and fails the build if one of them leaves this site.</p>
+      <p>The fonts live here, in the repository, instead of being fetched from anybody&#8217;s content delivery network. On every page that the gate below checks, nothing else is fetched from another origin either. <code>npm run shoot</code> is that gate: it loads one page of each kind, records every request, and fails the build if one of them leaves this site.</p>
 
       <h2>What it cost</h2>
 
