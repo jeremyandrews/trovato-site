@@ -27,7 +27,11 @@ cleanup() {
     k wait --for=delete pod -l app=trovato-modcheck --timeout=120s >/dev/null 2>&1 || true
     rm -rf "$work"
 }
-trap cleanup EXIT
+# Until this run owns the throwaway site, leaving removes only its own scratch
+# directory. The label-selected cleanup is armed after the secret below has
+# been created, and creating it is what fails if another run already holds it,
+# so a second run started alongside this one never deletes the first one's site.
+trap 'rm -rf "$work"' EXIT
 
 SITE_IMAGE="$(k get deployment trovato-site -o jsonpath='{.spec.template.spec.containers[?(@.name=="site")].image}')"
 [ -n "$SITE_IMAGE" ] || { echo "the review site is not deployed; run apply.sh first" >&2; exit 1; }
@@ -37,7 +41,9 @@ CRON_KEY="$(openssl rand -hex 32)"
 ADMIN_PASS="$(openssl rand -hex 16)"
 k create secret generic trovato-modcheck-secrets \
     --from-literal=POSTGRES_PASSWORD="$(openssl rand -hex 24)" \
-    --from-literal=CRON_KEY="$CRON_KEY" >/dev/null
+    --from-literal=CRON_KEY="$CRON_KEY" >/dev/null \
+    || { echo "trovato-modcheck-secrets already exists: another moderation check is running, or one did not clean up" >&2; exit 1; }
+trap cleanup EXIT
 k label secret trovato-modcheck-secrets app=trovato-modcheck >/dev/null
 sed "s|__SITE_IMAGE__|${SITE_IMAGE}|g" "$here/modcheck.yaml" | kubectl apply -f - >/dev/null
 k rollout status deployment/trovato-modcheck --timeout=300s

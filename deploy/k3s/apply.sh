@@ -59,6 +59,9 @@ fi
 # A snapshot, so the image is one consistent state of the tree even while
 # somebody is editing it.
 for d in templates static config; do cp -R "$d" "$ctx/$d"; done
+# The image's copy of the plugin's base URL names the origin this deployment is
+# served from, so its sitemap and llms.txt link within the review site.
+set_plugin_base_url "$ctx/config" "http://${SITE_HOST}"
 cp "$here/Dockerfile" "$ctx/Dockerfile"
 
 sha="$(git rev-parse --short HEAD)"
@@ -77,8 +80,9 @@ docker build --platform linux/arm64 --build-arg "KERNEL_IMAGE=${KERNEL_IMAGE}" \
 # docker has been logged in (docker login registry.pozza -u jeremyandrews), the
 # push goes straight there. Otherwise the image is relayed through ks1, whose
 # root podman holds the push login: docker save, piped over ssh into podman
-# load, then podman push, then the local copy on ks1 is removed. The password
-# never leaves ks1.
+# load, then podman push. The load goes into a throwaway image store made for
+# this push and deleted after it (--root and --runroot), so ks1's own images
+# are never read, retagged or removed. The password never leaves ks1.
 echo "==> Pushing"
 if docker push "$SITE_IMAGE" >"$work/push.log" 2>&1; then
     tail -n 1 "$work/push.log"
@@ -88,7 +92,7 @@ else
     fi
     echo "    no push login here; relaying through ${PUSH_HOST:=ks1.pozza}"
     docker save "$SITE_IMAGE" | ssh -o BatchMode=yes "$PUSH_HOST" \
-        "set -e; sudo -n podman load -q >/dev/null; sudo -n podman push -q '$SITE_IMAGE'; sudo -n podman rmi -f '$SITE_IMAGE' >/dev/null"
+        "set -e; d=\$(sudo -n mktemp -d /var/tmp/trovato-site-push.XXXXXX); trap 'sudo -n rm -rf \$d' EXIT; sudo -n podman --root \$d/root --runroot \$d/run --storage-driver vfs load -q >/dev/null; sudo -n podman --root \$d/root --runroot \$d/run --storage-driver vfs push -q '$SITE_IMAGE'"
 fi
 # Confirm the registry has it, anonymously, the way the nodes will pull it.
 curl -fsS -o /dev/null -H 'Accept: application/vnd.oci.image.index.v1+json, application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json' \
@@ -117,6 +121,29 @@ rendered="$work/rendered.yaml"
     done
 } > "$rendered"
 
+# ── Diff, before anything is created ────────────────────────────────────────
+# The server can only diff namespaced objects in a namespace that exists. On the
+# first apply there is none, so the diff is every object, printed in full as the
+# client renders it: all of it is new. Either way nothing has been created yet.
+echo "==> kubectl diff"
+if kubectl get namespace "$NS" >/dev/null 2>&1; then
+    set +e
+    kubectl diff -f "$here/namespace.yaml" -f "$rendered"
+    rc=$?
+    set -e
+    case "$rc" in
+        0) echo "    (no changes)" ;;
+        1) ;;
+        *) echo "kubectl diff failed" >&2; exit "$rc" ;;
+    esac
+else
+    echo "    namespace ${NS} does not exist: everything below is new"
+    kubectl apply --dry-run=client -o yaml -f "$here/namespace.yaml" -f "$rendered"
+fi
+if ! kubectl get namespace "$NS" >/dev/null 2>&1 || ! k get secret trovato-site-secrets >/dev/null 2>&1; then
+    echo "    + secret/trovato-site-secrets (POSTGRES_PASSWORD, ADMIN_PASS, CRON_KEY; generated, never shown)"
+fi
+
 # ── Namespace and secret ────────────────────────────────────────────────────
 if ! kubectl get namespace "$NS" >/dev/null 2>&1; then
     echo "==> Creating namespace ${NS}"
@@ -129,18 +156,6 @@ if ! k get secret trovato-site-secrets >/dev/null 2>&1; then
         --from-literal=ADMIN_PASS="$(openssl rand -hex 16)" \
         --from-literal=CRON_KEY="$(openssl rand -hex 32)"
 fi
-
-# ── Diff and apply ──────────────────────────────────────────────────────────
-echo "==> kubectl diff"
-set +e
-kubectl diff -f "$here/namespace.yaml" -f "$rendered"
-rc=$?
-set -e
-case "$rc" in
-    0) echo "    (no changes)" ;;
-    1) ;;
-    *) echo "kubectl diff failed" >&2; exit "$rc" ;;
-esac
 
 echo "==> kubectl apply"
 kubectl apply -f "$here/namespace.yaml" -f "$rendered"
@@ -163,6 +178,17 @@ if [ "$POPULATE" = "1" ]; then
     CRON_KEY="$(secret_value trovato-site-secrets CRON_KEY)"
     populate
 fi
+
+# The installer is reached only from inside the pod. From the LAN it answers 404,
+# so nobody can claim the administrator account in the moments between the
+# Service coming up and populate posting the forms.
+echo "==> Checking the installer is closed to the LAN"
+install_code="$(curl -s -o /dev/null -w '%{http_code}' -m 10 "http://${LB_IP}/install/admin" || echo 000)"
+if [ "$install_code" != "404" ]; then
+    echo "/install/admin answered ${install_code} on the LAN address; expected 404" >&2
+    exit 1
+fi
+echo "    /install/admin: 404"
 
 echo
 echo "The site is on http://${SITE_HOST}/ and http://${LB_IP}/ (image ${SITE_IMAGE})"

@@ -502,3 +502,107 @@ fn the_documentation_index_sorts_the_same_by_text_and_by_number() {
     unique.dedup();
     assert_eq!(unique.len(), numeric.len(), "two documents share a weight");
 }
+
+/// A `plain_text` field is escaped when it is rendered, so an HTML character
+/// reference in one reaches the reader as its literal text: the news listing
+/// showed `Trovato&#8217;s` where it meant `Trovato’s`. Plain text carries the
+/// character itself.
+#[test]
+fn plain_text_fields_carry_no_html_references() {
+    let mut found = Vec::new();
+    for (name, text) in config_files() {
+        if !name.starts_with("item.") {
+            continue;
+        }
+        let Ok(doc) = serde_yml::from_str::<serde_json::Value>(&text) else {
+            continue;
+        };
+        let Some(fields) = doc.get("fields").and_then(|f| f.as_object()) else {
+            continue;
+        };
+        for (key, field) in fields {
+            if field.get("format").and_then(|f| f.as_str()) != Some("plain_text") {
+                continue;
+            }
+            let value = field.get("value").and_then(|v| v.as_str()).unwrap_or("");
+            let has_reference = value.match_indices('&').any(|(at, _)| {
+                let rest = &value[at + 1..];
+                rest.find(';').is_some_and(|end| {
+                    let body = &rest[..end];
+                    !body.is_empty()
+                        && body.len() <= 10
+                        && body
+                            .trim_start_matches('#')
+                            .chars()
+                            .all(|c| c.is_ascii_alphanumeric())
+                })
+            });
+            if has_reference {
+                found.push(format!(
+                    "{name}: {key} is plain_text and carries an HTML reference"
+                ));
+            }
+        }
+    }
+    assert!(found.is_empty(), "\n{}\n", found.join("\n"));
+}
+
+/// The About page answers at `/about` as well as at its author path, and the
+/// author path stays canonical. The kernel and the site plugin both take the
+/// newest alias of a source as its canonical one, so `/about` has to be the
+/// older of the two: the other way round, every link, the sitemap entry and
+/// `<link rel="canonical">` would move to `/about`.
+#[test]
+fn about_answers_at_slash_about_and_keeps_its_author_path_canonical() {
+    const ABOUT: &str = "/item/0193b000-0003-7000-8000-000000000009";
+    let mut english: Vec<(String, i64)> = Vec::new();
+    for (name, text) in config_files() {
+        if name.starts_with("url_alias.")
+            && scalar(&text, "source").as_deref() == Some(ABOUT)
+            && scalar(&text, "language").as_deref() == Some("en")
+        {
+            let alias = scalar(&text, "alias").unwrap_or_default();
+            let created = scalar(&text, "created")
+                .and_then(|c| c.parse().ok())
+                .unwrap_or_default();
+            english.push((alias, created));
+        }
+    }
+    let created_of = |path: &str| english.iter().find(|(a, _)| a == path).map(|(_, c)| *c);
+    let about = created_of("/about").expect("no /about alias for the About page");
+    let author = created_of("/authors/jeremy-andrews").expect("no author alias for the About page");
+    assert!(
+        about < author,
+        "/about ({about}) must be older than /authors/jeremy-andrews ({author}) to stay non-canonical"
+    );
+}
+
+/// The news post that counts the files in `config/` has to count what is there.
+#[test]
+fn the_config_inventory_in_the_news_post_matches_config() {
+    let post =
+        std::fs::read_to_string(config_dir().join("item.0193b000-0001-7000-8000-000000000003.yml"))
+            .unwrap();
+    let count = |prefix: &str| {
+        std::fs::read_dir(config_dir())
+            .unwrap()
+            .filter_map(Result::ok)
+            .filter(|e| {
+                let n = e.file_name().to_string_lossy().into_owned();
+                n.starts_with(prefix) && n.ends_with(".yml")
+            })
+            .count()
+    };
+    for (prefix, label) in [
+        ("url_alias.", "URL aliases"),
+        ("menu_link.", "menu links"),
+        ("item.", "content items"),
+        ("gather_query.", "Gather queries"),
+    ] {
+        let claim = format!("{} {label}", count(prefix));
+        assert!(
+            post.contains(&claim),
+            "the news post does not say \"{claim}\""
+        );
+    }
+}

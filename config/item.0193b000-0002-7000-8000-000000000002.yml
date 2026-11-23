@@ -74,7 +74,7 @@ fields:
         <li><strong>The tables named in <code>db_tables</code>.</strong> <code>db_tables</code> is the explicit extension: the tables a plugin needs to touch that it did not create, which generally means the kernel&#8217;s own tables, or another plugin&#8217;s.</li>
       </ul>
 
-      <p>So <code>db_tables</code> is not the plugin&#8217;s whole reach. A plugin with an empty <code>db_tables</code> and three migrations of its own reaches three tables. And a plugin can reach a table another plugin created, which is allowed and is sometimes the only sensible arrangement, but only by writing that table&#8217;s name in a file somebody reviews.</p>
+      <p>So <code>db_tables</code> is not the plugin&#8217;s whole reach. A plugin with an empty <code>db_tables</code> whose migrations create three tables reaches those three tables through its structured calls. And a plugin can reach a table another plugin created, which is allowed and is sometimes the only sensible arrangement, but only by writing that table&#8217;s name, or the <code>raw_sql</code> line described below, in a file somebody reviews.</p>
 
       <p>The plugin that runs this site uses only tables it did not create. It ships no migrations, so its manifest names every table it means to touch: <code>item</code> and <code>url_alias</code>, both read-only, to build the front-page listing, the sitemap, llms.txt and the Markdown copy of each documentation page, and <code>item_translation</code>, which is the one table it writes. Every query it runs is raw SQL, described below, so the kernel checks none of those names. The plugin writes <code>item_translation</code> because on this kernel nothing else can. Configuration import cannot put a translation where the kernel reads one, the two administrative routes that would do it are registered only for <code>GET</code> and have no templates in the image, and there is no API endpoint for it. So the site carries its translations in configuration and a cron tap copies them into the table on each tick, which is a workaround, written down as one.</p>
 
@@ -92,5 +92,5 @@ fields:
 
       <p>A plugin&#8217;s manifest is short enough to read in full, and four questions answer most of it. Which host interfaces did it name, and is <code>plugin-api</code> or <code>http</code> among them? Does it ship migrations of its own, and which other tables does it name in <code>db_tables</code>? Does it write anything it did not create? And is <code>raw_sql</code> there, and does the reason hold up?</p>
 
-      <p>You can answer each question from the manifest itself, which is in the repository next to the code it describes, and the kernel will not run the plugin in any shape other than the one it declares.</p>
+      <p>The manifest answers the first two questions on its own and shows whether <code>raw_sql</code> is there. It does not say which of its tables the plugin writes, or why it needs <code>raw_sql</code>, so those take the plugin&#8217;s code, which sits in the repository next to the manifest. And the kernel will not link the plugin to any host interface its manifest does not name.</p>
     format: filtered_html

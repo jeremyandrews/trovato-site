@@ -25,7 +25,24 @@ Image: `registry.pozza/jeremyandrews/trovato-site:<short sha>`, with
 `-dirty-<content hash>` appended when the tree has uncommitted changes, so every
 distinct content gets its own tag. The push goes straight to the registry if
 this machine is logged in (`docker login registry.pozza -u jeremyandrews`);
-otherwise it is relayed through ks1, whose root podman holds the login.
+otherwise it is relayed through ks1, whose root podman holds the login. The
+relay loads the image into a throwaway podman store under `/var/tmp`, pushes
+from there and deletes the store, so ks1's own images are never touched.
+
+Every script works in namespace `trovato-site` and nothing else: the namespace
+is not read from the environment, and the `docker` shim refuses any other.
+
+`apply.sh` prints the diff before it creates anything. On the first apply, when
+the namespace does not exist yet, the diff is every object in full plus a line
+for the generated secret. After the rollout it posts the installer's forms
+from inside the pod, fails unless every plugin is enabled, the cron tick
+succeeded and `/it/why` is served in Italian, and checks that `/install/admin`
+answers 404 on the LAN address, which the k3s Caddyfile guarantees.
+
+The image's copy of `plugin.trovato_site.site_base_url` is rewritten to
+`http://<SITE_HOST>` while the image is staged, so the sitemap and llms.txt
+link within the review site rather than to trovato.rs. `config/` itself keeps
+the production value.
 
 Environment: `KUBECONFIG` (default `~/.kube/ks1.yaml`), `LB_IP` (default
 `10.20.250.17`), `SITE_HOST` (default `<LB_IP>.nip.io`), `SITE_BASE` for the

@@ -6,7 +6,22 @@
 # or the LAN address and none of it spends the rate-limit budget the gates use.
 
 export KUBECONFIG="${KUBECONFIG:-$HOME/.kube/ks1.yaml}"
-NS="${NS:-trovato-site}"
+
+# The one namespace these scripts may touch. Not taken from the environment: an
+# NS inherited from some other shell would otherwise send the secret, the
+# throwaway moderation site and its label-selected cleanup somewhere else, while
+# the manifests, which name trovato-site themselves, went here.
+NS=trovato-site
+require_namespace() {
+    if [ "$1" != "trovato-site" ]; then
+        echo "refusing namespace '$1': these scripts only touch trovato-site" >&2
+        return 1
+    fi
+}
+for _ns in "${NS}" "${K3S_NS:-trovato-site}"; do
+    require_namespace "$_ns" || exit 1
+done
+unset _ns
 
 # The plugins the site turns on. Same list, same order, as scripts/run.sh.
 IMAGE_PLUGINS=(
@@ -63,6 +78,47 @@ plugin_states() {
         | awk '$3 == "enabled" || $3 == "disabled" { print $1, $3 }' | sort || true
 }
 
+# What the installer's first page says about the site: `fresh` (200, nobody has
+# claimed it), `installed` (a redirect away from it), or `error` for anything
+# else, a 429 or a 500 or no answer at all, none of which says an administrator
+# exists.
+install_state() {
+    case "$1" in
+        200) echo fresh ;;
+        301 | 302 | 303 | 307 | 308) echo installed ;;
+        *) echo error ;;
+    esac
+}
+
+# Fails, naming each one, unless every plugin in the arguments is `enabled` in
+# the `name state` lines on stdin.
+require_enabled() {
+    local states missing="" name
+    states="$(cat)"
+    for name in "$@"; do
+        if ! printf '%s\n' "$states" | grep -qx "${name} enabled"; then
+            missing="${missing} ${name}"
+        fi
+    done
+    if [ -n "$missing" ]; then
+        echo "not enabled:${missing}" >&2
+        return 1
+    fi
+}
+
+# Points the site plugin's base URL at the origin it is actually served from.
+# The plugin builds the sitemap and llms.txt from this variable, not from
+# SITE_URL, which it cannot read; left at the production value, every link in
+# them would send a reader of the review site to trovato.rs.
+set_plugin_base_url() {
+    local config_dir="$1" base="$2"
+    local file="$config_dir/variable.plugin.trovato_site.site_base_url.yml"
+    [ -f "$file" ] || { echo "missing $file" >&2; return 1; }
+    sed "s|^value: .*\$|value: ${base}|" "$file" > "$file.new"
+    mv "$file.new" "$file"
+    grep -qx "value: ${base}" "$file"
+}
+
 # The run.sh install sequence. Needs ADMIN_PASS and CRON_KEY set.
 populate() {
     local admin_user="${ADMIN_USER:-admin}"
@@ -78,12 +134,14 @@ populate() {
     for name in "${IMAGE_PLUGINS[@]}" "${SITE_PLUGINS[@]}"; do
         in_site ./trovato plugin install "$name" >/dev/null 2>&1 \
             || in_site ./trovato plugin enable "$name" >/dev/null 2>&1 \
-            || echo "    WARNING: could not enable ${name}"
+            || true
         echo "    ${name}"
     done
     # Migrations a newer build of an already installed plugin brings with it.
-    in_site ./trovato plugin migrate >/dev/null 2>&1 || echo "    WARNING: plugin migrate reported an error"
+    in_site ./trovato plugin migrate >/dev/null \
+        || { echo "plugin migrate failed" >&2; return 1; }
     after="$(plugin_states)"
+    printf '%s\n' "$after" | require_enabled "${IMAGE_PLUGINS[@]}" "${SITE_PLUGINS[@]}" || return 1
 
     # A plugin's content types register when the kernel loads it, so a change
     # to the set of enabled plugins needs a restart before config import.
@@ -99,7 +157,15 @@ populate() {
     # once it is. Only a fresh site gets the forms posted at it.
     local code
     code="$(in_site curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/install/admin || echo 000)"
-    if [ "$code" = "200" ]; then
+    case "$(install_state "$code")" in
+        fresh) ;;
+        installed)
+            echo "    (already installed: /install/admin answered ${code})" ;;
+        *)
+            echo "the installer answered ${code}; cannot tell whether the site is installed" >&2
+            return 1 ;;
+    esac
+    if [ "$(install_state "$code")" = fresh ]; then
         in_site sh -c '
             set -e
             jar=$(mktemp)
@@ -112,8 +178,6 @@ populate() {
                 --data-urlencode "site_mail=$2"
         ' sh "$admin_user" "$admin_mail" "$ADMIN_PASS" "$site_name" "$site_slogan"
         echo "    installed (administrator: ${admin_user})"
-    else
-        echo "    (already installed: /install/admin answered ${code})"
     fi
 
     echo "==> Importing the site config"
@@ -127,5 +191,17 @@ populate() {
 
     echo "==> Running cron once"
     in_site sh -c 'curl -fsS -o /dev/null -m 60 -X POST "http://127.0.0.1:3000/cron/$1"' sh "$CRON_KEY" \
-        || echo "    WARNING: the cron tick failed"
+        || { echo "the cron tick failed" >&2; return 1; }
+
+    # The cron tick is what copies the Italian overlays into place, so a site
+    # that came up without them is not a finished deployment.
+    echo "==> Checking the Italian pages"
+    local page
+    page="$(in_site curl -fsS -m 30 http://127.0.0.1:3000/it/why)" \
+        || { echo "/it/why did not load" >&2; return 1; }
+    case "$page" in
+        *'lang="it"'*) ;;
+        *) echo "/it/why is not served in Italian" >&2; return 1 ;;
+    esac
+    echo "    /it/why is Italian"
 }

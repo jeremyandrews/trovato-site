@@ -12,6 +12,13 @@
 
 import /etc/caddy/shared.caddy
 
+# The installer answers 404 from the LAN. apply.sh posts its forms from inside
+# the pod, straight to the kernel, so nobody on the network can claim the
+# administrator account of a fresh deployment before it does.
 :80 {
+	@installer path /install /install/*
+	handle @installer {
+		respond 404
+	}
 	import site
 }

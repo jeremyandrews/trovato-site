@@ -1,0 +1,12 @@
+# A second address for the About page, so /about answers with it.
+#
+# One second older than /authors/jeremy-andrews on purpose. The kernel treats the
+# newest alias of a source as canonical, and so does every query in the site
+# plugin, so the author path stays the page's canonical URL, the one its links,
+# sitemap entry and <link rel="canonical"> use, and /about only answers.
+id: '0193b000-0004-7002-8000-000000000009'
+source: /item/0193b000-0003-7000-8000-000000000009
+alias: /about
+language: en
+stage_id: '0193a5a0-0000-7000-8000-000000000001'
+created: 1785542399

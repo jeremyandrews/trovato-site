@@ -41,7 +41,7 @@ fields:
 
       <h2>A config set</h2>
 
-      <p>The <code>config/</code> directory holds the site&#8217;s content and settings as text, one YAML file per entity: 19 URL aliases, 17 menu links, 13 content items, 7 variables (stored site settings), 4 Gather queries, 2 languages and a role. Its <code>docs/</code> subdirectory holds 72 more: the 36 documentation pages copied in from Trovato&#8217;s repository, and their 36 URL aliases. Each entity has a stable ID, and the content items, menu links, aliases and role use UUIDs.</p>
+      <p>The <code>config/</code> directory holds the site&#8217;s content and settings as text, one YAML file per entity: 20 URL aliases, 17 menu links, 13 content items, 7 variables (stored site settings), 4 Gather queries, 2 languages and a role. Its <code>docs/</code> subdirectory holds 72 more: the 36 documentation pages copied in from Trovato&#8217;s repository, and their 36 URL aliases. Each entity has a stable ID, and the content items, menu links, aliases and role use UUIDs.</p>
 
       <p>So the configuration can be exported, reviewed in a pull request like anything else, and imported into the next environment unchanged, which is what the front page means when it says listings are configuration. <code>./scripts/check-roundtrip.sh</code> checks that, CI runs it on every change, and it is one of the site&#8217;s gates, the checks a change has to pass before it goes in: it exports the running site&#8217;s configuration and checks that every key this repository declares comes back with the same value.</p>
 
@@ -70,5 +70,5 @@ fields:
       <p>The site&#8217;s own repository is <a href="https://github.com/jeremyandrews/trovato-site">jeremyandrews/trovato-site</a>, including the report and the build log.</p>
     format: filtered_html
   summary:
-    value: This site runs on a released Trovato with no patches to Trovato&#8217;s core, and building it turned up twenty-two findings about the kernel.
+    value: This site runs on a released Trovato with no patches to Trovato’s core, and building it turned up twenty-two findings about the kernel.
     format: plain_text

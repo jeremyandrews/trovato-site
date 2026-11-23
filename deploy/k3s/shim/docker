@@ -9,7 +9,7 @@
 #
 # and maps <service> onto a pod through the environment:
 #
-#   K3S_NS                                 namespace (default trovato-site)
+#   K3S_NS                                 namespace (trovato-site; nothing else is accepted)
 #   K3S_SITE_SELECTOR, K3S_SITE_CONTAINER  for `site`
 #   K3S_POSTGRES_SELECTOR, K3S_POSTGRES_CONTAINER  for `postgres`
 #
@@ -17,6 +17,7 @@
 set -euo pipefail
 
 ns="${K3S_NS:-trovato-site}"
+[ "$ns" = "trovato-site" ] || { echo "k3s docker shim: refusing namespace '$ns': only trovato-site" >&2; exit 2; }
 export KUBECONFIG="${KUBECONFIG:-$HOME/.kube/ks1.yaml}"
 
 die() { echo "k3s docker shim: $*" >&2; exit 2; }

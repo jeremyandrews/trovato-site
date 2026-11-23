@@ -22,7 +22,7 @@ here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "$here/../.." && pwd)"
 export KUBECONFIG="${KUBECONFIG:-$HOME/.kube/ks1.yaml}"
 export PATH="$here/shim:$HOME/.cargo/bin:$PATH"
-export K3S_NS="${K3S_NS:-trovato-site}"
+export K3S_NS=trovato-site
 export K3S_SITE_SELECTOR="${K3S_SITE_SELECTOR:-app=trovato-site}"
 export K3S_SITE_CONTAINER="${K3S_SITE_CONTAINER:-site}"
 # Cargo builds the checks crate from wherever the script runs; keep its output
