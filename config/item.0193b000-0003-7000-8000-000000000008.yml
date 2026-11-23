@@ -32,7 +32,7 @@ fields:
       <li>A code block in the documentation copied in from Trovato&#8217;s repository takes keyboard focus and has a name, so you can scroll it without a mouse. Code blocks aren&#8217;t landmarks, because some documentation pages have dozens of them.</li>
       <li>Focus is always visible, with an outline that meets the contrast requirement for interface components in both colour schemes.</li>
       <li>Motion is small, and none of it loops. The front page plays one entrance animation, cards lift on hover, and page changes crossfade where the browser supports it. With reduced motion on, the entrance and the crossfade are off, and a card still shifts slightly on hover but no longer animates.</li>
-      <li>Images are either the site&#8217;s own SVG drawings, which follow your colour scheme, or real screenshots from the tutorial. Every screenshot has alt text that describes what it shows, and a drawing that only decorates a page is hidden from screen readers. All are served from this site.</li>
+      <li>Images are either the site&#8217;s own SVG drawings, which follow your colour scheme, or real screenshots from Trovato&#8217;s tutorial. Every screenshot has alt text that describes what it shows, and a drawing that only decorates a page is hidden from screen readers. All are served from this site.</li>
       <li>Long words and URLs wrap, and the page never widens. Code blocks don&#8217;t wrap; a long line scrolls inside the block&#8217;s own box.</li>
       </ul>
 
@@ -41,7 +41,7 @@ fields:
       <ul>
       <li><strong>No one has tested this site with a screen reader yet</strong>, whether VoiceOver, NVDA or JAWS. Automated checks can find a missing label or poor contrast, but they can&#8217;t tell whether a page makes sense read aloud.</li>
       <li><strong>The contact form doesn&#8217;t tie its errors to its fields.</strong> After a failed submission, a list of errors appears above the form, but the fields carry no <code>aria-invalid</code> or <code>aria-describedby</code>, so a screen reader announces a problem without saying which field has it. The form comes from a plugin that ships with Trovato, so the fix belongs in Trovato itself.</li>
-      <li><strong>Automated checks see forms before submission, not after.</strong> The accessibility pass loads each page; it doesn&#8217;t submit forms. The problem above was found by hand, and there may be others like it.</li>
+      <li><strong>No automated check submits a form.</strong> The accessibility pass loads each page and stops there, so errors that appear only after a submission go unchecked. The problem above was found by hand, and there may be others like it.</li>
       <li><strong>Keyboard navigation is only partly checked.</strong> Code blocks in the documentation pages are generated so they take keyboard focus, and a unit test checks that; the code blocks on this site&#8217;s own pages don&#8217;t take focus yet. No automated check opens the menu by keyboard, and the site hasn&#8217;t had a full keyboard walk-through.</li>
       </ul>
 
