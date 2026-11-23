@@ -70,5 +70,5 @@ fields:
       <p>The site&#8217;s own repository is <a href="https://github.com/jeremyandrews/trovato-site">jeremyandrews/trovato-site</a>, including the report and the build log.</p>
     format: filtered_html
   summary:
-    value: Three environment variables, twenty-two findings, and no patches to Trovato&#8217;s core.
+    value: This site runs on a released Trovato with no patches to Trovato&#8217;s core, and building it turned up twenty-two findings about the kernel.
     format: plain_text

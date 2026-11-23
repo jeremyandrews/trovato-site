@@ -17,7 +17,7 @@ fields:
       <li><strong>Colour contrast.</strong> The test suite checks the colour pairings the site declares in its stylesheet, in both schemes: body text, muted text, links, control borders and focus rings against the page background and against the inset background, and button text against its fill. It also checks seven syntax highlighting colours against the code block background. The contrast test runs without a browser, so a failure shows up in <code>cargo test</code>.</li>
       <li><strong>Horizontal overflow.</strong> Every page in the check set is rendered at 360 and 1280 pixels wide, in both schemes, and the build fails if a page scrolls sideways at either width.</li>
       <li><strong>Unthemed elements.</strong> The same pass fails if any visible element has a background from the wrong colour scheme, which catches controls left at the browser default.</li>
-      <li><strong>Off-site requests.</strong> The same pass records every request each page makes and fails if any leaves this site, so every font, script and image on those pages comes from here.</li>
+      <li><strong>Off-site requests.</strong> The same pass records every request each page makes, including fonts, scripts and images, and fails if any of them leaves this site.</li>
       <li><strong>Structure.</strong> A crawl of every page reachable from the front page checks that each has a main landmark, a skip link and a labelled main navigation, and that no page came back as the raw fallback page that Trovato (the content management system this site runs on) serves when a template fails.</li>
       </ul>
 
