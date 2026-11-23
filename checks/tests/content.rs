@@ -547,34 +547,49 @@ fn plain_text_fields_carry_no_html_references() {
     assert!(found.is_empty(), "\n{}\n", found.join("\n"));
 }
 
-/// The About page answers at `/about` as well as at its author path, and the
-/// author path stays canonical. The kernel and the site plugin both take the
-/// newest alias of a source as its canonical one, so `/about` has to be the
-/// older of the two: the other way round, every link, the sitemap entry and
-/// `<link rel="canonical">` would move to `/about`.
+/// The About page answers at `/about`, its canonical address, and still at
+/// `/authors/jeremy-andrews`, so links already made to the old path keep working.
+/// The kernel takes the newest alias of a source as canonical, by `created` and
+/// then by id, and config import stamps an alias with the time it is first
+/// imported, so `/about` has to carry the higher id: on a fresh database both
+/// can be stamped in the same second. The byline links the canonical address.
 #[test]
-fn about_answers_at_slash_about_and_keeps_its_author_path_canonical() {
+fn about_is_canonical_at_slash_about_and_the_author_path_still_answers() {
     const ABOUT: &str = "/item/0193b000-0003-7000-8000-000000000009";
-    let mut english: Vec<(String, i64)> = Vec::new();
+    let mut english: Vec<(String, String)> = Vec::new();
     for (name, text) in config_files() {
         if name.starts_with("url_alias.")
             && scalar(&text, "source").as_deref() == Some(ABOUT)
             && scalar(&text, "language").as_deref() == Some("en")
         {
-            let alias = scalar(&text, "alias").unwrap_or_default();
-            let created = scalar(&text, "created")
-                .and_then(|c| c.parse().ok())
-                .unwrap_or_default();
-            english.push((alias, created));
+            english.push((
+                scalar(&text, "alias").unwrap_or_default(),
+                scalar(&text, "id").unwrap_or_default(),
+            ));
         }
     }
-    let created_of = |path: &str| english.iter().find(|(a, _)| a == path).map(|(_, c)| *c);
-    let about = created_of("/about").expect("no /about alias for the About page");
-    let author = created_of("/authors/jeremy-andrews").expect("no author alias for the About page");
+    let id_of = |path: &str| {
+        english
+            .iter()
+            .find(|(a, _)| a == path)
+            .map(|(_, id)| id.clone())
+    };
+    let about = id_of("/about").expect("no /about alias for the About page");
+    let author = id_of("/authors/jeremy-andrews").expect("the author path no longer answers");
     assert!(
-        about < author,
-        "/about ({about}) must be older than /authors/jeremy-andrews ({author}) to stay non-canonical"
+        about > author,
+        "/about ({about}) must sort after /authors/jeremy-andrews ({author}) to be canonical"
     );
+
+    let byline = std::fs::read_to_string(
+        Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("..")
+            .join("templates")
+            .join("elements")
+            .join("item--blog.html"),
+    )
+    .unwrap();
+    assert!(byline.contains("rel=\"author\" href=\"/about\""));
 }
 
 /// The news post that counts the files in `config/` has to count what is there.

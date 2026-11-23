@@ -1,12 +1,15 @@
-# A second address for the About page, so /about answers with it.
+# The About page's canonical address.
 #
-# One second older than /authors/jeremy-andrews on purpose. The kernel treats the
-# newest alias of a source as canonical, and so does every query in the site
-# plugin, so the author path stays the page's canonical URL, the one its links,
-# sitemap entry and <link rel="canonical"> use, and /about only answers.
+# The page also answers at /authors/jeremy-andrews, its first alias, which stays
+# so that links already made to it keep working. The kernel treats the newest
+# alias of a source as canonical (created DESC, then id DESC), and config import
+# stamps an alias with the time it is first imported rather than reading
+# `created`, so this one, imported after the author path and with the higher id
+# besides, is the canonical one on a fresh database and on this one alike. The
+# blog byline links here for the same reason.
 id: '0193b000-0004-7002-8000-000000000009'
 source: /item/0193b000-0003-7000-8000-000000000009
 alias: /about
 language: en
 stage_id: '0193a5a0-0000-7000-8000-000000000001'
-created: 1785542399
+created: 1785542401
