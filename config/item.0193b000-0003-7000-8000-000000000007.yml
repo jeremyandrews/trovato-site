@@ -20,7 +20,7 @@ fields:
 
       <p>Because so much of the code is written this way, the tests and CI checks are stricter than they would otherwise be. The security audits so far were done in-house, and there hasn&#8217;t been an outside audit yet; <a href="/learn/known-issues">Known issues</a> has the details. Contributions written with AI help are welcome and held to the same standard as any other, and CONTRIBUTING.md covers what&#8217;s asked of them.</p>
 
-      <p>Being written with AI isn&#8217;t a claim that the code is better for it, and it doesn&#8217;t excuse a bug: a bug is a bug no matter who or what wrote it.</p>
+      <p>Using AI makes no claim about the code&#8217;s quality, and a bug counts the same whoever or whatever wrote it.</p>
 
       <h2>Code of conduct</h2>
 

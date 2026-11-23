@@ -64,17 +64,9 @@
     <section class="search-explainer prose">
         <h2>What happens when you search</h2>
 
-        <p>Search here has three parts, and they do not all behave the same way. It is worth knowing which is which.</p>
+        <p>The form above sends your search to this server. The server runs a PostgreSQL full-text query over the site&#8217;s published content and returns the results as a page, with JavaScript on or off.</p>
 
-        <h3>Keyword search runs in your browser</h3>
-        <p>The site publishes its search index as static files. Your browser downloads the fragments it needs and runs the search locally, in WebAssembly. For this part there is no request to the server, no database query, and nothing about what you typed goes anywhere.</p>
-
-        <h3>Without JavaScript, the server answers instead</h3>
-        <p>The form above submits to the server, which runs a PostgreSQL full-text query and renders the results as a page. It is a round trip rather than instant, and it is always available. The instant search is an enhancement on top of it, not a replacement for it.</p>
-
-        <h3>The AI features are server-side, and they send your query onward</h3>
-        <p>Two of the four stages use a language model: one expands your query into related terms, and one writes a summary above the results. Both run on the server, and both send your query, and the snippets retrieved for it, to whichever AI provider the site is configured to use. That is a request to a third party, and no amount of the first paragraph being true changes it.</p>
-        <p>This site has no AI provider configured, so today those two stages do not run and nothing you type leaves this server. If that changes, this page changes with it and says which provider.</p>
+        <p>Trovato can also run keyword search in the browser, and it can use a language model to expand a query and summarise the results. This site uses neither. The search page loads no in-browser search, and no AI provider is configured, so nothing you type leaves this server. If that changes, this page will say so and name the provider.</p>
     </section>
 </div>
 {% endblock %}

@@ -43,7 +43,7 @@ fields:
       <li>The test suite, split three ways, against a real PostgreSQL and Redis.</li>
       <li>Coverage, reported but not gated.</li>
       <li><code>cargo audit</code> against the advisory database.</li>
-      <li><code>cargo semver-checks</code> on the plugin SDK, which fails a breaking change that ships without the version bump semver requires. Before 1.0 a minor bump is enough to pass it, so until then the check doesn&#8217;t hold the plugin contract (what plugins and Trovato&#8217;s core agree on) frozen; the maintainer does, by reviewing every change to it. From 1.0 a breaking change needs a major version bump, and the check enforces that.</li>
+      <li><code>cargo semver-checks</code> on the plugin SDK, which fails a breaking change that ships without the version bump semver requires. Before 1.0 a minor bump is enough to pass it, so until then the maintainer keeps the plugin contract (what plugins and Trovato&#8217;s core agree on) frozen by reviewing every change to it. From 1.0 a breaking change needs a major version bump, and the check enforces that.</li>
       <li>A check that counts the places under <code>crates/</code> where custom SQL is spliced into a built query without bound parameters, and fails if the count rises, unless the pull request raises the baseline and says why.</li>
       </ul>
 
@@ -85,7 +85,7 @@ fields:
       ai_background = true
       db_tables = ["comment"]</code></pre>
 
-      <p>It can log, use the job queue, call the configured AI provider, and use the database. A plugin can always use the tables its own migrations create; this one creates none, so <code>db_tables</code> is its entire database reach: the <code>comment</code> table and nothing else. It doesn&#8217;t set <code>raw_sql</code>, the flag that would let it skip the table check, so every query it runs is checked. <code>ai_background</code> lets it call the AI provider from a queue job, where there&#8217;s no logged-in user whose permissions would cover the call.</p>
+      <p>The moderation plugin can log, use the job queue, call the configured AI provider, and use the database. A plugin can always use the tables its own migrations create; this one creates none, so <code>db_tables</code> is its entire database reach: the <code>comment</code> table and nothing else. It doesn&#8217;t set <code>raw_sql</code>, the flag that would let it skip the table check, so every query it runs is checked. <code>ai_background</code> lets it call the AI provider from a queue job, where there&#8217;s no logged-in user whose permissions would cover the call.</p>
 
       <p>The kernel enforces both lists: it connects the plugin only to the interfaces in <code>host_interfaces</code>, and checks every structured database call against <code>db_tables</code>.</p>
 

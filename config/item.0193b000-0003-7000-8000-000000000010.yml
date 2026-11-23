@@ -14,7 +14,7 @@ fields:
 
       <p>A comment from a new account isn&#8217;t published straight away. It&#8217;s held, reviewed, and then published or not. Once an account has three approved comments, its new comments publish immediately.</p>
 
-      <p>No AI provider is configured today, so for now every held comment waits for a person to read it. Once a provider is configured, review will be automated first and human second. A classifier will read each comment and return one of three verdicts: publish, hold for a person, or spam. It will run on every comment, including those from accounts that publish immediately, so a published comment could still be taken down later.</p>
+      <p>Once an AI provider is configured, review will be automated first and human second. A classifier will read each comment and return one of three verdicts: publish, hold for a person, or spam. It will run on every comment, including those from accounts that publish immediately, so a published comment could still be taken down later. No AI provider is configured today, so for now every held comment waits for a person to read it.</p>
 
       <h2>When the classifier can&#8217;t answer</h2>
 

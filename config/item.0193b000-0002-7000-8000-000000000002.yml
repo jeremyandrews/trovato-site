@@ -37,25 +37,23 @@ fields:
 
       <p>A plugin is a WebAssembly module, and the kernel runs it at named points, which Trovato calls taps. It arrives with a manifest naming the host interfaces it wants, the groups of functions the kernel offers plugins, such as database access, logging or mail. At load the kernel builds that plugin a linker (the table that connects a module&#8217;s imports to real functions) containing those interfaces and no others.</p>
 
-      <p>You might expect the kernel to check a list each time a plugin calls a host function, and to return an error for a call that is not on it. That moment never comes. A WebAssembly module declares its imports up front, and instantiating it means resolving every one of them against the linker it is handed. A module that imports <code>db</code> from a plugin that declared only <code>logging</code> has an import nothing satisfies, so it never instantiates, and none of its code runs.</p>
+      <p>The kernel checks a plugin&#8217;s imports once, when it instantiates the module, and does no per-call check of host functions. A WebAssembly module declares its imports up front, and instantiating it means resolving every one of them against the linker it is handed. If a plugin declared only <code>logging</code> but its module imports <code>db</code>, nothing satisfies that import, so the module never instantiates, and none of its code runs.</p>
 
-      <p>A plugin that declares no interfaces at all is handed a linker with no kernel interfaces in it. It can compute. It cannot do anything else, and the kernel has a test that says so: it builds a linker from <code>["logging"]</code>, confirms a module importing <code>logging</code> instantiates, confirms a module importing <code>db</code> does not, and then confirms that an empty declaration links no kernel interface at all.</p>
+      <p>A plugin that declares no interfaces at all is handed a linker with no kernel interfaces in it. Such a plugin can compute and do nothing else, and the kernel has a test that says so: it builds a linker from <code>["logging"]</code>, confirms a module importing <code>logging</code> instantiates, confirms a module importing <code>db</code> does not, and then confirms that an empty declaration links no kernel interface at all.</p>
 
       <h2>The thirteen</h2>
 
       <p><code>host_interfaces</code> is a closed list. The kernel knows thirteen names, the same thirteen that the plugin interface definition says a plugin may import, and a manifest naming a fourteenth is rejected when it is parsed, with the full list in the error. Nothing a plugin can write adds one. A new host interface is a kernel release: it goes into the plugin contract, what plugins and the kernel agree on, and into the kernel&#8217;s list, together.</p>
 
-      <p>Here they are, with what each one is for.</p>
-
       <ul>
-        <li><code>item-api</code>: the structured way to read and write content. An item is Trovato&#8217;s word for one piece of content. Load an item by id, create one, update one, work with its fields as fields. Most plugins that touch content want this rather than <code>db</code>.</li>
+        <li><code>item-api</code>: the structured way to read and write content. An item is Trovato&#8217;s word for one piece of content. Load an item by id, save one, delete one, or query them, and every save writes a revision. The SDK has no bindings for it yet, so a plugin that wants it has to declare its own, and that gap is one of the kernel problems this site has written down.</li>
         <li><code>db</code>: the database, through the kernel. Structured selects, inserts, updates and deletes, each one checked against the plugin&#8217;s table allowlist before the query is built.</li>
-        <li><code>variables</code>: the site&#8217;s configuration values. Reads are namespaced to the calling plugin, so a plugin asking for another plugin&#8217;s key gets the default it passed in rather than an error, which is a real trap and is on the site&#8217;s list of findings.</li>
+        <li><code>variables</code>: the site&#8217;s configuration values. Reads are namespaced to the calling plugin, so a plugin asking for another plugin&#8217;s key gets back the default it passed in, with no error. That trap is one of the kernel problems this site has written down.</li>
         <li><code>request-context</code>: a key and value store scoped to the current request, for state that several taps on one request need to share.</li>
         <li><code>user-api</code>: two questions. Who is the current user, and do they have this permission.</li>
         <li><code>cache-api</code>: get and set by bin and key, and invalidate by tag, so a plugin doing expensive work can stop doing it twice.</li>
-        <li><code>plugin-api</code>: calling another plugin, and asking whether one is installed. This is the interface that makes a plugin a caller rather than only a callee, and a plugin gets it only by naming it.</li>
-        <li><code>logging</code>: the log. Cheap, and worth declaring even when nothing else is, because a query that fails should say so rather than render an empty page in silence.</li>
+        <li><code>plugin-api</code>: calling another plugin, and asking whether one is installed. With it a plugin can call other plugins as well as be called by the kernel, and a plugin gets it only by naming it.</li>
+        <li><code>logging</code>: the log. Cheap, and worth declaring even when nothing else is, because without it a query that fails renders an empty page and says nothing.</li>
         <li><code>ai-api</code>: one call into the kernel&#8217;s provider registry. The plugin sends a request, the kernel picks the provider and adds the credentials, and the API key never crosses into the plugin at all.</li>
         <li><code>crypto-api</code>: SHA-256, HMAC-SHA256, secure random bytes and a constant-time comparison, so that a plugin needing any of them does not bundle its own into WebAssembly.</li>
         <li><code>http</code>: outbound requests, made by the kernel on the plugin&#8217;s behalf with protection against server-side request forgery, host rules, a timeout and a size cap. A plugin cannot open a socket.</li>
@@ -63,7 +61,7 @@ fields:
         <li><code>mail</code>: one function, and it does not take a recipient. It sends to the address the site configured and nowhere else, which is enough for a visitor to reach the site owner and useless for reaching strangers.</li>
       </ul>
 
-      <p>What is missing from that list is as much of the design as what is on it. There is no filesystem interface, and that is deliberate: the runtime hand-writes five stubs of WASI (WebAssembly&#8217;s standard system interface) and opens no directories. A plugin that writes to a file descriptor gets <code>ENOSYS</code>, and one that imports any other file function, such as <code>path_open</code>, cannot be instantiated. There is no interface for reaching into another plugin&#8217;s memory, because there is no path from one to another&#8217;s.</p>
+      <p>There is no filesystem interface, and that is deliberate: the runtime hand-writes five stubs of WASI (WebAssembly&#8217;s standard system interface) and opens no directories. A plugin that writes to a file descriptor gets <code>ENOSYS</code>, and one that imports any other file function, such as <code>path_open</code>, cannot be instantiated. There is no interface for reaching into another plugin&#8217;s memory, because there is no path from one to another&#8217;s.</p>
 
       <h2>The table allowlist has two halves</h2>
 
@@ -76,9 +74,9 @@ fields:
         <li><strong>The tables named in <code>db_tables</code>.</strong> This is the explicit extension: the tables a plugin needs to touch that it did not create, which generally means the kernel&#8217;s own tables, or another plugin&#8217;s.</li>
       </ul>
 
-      <p>So <code>db_tables</code> is not the plugin&#8217;s whole reach, and reading it as one will mislead you in both directions. A plugin with an empty <code>db_tables</code> and three migrations of its own reaches three tables. And a plugin can reach a table another plugin created, which is allowed and is sometimes the only sensible arrangement, but only by writing that table&#8217;s name in a file somebody reviews.</p>
+      <p>So <code>db_tables</code> is not the plugin&#8217;s whole reach. A plugin with an empty <code>db_tables</code> and three migrations of its own reaches three tables. And a plugin can reach a table another plugin created, which is allowed and is sometimes the only sensible arrangement, but only by writing that table&#8217;s name in a file somebody reviews.</p>
 
-      <p>The plugin that runs this site uses only tables it did not create. It ships no migrations, so its manifest names every table it means to touch: <code>item</code> and <code>url_alias</code> to build the front-page listing, the sitemap and the documentation pages, both read-only, and <code>item_translation</code>, which is the one table it writes. Every query it runs is raw SQL, described below, so the kernel checks none of those names. It writes <code>item_translation</code> because on this kernel nothing else can. Configuration import cannot put a translation where the kernel reads one, the two administrative routes that would are registered for <code>GET</code> and have no templates in the image, and there is no endpoint. So the site carries its translations in configuration and a cron tap copies them into the table on each tick, which is a workaround, written down as one.</p>
+      <p>The plugin that runs this site uses only tables it did not create. It ships no migrations, so its manifest names every table it means to touch: <code>item</code> and <code>url_alias</code> to build the front-page listing, the sitemap, llms.txt and the Markdown copy of each documentation page, both read-only, and <code>item_translation</code>, which is the one table it writes. Every query it runs is raw SQL, described below, so the kernel checks none of those names. It writes <code>item_translation</code> because on this kernel nothing else can. Configuration import cannot put a translation where the kernel reads one, the two administrative routes that would are registered for <code>GET</code> and have no templates in the image, and there is no endpoint. So the site carries its translations in configuration and a cron tap copies them into the table on each tick, which is a workaround, written down as one.</p>
 
       <h2>The line that gives some of it back</h2>
 
@@ -88,11 +86,11 @@ fields:
 
       <p>This plugin holds it for a dull reason. Its front-page listing is one query that sorts posts of two content types (kinds of content) together and joins each post to its URL alias (the readable path it is served at), with a limit on the result. The structured item API cannot express that in a single call, and the alternative is several calls and a sort in the plugin, which is slower. Its sitemap and documentation queries join <code>item</code> and <code>url_alias</code> the same way, so they need the flag for the same reason, and its translation queries use it as well.</p>
 
-      <p>So what is a table allowlist worth when a plugin can declare its way around it? Declaring it is a line in a manifest, in a repository, in a change somebody approved, and you can go and look at which plugins on a site have that line. A capability that had to be declared and reviewed differs from one that was simply available, even when the end state is the same: the design rules out a plugin with broad access that nobody decided to give it.</p>
+      <p>A plugin can declare its way around the table allowlist, but only with a line in its manifest, which sits in the repository and went in through a reviewed change, so you can look up which plugins on a site have that line. The access may end up the same, but no plugin gets broad access that nobody decided to give it.</p>
 
       <h2>Reading a manifest</h2>
 
-      <p>Which makes a plugin&#8217;s manifest worth actually reading, and short enough to. Four questions answer most of it. Which host interfaces did it name, and is <code>plugin-api</code> or <code>http</code> among them. What does it create, and what does it merely want. Does it write anything it did not create. And is <code>raw_sql</code> there, and does the reason hold up.</p>
+      <p>A plugin&#8217;s manifest is short enough to read in full, and four questions answer most of it. Which host interfaces did it name, and is <code>plugin-api</code> or <code>http</code> among them. What does it create, and what does it merely want. Does it write anything it did not create. And is <code>raw_sql</code> there, and does the reason hold up.</p>
 
       <p>None of that requires trusting the answer. The manifest is in the repository next to the code it describes, and the kernel will not run the plugin in any shape other than the one it declares.</p>
     format: filtered_html
