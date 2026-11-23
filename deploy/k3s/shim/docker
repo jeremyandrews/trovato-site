@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+# A stand-in for `docker`, put first on PATH so scripts/check-roundtrip.sh and
+# scripts/check-moderation.sh run unmodified against pods in k3s.
+#
+# It understands exactly the two forms those scripts use:
+#
+#   docker compose -p <project> [-f <file>]... exec -T <service> <command...>
+#   docker compose -p <project> [-f <file>]... cp <service>:<path> <dest>
+#
+# and maps <service> onto a pod through the environment:
+#
+#   K3S_NS                                 namespace (default trovato-site)
+#   K3S_SITE_SELECTOR, K3S_SITE_CONTAINER  for `site`
+#   K3S_POSTGRES_SELECTOR, K3S_POSTGRES_CONTAINER  for `postgres`
+#
+# Anything else is refused loudly rather than guessed at.
+set -euo pipefail
+
+ns="${K3S_NS:-trovato-site}"
+export KUBECONFIG="${KUBECONFIG:-$HOME/.kube/ks1.yaml}"
+
+die() { echo "k3s docker shim: $*" >&2; exit 2; }
+
+[ "${1:-}" = "compose" ] || die "only 'docker compose' is supported (got: $*)"
+shift
+while [ $# -gt 0 ]; do
+    case "$1" in
+        -p|-f) shift 2 ;;
+        *) break ;;
+    esac
+done
+
+target() {
+    local service="$1" selector container pod
+    case "$service" in
+        site) selector="${K3S_SITE_SELECTOR:?}"; container="${K3S_SITE_CONTAINER:?}" ;;
+        postgres) selector="${K3S_POSTGRES_SELECTOR:?}"; container="${K3S_POSTGRES_CONTAINER:?}" ;;
+        *) die "unknown service '$service'" ;;
+    esac
+    pod="$(kubectl -n "$ns" get pods -l "$selector" --field-selector=status.phase=Running \
+        -o jsonpath='{.items[0].metadata.name}')"
+    [ -n "$pod" ] || die "no running pod for $selector"
+    echo "$pod $container"
+}
+
+case "${1:-}" in
+    exec)
+        shift
+        [ "${1:-}" = "-T" ] && shift
+        read -r pod container < <(target "$1")
+        shift
+        exec kubectl -n "$ns" exec -i "$pod" -c "$container" -- "$@"
+        ;;
+    cp)
+        src="$2" dest="$3"
+        service="${src%%:*}" path="${src#*:}"
+        path="${path%/.}"
+        read -r pod container < <(target "$service")
+        mkdir -p "$dest"
+        kubectl -n "$ns" exec "$pod" -c "$container" -- tar cf - -C "$path" . | tar xf - -C "$dest"
+        ;;
+    *) die "unsupported compose subcommand '${1:-}'" ;;
+esac

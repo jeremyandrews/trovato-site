@@ -1,0 +1,17 @@
+# The k3s entry point: deploy/Caddyfile with the address fixed at plain HTTP on
+# port 80 and no certificate, because the review site lives on a LAN address
+# with no DNS name.
+#
+# apply.sh puts this file and deploy/shared.caddy into one ConfigMap, rewriting
+# the upstream `site:3000` to `127.0.0.1:3000` on the way, since the kernel is in
+# the same pod. Everything about how the site is served stays in shared.caddy.
+{
+	admin off
+	auto_https off
+}
+
+import /etc/caddy/shared.caddy
+
+:80 {
+	import site
+}
