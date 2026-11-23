@@ -43,7 +43,7 @@ fields:
 
       <p>The <code>config/</code> directory holds the site&#8217;s content and settings as text, one YAML file per entity: 19 URL aliases, 17 menu links, 13 content items, 7 variables (stored site settings), 4 Gather queries, 2 languages and a role. Its <code>docs/</code> subdirectory holds 72 more: the 36 documentation pages copied in from Trovato&#8217;s repository, and their 36 URL aliases. Each entity has a stable ID, and the content items, menu links, aliases and role use UUIDs.</p>
 
-      <p>So the configuration exports, it is reviewed in a pull request like anything else, and it imports into the next environment unchanged. <code>./scripts/check-roundtrip.sh</code> checks that, and it is one of the site&#8217;s gates, the checks a change has to pass before it goes in: it exports the running site&#8217;s configuration and checks that every key this repository declares comes back with the same value. The front page says listings are configuration, and the round-trip check, which CI runs on every change, tests that claim.</p>
+      <p>So the configuration can be exported, reviewed in a pull request like anything else, and imported into the next environment unchanged. <code>./scripts/check-roundtrip.sh</code> checks that, and it is one of the site&#8217;s gates, the checks a change has to pass before it goes in: it exports the running site&#8217;s configuration and checks that every key this repository declares comes back with the same value. The front page says listings are configuration, and the round-trip check, which CI runs on every change, tests that claim.</p>
 
       <h2>Its own static files</h2>
 

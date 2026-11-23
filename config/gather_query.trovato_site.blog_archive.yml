@@ -9,7 +9,7 @@
 # reaches is safer than no cap at all.
 query_id: trovato_site.blog_archive
 label: Archive
-description: Every post on this site, by year.
+description: Every blog post on this site, by year.
 definition:
   base_table: item
   item_type: blog
