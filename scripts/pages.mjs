@@ -37,3 +37,12 @@ export const PAGES = [
 ];
 
 export const BASE = process.env.SITE_BASE ?? "http://127.0.0.1:3080";
+
+// Options for chromium.launch(). PLAYWRIGHT_CHANNEL=chrome runs the installed
+// Google Chrome instead of Playwright's bundled Chromium. On macOS the bundled
+// build is not granted Local Network access, so it cannot reach a LAN address
+// such as the k3s review site (net::ERR_ADDRESS_UNREACHABLE) while Chrome can.
+// Unset, the bundled Chromium is used, as before.
+export const LAUNCH = process.env.PLAYWRIGHT_CHANNEL
+  ? { channel: process.env.PLAYWRIGHT_CHANNEL }
+  : {};

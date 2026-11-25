@@ -46,7 +46,10 @@ the production value.
 
 Environment: `KUBECONFIG` (default `~/.kube/ks1.yaml`), `LB_IP` (default
 `10.20.250.17`), `SITE_HOST` (default `<LB_IP>.nip.io`), `SITE_BASE` for the
-gates (default `http://<LB_IP>.nip.io`), `PUSH_HOST` (default `ks1.pozza`).
+gates (default `http://<LB_IP>.nip.io`), `PUSH_HOST` (default `ks1.pozza`),
+`PLAYWRIGHT_CHANNEL` for the browser gates (set it to `chrome` on a Mac whose
+bundled Chromium has no Local Network access and fails every page with
+`net::ERR_ADDRESS_UNREACHABLE`; unset, the bundled Chromium runs).
 
 The administrator is `admin`; the password, the database password and the
 cron key are in Secret `trovato-site-secrets`, generated on the first apply and

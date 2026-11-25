@@ -12,7 +12,8 @@
 // is not checked rather than what is checked and ignored.
 import { chromium } from "playwright";
 import { AxeBuilder } from "@axe-core/playwright";
-import { PAGES, BASE } from "./pages.mjs";
+import { PAGES, BASE, LAUNCH } from "./pages.mjs";
+import { retryAfterMs } from "./ratelimit.mjs";
 
 // WCAG 2.2 AA is the target, and best-practice rules are included because they
 // are cheap and this site has no legacy markup to grandfather in.
@@ -20,7 +21,7 @@ const TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa", "best-prac
 
 const SCHEMES = ["light", "dark"];
 
-const browser = await chromium.launch();
+const browser = await chromium.launch(LAUNCH);
 let violations = 0;
 let checked = 0;
 
@@ -33,9 +34,9 @@ for (const scheme of SCHEMES) {
     // included, and axe needs a fully rendered page. See docs/LEDGER.md, Gate 2.
     let response = await page.goto(BASE + path, { waitUntil: "networkidle" });
     for (let attempt = 0; attempt < 3 && response?.status() === 429; attempt++) {
-      const wait = Number(response.headers()["retry-after"] ?? 60);
-      console.log(`      429, waiting ${wait}s before retrying ${path}`);
-      await new Promise((r) => setTimeout(r, (wait + 1) * 1000));
+      const wait = retryAfterMs(response.headers()["retry-after"]);
+      console.log(`      429, waiting ${Math.ceil(wait / 1000)}s before retrying ${path}`);
+      await new Promise((r) => setTimeout(r, wait + 1000));
       response = await page.goto(BASE + path, { waitUntil: "networkidle" });
     }
 

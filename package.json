@@ -6,7 +6,8 @@
   "scripts": {
     "shoot": "node scripts/shoot.mjs",
     "a11y": "node scripts/a11y.mjs",
-    "crawl": "node scripts/crawl.mjs"
+    "crawl": "node scripts/crawl.mjs",
+    "test": "node --test 'scripts/test/*.test.mjs'"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.10.1",

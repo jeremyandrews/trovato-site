@@ -540,13 +540,15 @@ button.site-nav__logout {
     text-decoration: none;
 }
 
-/* object-fit: contain rather than cover: three of the eight claims reuse art
-   drawn at other aspect ratios (a banner, a square icon at a different native
-   size), and a reused illustration should sit inside the square, never crop
-   or stretch to fill it. */
+/* Every icon is drawn at one height; the width follows the art's own aspect
+   ratio (from the width and height attributes), so the square icons stay
+   square and the reused community banner keeps its full height beside them
+   instead of shrinking to a sliver inside a square. object-fit: contain still
+   guards against any crop or stretch. */
 .feature-card img {
     display: block;
-    width: 3.5rem;
+    width: auto;
+    max-width: 100%;
     height: 3.5rem;
     object-fit: contain;
     margin-bottom: var(--space-3);

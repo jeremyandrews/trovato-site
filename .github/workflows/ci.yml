@@ -61,6 +61,12 @@ jobs:
           npm ci
           npx playwright install --with-deps chromium
 
+      # The browser checks' own tests: how they read Retry-After, and that a
+      # rate-limited request anywhere in a page retakes it. Fixture servers on
+      # loopback; no site needed.
+      - name: Test the browser checks
+        run: npm test
+
       - name: Bring the site up
         run: ./scripts/run.sh --fresh --proxy
 

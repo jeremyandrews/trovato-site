@@ -1277,3 +1277,28 @@ more than a sentence. The kernel pin is unchanged.
   the assistant has nothing to call. Both fail safe, and `/ai` and
   `/ai-search` say what the feature does once a provider is set, not that one
   is set today.
+
+## Gate 13b: the C7 front page, deployed and seen
+
+**Attempt 1, 2026-11-25:** redeployed the review site on C7 and looked at it
+in Chrome at 1440 and 390, light and dark. The community banner in the claim
+grid rendered as a sliver inside a 56px square, so claim icons now share a
+height and take their width from the art; the footer's Rust link answered
+301 and now names `https://rust-lang.org/`; the browser gates take
+`PLAYWRIGHT_CHANNEL=chrome`, because the bundled Chromium on the Studio has no
+Local Network access. `deploy/k3s/gate.sh` passes all five gates, every front
+page link answers 200, and the screenshots are in `docs/screenshots/c7/`
+(`/search` is the kernel's search page; the search claim is `/ai-search`).
+CI's shoot gate went red on main with C7: its front page loads twelve more
+images, the kernel's limit of 100 requests a minute answered `site.css` with a
+429 on the dark 1280 front page, and the unstyled search box read as unthemed.
+Shoot now treats a 429 on any request a page makes as it already treated one on
+the document: it waits as the header asks and reloads, and fails the page if
+the limit still holds.
+Two more gaps in the same retry: it stopped listening once the page reached
+network idle, so an image requested while the page settled or was captured
+could be refused and missed; and it read Retry-After with `Number()`, which
+turns the header's HTTP-date form into an immediate retry. Load, settle,
+measurement and capture now retry as one unit, and `scripts/ratelimit.mjs`
+reads both forms of the header for shoot, a11y and crawl. `npm test` covers
+both, with a fixture server, and runs in CI.

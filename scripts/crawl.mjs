@@ -14,7 +14,8 @@
 // navigation and no styling, and returns it with a 200. A crawler that only
 // looks at status codes reports a perfectly healthy site.
 import { chromium } from "playwright";
-import { BASE } from "./pages.mjs";
+import { BASE, LAUNCH } from "./pages.mjs";
+import { retryAfterMs } from "./ratelimit.mjs";
 
 const startPaths = ["/", "/llms.txt"];
 if (process.argv.includes("--lang")) {
@@ -106,7 +107,7 @@ const queue = [...startPaths];
 const problems = [];
 const pages = [];
 
-const browser = await chromium.launch();
+const browser = await chromium.launch(LAUNCH);
 const context = await browser.newContext();
 const page = await context.newPage();
 
@@ -131,9 +132,9 @@ async function fetchPage(url) {
   for (let attempt = 0; attempt < 3; attempt++) {
     const response = await page.goto(url, { waitUntil: "domcontentloaded" });
     if (response?.status() !== 429) return response;
-    const wait = Number(response.headers()["retry-after"] ?? 60);
-    console.log(`      429, waiting ${wait}s before retrying ${url}`);
-    await new Promise((r) => setTimeout(r, (wait + 1) * 1000));
+    const wait = retryAfterMs(response.headers()["retry-after"]);
+    console.log(`      429, waiting ${Math.ceil(wait / 1000)}s before retrying ${url}`);
+    await new Promise((r) => setTimeout(r, wait + 1000));
   }
   return page.goto(url, { waitUntil: "domcontentloaded" });
 }
