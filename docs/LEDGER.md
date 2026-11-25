@@ -1277,3 +1277,15 @@ more than a sentence. The kernel pin is unchanged.
   the assistant has nothing to call. Both fail safe, and `/ai` and
   `/ai-search` say what the feature does once a provider is set, not that one
   is set today.
+
+## Gate 13b: the C7 front page, deployed and seen
+
+**Attempt 1, 2026-11-25:** redeployed the review site on C7 and looked at it
+in Chrome at 1440 and 390, light and dark. The community banner in the claim
+grid rendered as a sliver inside a 56px square, so claim icons now share a
+height and take their width from the art; the footer's Rust link answered
+301 and now names `https://rust-lang.org/`; the browser gates take
+`PLAYWRIGHT_CHANNEL=chrome`, because the bundled Chromium on the Studio has no
+Local Network access. `deploy/k3s/gate.sh` passes all five gates, every front
+page link answers 200, and the screenshots are in `docs/screenshots/c7/`
+(`/search` is the kernel's search page; the search claim is `/ai-search`).
