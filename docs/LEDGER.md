@@ -1289,3 +1289,9 @@ height and take their width from the art; the footer's Rust link answered
 Local Network access. `deploy/k3s/gate.sh` passes all five gates, every front
 page link answers 200, and the screenshots are in `docs/screenshots/c7/`
 (`/search` is the kernel's search page; the search claim is `/ai-search`).
+CI's shoot gate went red on main with C7: its front page loads twelve more
+images, the kernel's limit of 100 requests a minute answered `site.css` with a
+429 on the dark 1280 front page, and the unstyled search box read as unthemed.
+Shoot now treats a 429 on any request a page makes as it already treated one on
+the document: it waits as the header asks and reloads, and fails the page if
+the limit still holds.

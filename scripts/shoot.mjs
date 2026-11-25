@@ -46,12 +46,35 @@ for (const scheme of SCHEMES) {
       // included, and a screenshot pass is ten pages of real rendering in four
       // configurations. A 429 is answered the way the header asks rather than
       // counted as a broken page. See docs/LEDGER.md, Gate 2.
-      let response = await page.goto(BASE + path, { waitUntil: "networkidle" });
-      for (let attempt = 0; attempt < 3 && response?.status() === 429; attempt++) {
-        const wait = Number(response.headers()["retry-after"] ?? 60);
-        console.log(`      429, waiting ${wait}s before retrying ${path}`);
+      //
+      // That holds for the page's own requests too, not just the document: if
+      // the stylesheet is the request that trips the limit, the page renders
+      // unstyled and every control reads as unthemed. So a 429 on any request
+      // the page made reloads the page, after the wait its header asks for.
+      let limited = null;
+      const onResponse = (r) => {
+        if (r.status() === 429 && !limited) limited = r;
+      };
+      page.on("response", onResponse);
+      const load = async () => {
+        limited = null;
+        const res = await page.goto(BASE + path, { waitUntil: "networkidle" });
+        return { res, hit: res?.status() === 429 ? res : limited };
+      };
+      let { res: response, hit } = await load();
+      for (let attempt = 0; attempt < 3 && hit; attempt++) {
+        const wait = Number(hit.headers()["retry-after"] ?? 60);
+        const what = hit.url() === response?.url() ? path : `${path} (${new URL(hit.url()).pathname} was limited)`;
+        console.log(`      429, waiting ${wait}s before retrying ${what}`);
         await new Promise((r) => setTimeout(r, (wait + 1) * 1000));
-        response = await page.goto(BASE + path, { waitUntil: "networkidle" });
+        ({ res: response, hit } = await load());
+      }
+      page.off("response", onResponse);
+      // Still limited after the retries: the page did not render as served, so
+      // it is not measured as though it had.
+      if (hit && response?.status() === 200) {
+        console.log(`      ${new URL(hit.url()).pathname} still answered 429 on ${path}`);
+        response = hit;
       }
       const status = response?.status() ?? 0;
 
