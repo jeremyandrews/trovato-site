@@ -8,6 +8,7 @@
 import { chromium } from "playwright";
 import { mkdir, writeFile } from "node:fs/promises";
 import { PAGES, BASE, LAUNCH } from "./pages.mjs";
+import { retryAfterMs } from "./ratelimit.mjs";
 
 const WIDTHS = [
   { width: 360, height: 780 },
@@ -15,6 +16,60 @@ const WIDTHS = [
 ];
 const SCHEMES = ["light", "dark"];
 const OUT = "screenshots";
+
+// The body must never scroll sideways. A wide table or a long code block
+// scrolls inside its own box; the document does not.
+//
+// The second half of this looks for elements the site forgot to theme.
+// A kernel or plugin template the site did not override can leave a
+// control at its browser default — a white submit button on a dark page —
+// and that is invisible in a report that only samples the body. So every
+// element is measured, and in dark mode a light background is a failure.
+const measure = (scheme) => {
+  // Two notations, because the channels mean different numbers in each.
+  // `rgb(250, 245, 239)` counts 0 to 255; `color(srgb 0.98 0.96 0.94)`,
+  // which is how a browser serializes the `color-mix()` the sticky header
+  // uses, counts 0 to 1. Reading the second as though it were the first
+  // divides by 255 twice and reports a near-white plate as near-black, so
+  // the scale is chosen by the notation rather than assumed.
+  const luminance = (rgb) => {
+    const m = rgb.match(/\d+(\.\d+)?/g);
+    if (!m || m.length < 3) return null;
+    // A fully transparent background is not a background.
+    if (m.length > 3 && Number(m[3]) === 0) return null;
+    const scale = rgb.startsWith("color(") ? 1 : 255;
+    const ch = (v) => {
+      const c = Number(v) / scale;
+      return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+    };
+    return 0.2126 * ch(m[0]) + 0.7152 * ch(m[1]) + 0.0722 * ch(m[2]);
+  };
+
+  const unthemed = [];
+  for (const el of document.querySelectorAll("body *")) {
+    if (el.offsetParent === null && el.tagName !== "BODY") continue;
+    const cs = getComputedStyle(el);
+    const bg = luminance(cs.backgroundColor);
+    if (bg === null) continue;
+    // In dark mode nothing should sit on a near-white plate; in light mode
+    // nothing should sit on a near-black one.
+    const wrong = scheme === "dark" ? bg > 0.5 : bg < 0.12;
+    if (wrong) {
+      unthemed.push(
+        `${el.tagName.toLowerCase()}${el.className && typeof el.className === "string" ? "." + el.className.trim().split(/\s+/).join(".") : ""} bg=${cs.backgroundColor}`
+      );
+    }
+  }
+
+  return {
+    scrollWidth: document.documentElement.scrollWidth,
+    clientWidth: document.documentElement.clientWidth,
+    bodyBg: getComputedStyle(document.body).backgroundColor,
+    bodyColor: getComputedStyle(document.body).color,
+    font: getComputedStyle(document.body).fontFamily,
+    unthemed: [...new Set(unthemed)],
+  };
+};
 
 const browser = await chromium.launch(LAUNCH);
 await mkdir(OUT, { recursive: true });
@@ -47,41 +102,48 @@ for (const scheme of SCHEMES) {
       // configurations. A 429 is answered the way the header asks rather than
       // counted as a broken page. See docs/LEDGER.md, Gate 2.
       //
-      // That holds for the page's own requests too, not just the document: if
-      // the stylesheet is the request that trips the limit, the page renders
-      // unstyled and every control reads as unthemed. So a 429 on any request
-      // the page made reloads the page, after the wait its header asks for.
+      // That holds for every request the page makes, not just the document,
+      // and for as long as the page is being looked at: if the stylesheet trips
+      // the limit the page renders unstyled and every control reads as
+      // unthemed, and an image requested while the page settles or while the
+      // full page is captured would be missing from the screenshot. So the
+      // page is loaded, left to settle, measured and captured as one unit, and
+      // a 429 anywhere in it does the whole unit again after the wait its
+      // header asks for. Still limited after three retries, the page counts as
+      // not served.
+      //
+      // The front page plays a short entrance (site.css, the Motion section);
+      // every end state is the page at rest. The settle waits it out so the
+      // archived screenshot and the element measurements see the settled page.
+      const file = `${OUT}/${name}-${viewport.width}-${scheme}.png`;
       let limited = null;
       const onResponse = (r) => {
         if (r.status() === 429 && !limited) limited = r;
       };
       page.on("response", onResponse);
-      const load = async () => {
+      let response, overflow, hit;
+      for (let attempt = 0; ; attempt++) {
         limited = null;
-        const res = await page.goto(BASE + path, { waitUntil: "networkidle" });
-        return { res, hit: res?.status() === 429 ? res : limited };
-      };
-      let { res: response, hit } = await load();
-      for (let attempt = 0; attempt < 3 && hit; attempt++) {
-        const wait = Number(hit.headers()["retry-after"] ?? 60);
-        const what = hit.url() === response?.url() ? path : `${path} (${new URL(hit.url()).pathname} was limited)`;
-        console.log(`      429, waiting ${wait}s before retrying ${what}`);
-        await new Promise((r) => setTimeout(r, (wait + 1) * 1000));
-        ({ res: response, hit } = await load());
+        overflow = null;
+        response = await page.goto(BASE + path, { waitUntil: "networkidle" });
+        await page.waitForTimeout(1800);
+        if (response?.status() === 200 && !limited) {
+          overflow = await page.evaluate(measure, scheme);
+          await page.screenshot({ path: file, fullPage: true });
+        }
+        hit = response?.status() === 429 ? response : limited;
+        if (!hit || attempt === 3) break;
+        const wait = retryAfterMs(hit.headers()["retry-after"]);
+        const what = hit === response ? path : `${path} (${new URL(hit.url()).pathname} was limited)`;
+        console.log(`      429, waiting ${Math.ceil(wait / 1000)}s before retrying ${what}`);
+        await new Promise((r) => setTimeout(r, wait + 1000));
       }
       page.off("response", onResponse);
-      // Still limited after the retries: the page did not render as served, so
-      // it is not measured as though it had.
       if (hit && response?.status() === 200) {
         console.log(`      ${new URL(hit.url()).pathname} still answered 429 on ${path}`);
         response = hit;
       }
       const status = response?.status() ?? 0;
-
-      // The front page plays a short entrance (site.css, the Motion section);
-      // every end state is the page at rest. Wait it out so the archived
-      // screenshot and the element measurements see the settled page.
-      await page.waitForTimeout(1800);
 
       // A page that did not render is not a page to measure. Repeated runs
       // against a local stack trip the login rate limiter, and a 429's error
@@ -93,59 +155,6 @@ for (const scheme of SCHEMES) {
         continue;
       }
 
-      // The body must never scroll sideways. A wide table or a long code block
-      // scrolls inside its own box; the document does not.
-      //
-      // The second half of this looks for elements the site forgot to theme.
-      // A kernel or plugin template the site did not override can leave a
-      // control at its browser default — a white submit button on a dark page —
-      // and that is invisible in a report that only samples the body. So every
-      // element is measured, and in dark mode a light background is a failure.
-      const overflow = await page.evaluate((scheme) => {
-        // Two notations, because the channels mean different numbers in each.
-        // `rgb(250, 245, 239)` counts 0 to 255; `color(srgb 0.98 0.96 0.94)`,
-        // which is how a browser serializes the `color-mix()` the sticky header
-        // uses, counts 0 to 1. Reading the second as though it were the first
-        // divides by 255 twice and reports a near-white plate as near-black, so
-        // the scale is chosen by the notation rather than assumed.
-        const luminance = (rgb) => {
-          const m = rgb.match(/\d+(\.\d+)?/g);
-          if (!m || m.length < 3) return null;
-          // A fully transparent background is not a background.
-          if (m.length > 3 && Number(m[3]) === 0) return null;
-          const scale = rgb.startsWith("color(") ? 1 : 255;
-          const ch = (v) => {
-            const c = Number(v) / scale;
-            return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
-          };
-          return 0.2126 * ch(m[0]) + 0.7152 * ch(m[1]) + 0.0722 * ch(m[2]);
-        };
-
-        const unthemed = [];
-        for (const el of document.querySelectorAll("body *")) {
-          if (el.offsetParent === null && el.tagName !== "BODY") continue;
-          const cs = getComputedStyle(el);
-          const bg = luminance(cs.backgroundColor);
-          if (bg === null) continue;
-          // In dark mode nothing should sit on a near-white plate; in light mode
-          // nothing should sit on a near-black one.
-          const wrong = scheme === "dark" ? bg > 0.5 : bg < 0.12;
-          if (wrong) {
-            unthemed.push(
-              `${el.tagName.toLowerCase()}${el.className && typeof el.className === "string" ? "." + el.className.trim().split(/\s+/).join(".") : ""} bg=${cs.backgroundColor}`
-            );
-          }
-        }
-
-        return {
-          scrollWidth: document.documentElement.scrollWidth,
-          clientWidth: document.documentElement.clientWidth,
-          bodyBg: getComputedStyle(document.body).backgroundColor,
-          bodyColor: getComputedStyle(document.body).color,
-          font: getComputedStyle(document.body).fontFamily,
-          unthemed: [...new Set(unthemed)],
-        };
-      }, scheme);
       const overflowing = overflow.scrollWidth > overflow.clientWidth + 1;
       if (overflowing) overflows++;
       if (overflow.unthemed.length) {
@@ -154,9 +163,6 @@ for (const scheme of SCHEMES) {
           console.log(`      UNTHEMED ${scheme} ${path}: ${u}`);
         }
       }
-
-      const file = `${OUT}/${name}-${viewport.width}-${scheme}.png`;
-      await page.screenshot({ path: file, fullPage: true });
 
       report.push({ path, name, family, scheme, width: viewport.width, status, overflowing, ...overflow });
       console.log(

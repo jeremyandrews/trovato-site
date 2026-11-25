@@ -1295,3 +1295,10 @@ images, the kernel's limit of 100 requests a minute answered `site.css` with a
 Shoot now treats a 429 on any request a page makes as it already treated one on
 the document: it waits as the header asks and reloads, and fails the page if
 the limit still holds.
+Two more gaps in the same retry: it stopped listening once the page reached
+network idle, so an image requested while the page settled or was captured
+could be refused and missed; and it read Retry-After with `Number()`, which
+turns the header's HTTP-date form into an immediate retry. Load, settle,
+measurement and capture now retry as one unit, and `scripts/ratelimit.mjs`
+reads both forms of the header for shoot, a11y and crawl. `npm test` covers
+both, with a fixture server, and runs in CI.

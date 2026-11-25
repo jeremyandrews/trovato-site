@@ -15,6 +15,7 @@
 // looks at status codes reports a perfectly healthy site.
 import { chromium } from "playwright";
 import { BASE, LAUNCH } from "./pages.mjs";
+import { retryAfterMs } from "./ratelimit.mjs";
 
 const startPaths = ["/", "/llms.txt"];
 if (process.argv.includes("--lang")) {
@@ -131,9 +132,9 @@ async function fetchPage(url) {
   for (let attempt = 0; attempt < 3; attempt++) {
     const response = await page.goto(url, { waitUntil: "domcontentloaded" });
     if (response?.status() !== 429) return response;
-    const wait = Number(response.headers()["retry-after"] ?? 60);
-    console.log(`      429, waiting ${wait}s before retrying ${url}`);
-    await new Promise((r) => setTimeout(r, (wait + 1) * 1000));
+    const wait = retryAfterMs(response.headers()["retry-after"]);
+    console.log(`      429, waiting ${Math.ceil(wait / 1000)}s before retrying ${url}`);
+    await new Promise((r) => setTimeout(r, wait + 1000));
   }
   return page.goto(url, { waitUntil: "domcontentloaded" });
 }
