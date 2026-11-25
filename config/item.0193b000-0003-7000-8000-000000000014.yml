@@ -1,0 +1,16 @@
+id: '0193b000-0003-7000-8000-000000000014'
+type: page
+title: AI that waits for you
+language: en
+status: 1
+created: 1785542400
+changed: 1785542400
+fields:
+  body:
+    value: |
+      <p>Trovato&#8217;s AI features run on a provider you choose: OpenAI, Anthropic or another service, configured by an administrator with an API key read from the server&#8217;s own environment, never stored in the database or shown on a screen. You set a monthly token budget per provider, and the kernel enforces it.</p>
+
+      <p>The AI Assistant is the clearest example of what that buys you. It reads your site&#8217;s content to answer a question or draft a change, and proposes what it wants to do as a card you can read before anything happens. Nothing the assistant proposes takes effect until you apply it; discard a proposal and nothing changes. A conversation belongs to the person who started it, and to nobody else, not even an administrator.</p>
+
+      <p><a href="/learn/design-ai">AI integration</a> covers providers, budgets and the assistant in full.</p>
+    format: filtered_html

@@ -61,6 +61,8 @@
     </div>
 </header>
 
+{# `proof` holds the eight-claim grid and the screenshot gallery, in that
+   order: everything below the hero except the listing. #}
 {{ item.fields.proof | safe }} {# SAFE: see above. #}
 
 {{ children | safe }} {# SAFE: the site plugin's listing, sanitized where it is built. #}

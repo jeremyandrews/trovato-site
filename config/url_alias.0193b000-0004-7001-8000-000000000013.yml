@@ -1,0 +1,10 @@
+# The Italian alias for /languages, the same path as the English one in a second
+# language. See url_alias.0193b000-0004-7001-8000-000000000004.yml for why a
+# second row exists: the kernel's reverse canonical lookup filters by language
+# exactly, with no fallback to en, so an alias in each language is required.
+id: '0193b000-0004-7001-8000-000000000013'
+source: /item/0193b000-0003-7000-8000-000000000013
+alias: /languages
+language: it
+stage_id: '0193a5a0-0000-7000-8000-000000000001'
+created: 1785542400

@@ -83,11 +83,21 @@ const MUST_OFFER_A_SWITCHER = [
   "/get-started",
   "/community",
   "/accessibility",
+  "/performance",
+  "/privacy",
+  "/languages",
+  "/ai",
+  "/ai-search",
   "/it/",
   "/it/why",
   "/it/get-started",
   "/it/community",
   "/it/accessibility",
+  "/it/performance",
+  "/it/privacy",
+  "/it/languages",
+  "/it/ai",
+  "/it/ai-search",
 ];
 
 const origin = new URL(BASE).origin;

@@ -1,0 +1,16 @@
+id: '0193b000-0003-7000-8000-000000000012'
+type: page
+title: Your data, your call
+language: en
+status: 1
+created: 1785542400
+changed: 1785542400
+fields:
+  body:
+    value: |
+      <p>Anyone with an account can download a copy of everything Trovato holds about them: profile, roles, every item and comment they wrote, and which devices are signed in, as one JSON file, available once an hour. The file also says what is not there: no record of what you merely read, and no session token that could let someone else replay it.</p>
+
+      <p>Deleting an account is just as direct. You confirm who you are, read exactly what will happen, and the account is gone: every session signed out everywhere, every passkey and API token removed, a farewell email sent while there is still an address for it. What you wrote stays, credited to no one, so a conversation you took part in keeps no holes in it. A site&#8217;s last administrator cannot delete that account and leave no one in charge.</p>
+
+      <p><a href="/get-started">Get started</a> with a site of your own.</p>
+    format: filtered_html

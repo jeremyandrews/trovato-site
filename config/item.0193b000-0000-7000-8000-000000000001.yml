@@ -4,8 +4,13 @@
 # that is deliberate. The front-page handler renders a field only when it carries
 # a `value` key, so a bare string is passed through to the template untouched and
 # the template places it where it belongs. That is what lets the page read hero,
-# calls to action, features, gallery, proofs, listing — the tap that renders the
-# listing appends after everything else and could not sit in the middle of that.
+# calls to action, claims, gallery, listing: the tap that renders the listing
+# appends after everything else and could not sit in the middle of that.
+#
+# `body` is the hero's lede and one supporting line. `proof` is everything below
+# the hero: a grid of eight short claims, each a headline, one sentence and an
+# illustration, the whole card a link to the page that backs the claim; then the
+# screenshot gallery.
 #
 # The consequence: this HTML is not filtered. It is site copy, written here and
 # reviewed in a pull request, and it is treated the same way the mirrored
@@ -28,101 +33,81 @@ changed: 1785542400
 fields:
   body: |
     <p class="front-hero__lede">A content management system written in Rust.</p>
-    <p class="front-hero__sub">You define content types, the kinds of content your site holds, such as articles, events or products, and in the admin you add the fields each one needs, without touching the database schema. You publish that content as pages and gather it into listings, such as the latest news or upcoming events, shown as a list, a grid, a table or through your own template. Plugins add features without changing Trovato&#8217;s core, and each plugin declares what it can touch. Listings, like most other settings, are stored as configuration you can export to files and review the way you review code. Trovato is for sites that have to outlive a few redesigns, run by people who want to review every change to the site&#8217;s setup before it reaches production.</p>
+    <p class="front-hero__sub">Built for sites that need to last, and teams that review every change.</p>
   proof: |
-    <section class="front-features" aria-label="The three claims">
-      <a class="feature-card" href="/why">
-        <img src="/static/art/icon-onerow.svg" alt="" aria-hidden="true" width="120" height="120">
-        <h2 class="feature-card__title">Add a field, keep the schema</h2>
-        <p class="feature-card__text">Each piece of content, which Trovato calls an item, is one row with all its fields in one JSONB column (PostgreSQL&#8217;s JSON type), so a new field changes no table and loading an item is one read.</p>
-        <span class="feature-card__more">Why one row</span>
+    <section class="front-features" aria-label="The eight claims">
+      <a class="feature-card" href="/performance">
+        <img src="/static/art/icon-performance.svg" alt="" aria-hidden="true" width="120" height="120">
+        <h2 class="feature-card__title">Fast at any scale</h2>
+        <p class="feature-card__text">Rust powers the database layer and the page itself, built to stay fast from ten pages to ten million.</p>
       </a>
-      <a class="feature-card" href="/rust">
+      <a class="feature-card" href="/blog/what-a-plugin-may-reach">
         <img src="/static/art/icon-sandbox.svg" alt="" aria-hidden="true" width="120" height="120">
-        <h2 class="feature-card__title">Plugins in a sandbox</h2>
-        <p class="feature-card__text">Each plugin is a WebAssembly module that can call only the parts of the kernel (Trovato&#8217;s core) named in its manifest, a short file shipped with the plugin.</p>
-        <span class="feature-card__more">Rust and the plugin contract</span>
+        <h2 class="feature-card__title">Secure by design</h2>
+        <p class="feature-card__text">Every plugin runs in a sandbox, reaching only what its manifest names.</p>
       </a>
-      <a class="feature-card" href="/learn/design-query-engine">
+      <a class="feature-card" href="/privacy">
+        <img src="/static/art/icon-privacy.svg" alt="" aria-hidden="true" width="120" height="120">
+        <h2 class="feature-card__title">Your data, your call</h2>
+        <p class="feature-card__text">Anyone with an account can see everything the site holds on them, export it, or delete it.</p>
+      </a>
+      <a class="feature-card" href="/languages">
+        <img src="/static/art/icon-languages.svg" alt="" aria-hidden="true" width="120" height="120">
+        <h2 class="feature-card__title">Every language</h2>
+        <p class="feature-card__text">Pages, menus and listings read in as many languages as you choose to publish.</p>
+      </a>
+      <a class="feature-card" href="/ai">
+        <img src="/static/art/icon-ai.svg" alt="" aria-hidden="true" width="120" height="120">
+        <h2 class="feature-card__title">AI that waits for you</h2>
+        <p class="feature-card__text">Bring your own AI provider and budget, and nothing it writes reaches the site until you approve it.</p>
+      </a>
+      <a class="feature-card" href="/ai-search">
+        <img src="/static/art/icon-search.svg" alt="" aria-hidden="true" width="120" height="120">
+        <h2 class="feature-card__title">Search that understands</h2>
+        <p class="feature-card__text">Search answers appear instantly in your browser, with an AI summary layered on top.</p>
+      </a>
+      <a class="feature-card" href="/community">
+        <img src="/static/art/banner-community.svg" alt="" aria-hidden="true" width="640" height="420">
+        <h2 class="feature-card__title">Open all the way</h2>
+        <p class="feature-card__text">Trovato is open source, its configuration lives in files you review like code, and every feature has a JSON API.</p>
+      </a>
+      <a class="feature-card" href="/get-started">
         <img src="/static/art/icon-gather.svg" alt="" aria-hidden="true" width="120" height="120">
-        <h2 class="feature-card__title">Listings you can review</h2>
-        <p class="feature-card__text">Gather, Trovato&#8217;s query engine, builds the site&#8217;s lists of content and stores each query as configuration you can export, review and import into the next environment unchanged.</p>
-        <span class="feature-card__more">How Gather works</span>
+        <h2 class="feature-card__title">Built for editors</h2>
+        <p class="feature-card__text">Install in minutes, compose pages from reusable blocks, and build listings without writing code.</p>
       </a>
     </section>
 
     <section class="front-gallery" aria-labelledby="front-gallery-heading">
       <h2 id="front-gallery-heading">What it looks like</h2>
-      <p class="front-gallery__blurb">These are real screens from Ritrovo, the conference directory <a href="/learn/tutorial-01-hello-trovato">the tutorial</a> builds in nine parts, starting from an empty database.</p>
       <div class="front-gallery__grid">
         <figure>
-          <a href="/static/docs/images/part-04/admin-content-list.png">
-          <img src="/static/docs/images/part-04/admin-content-list.png" width="1280" height="10569"
-               alt="The Trovato admin content list: a dark sidebar, filters, and a table of items with type, author, status and updated columns.">
+          <a href="/static/art/shot-installer.svg">
+          <img src="/static/art/shot-installer.svg" width="800" height="520"
+               alt="The installer: two fields, one button, then it&#8217;s running.">
           </a>
-          <figcaption>The content list, with each item&#8217;s status and date.</figcaption>
+          <figcaption>Up and running in minutes.</figcaption>
         </figure>
         <figure>
-          <a href="/static/docs/images/part-03/gather-queries-admin.png">
-          <img src="/static/docs/images/part-03/gather-queries-admin.png" width="1280" height="2046"
-               alt="The Gather queries admin: a table of queries with their labels, base tables, owning plugins and operations.">
+          <a href="/static/art/shot-terminal.svg">
+          <img src="/static/art/shot-terminal.svg" width="800" height="440"
+               alt="A terminal: four lines, then the site is up.">
           </a>
-          <figcaption>Gather: every query defined on Ritrovo&#8217;s site, whether it comes from the kernel and its plugins or from Ritrovo itself. Each one is a definition you can open.</figcaption>
+          <figcaption>Four commands, and it&#8217;s live.</figcaption>
         </figure>
         <figure>
-          <a href="/static/docs/images/part-03/front-page.png">
-          <img src="/static/docs/images/part-03/front-page.png" width="1280" height="1586"
-               alt="Ritrovo&#8217;s themed front page: a hero reading Discover Tech Conferences Worldwide, with stat tiles below it.">
+          <a href="/static/art/shot-admin-content.svg">
+          <img src="/static/art/shot-admin-content.svg" width="800" height="520"
+               alt="The admin content list: titles, stages and dates.">
           </a>
-          <figcaption>Ritrovo itself, themed, by part three.</figcaption>
+          <figcaption>Every item, its stage, at a glance.</figcaption>
         </figure>
-      </div>
-    </section>
-
-    <section class="proof proof-split" aria-labelledby="proof-sandbox">
-      <h2 class="proof__title" id="proof-sandbox">A plugin reaches only what it declares</h2>
-      <div class="proof__copy">
-        <p>The blog, the contact form and the list of recent posts at the bottom of this page all come from plugins. A plugin can be code you didn&#8217;t write, so Trovato limits what each one can touch.</p>
-        <p>A plugin is a WebAssembly module with a manifest. When the kernel loads a plugin, it connects the module to the host interfaces its manifest names (groups of kernel functions, such as database access or logging). Every plugin also gets five minimal stubs of WASI, WebAssembly&#8217;s standard system interface. Nothing else is connected. A module that imports any other kernel interface is refused when it loads, so whether a plugin may use an interface is settled once, before it runs.</p>
-        <p>Here are the capabilities of the plugin that renders the listing at the bottom of this page:</p>
-        <figure class="code">
-          <figcaption class="code__lang">toml</figcaption>
-          <pre class="code__body"><code>[capabilities]
-    host_interfaces = ["db", "logging", "variables"]
-    db_tables = ["item", "url_alias", "item_translation"]
-    raw_sql = true</code></pre>
+        <figure>
+          <a href="/static/art/shot-gather-builder.svg">
+          <img src="/static/art/shot-gather-builder.svg" width="800" height="520"
+               alt="The Gather query builder: filters beside a live preview.">
+          </a>
+          <figcaption>Build listings without writing SQL.</figcaption>
         </figure>
-        <p><code>host_interfaces</code> comes from a fixed list of thirteen. A manifest that names anything else is rejected when it&#8217;s parsed, and only a kernel release can add to the list. <code>db_tables</code> lists any tables the plugin needs beyond its own, and the kernel checks each of the plugin&#8217;s structured database calls (its calls to select, insert, update or delete rows) against that list. The tables its migrations create are available to it without being listed.</p>
-        <p><code>raw_sql</code> is the escape hatch. It lets a plugin run SQL that the kernel doesn&#8217;t check against that table list. This plugin uses it for the listing below, which mixes two content types in one sorted list and joins each post to its URL alias, the readable path it is served at. Each of the kernel&#8217;s structured database calls touches only one table, so none of them can build that list. Every query this plugin runs is raw SQL, so its <code>db_tables</code> line only records the tables it means to touch, and the kernel checks none of those tables. The flag is one line in a reviewed file, so it&#8217;s easy to find every plugin that uses it.</p>
-        <p>The sandbox has a few more limits. There&#8217;s no filesystem. The runtime provides five WASI stubs, and the only one that touches a file descriptor is <code>fd_write</code>, which returns <code>ENOSYS</code> for every descriptor, standard output included. A module that imports any other file function, such as <code>path_open</code> or <code>fd_read</code>, can&#8217;t be instantiated. One plugin can&#8217;t reach another&#8217;s memory. A plugin that names no interfaces gets nothing from the kernel but those stubs, and it can still do arithmetic. <a href="/blog/what-a-plugin-may-reach">What a plugin may reach</a> goes through all thirteen interfaces.</p>
-      </div>
-      <div class="proof__art">
-        <img src="/static/art/diagram-sandbox.svg" alt="" aria-hidden="true" width="720" height="400">
-      </div>
-    </section>
-
-    <section class="proof proof-split proof-flip" aria-labelledby="proof-storage">
-      <h2 class="proof__title" id="proof-storage">Content is one row</h2>
-      <div class="proof__copy">
-        <p>You add fields to a content type from the admin, and the database schema doesn&#8217;t change. That works because an item is one row, and its fields live in one JSONB column on that row. A content type with twenty fields is twenty keys in that column; the schema never describes fields. Loading an item is one read:</p>
-        <figure class="code">
-          <figcaption class="code__lang">sql</figcaption>
-          <pre class="code__body"><code>SELECT title, fields FROM item WHERE id = $1;</code></pre>
-        </figure>
-        <p>Trovato keeps earlier versions of content. Every save through the editor or the item API (the kernel&#8217;s functions for reading and writing content) writes a revision, a saved version you can go back to, so the history is there whether or not anyone thought to turn it on. A plugin that saves through the item API gets revisions from the kernel without having to support them itself. Two kinds of write skip the history: config import, which loads content from configuration files, and a plugin&#8217;s write to the item table through the database interface instead of the item API. Every item also has a stage, the basis for preparing changes out of sight before they go live. An item&#8217;s stage is either the one called live or one the site defines, such as a draft or a campaign in preparation. Nothing moves an item from one stage to another yet, so content saved through the editor lands on the live stage. Trovato takes its content model from Drupal, a content management system written in PHP, and <a href="/learn/design-terminology">the terminology page</a> maps Drupal&#8217;s terms to Trovato&#8217;s, including item and stage.</p>
-      </div>
-      <div class="proof__art">
-        <img src="/static/art/diagram-onerow.svg" alt="" aria-hidden="true" width="720" height="400">
-      </div>
-    </section>
-
-    <section class="proof proof-split" aria-labelledby="proof-gather">
-      <h2 class="proof__title" id="proof-gather">Listings are configuration</h2>
-      <div class="proof__copy">
-        <p>Many pages on a site are lists of content, and in Trovato those lists come from Gather. Each list is a Gather query: a definition of its base table, filters, sorts, relationships and display, and Trovato stores the whole thing as configuration, which exports to YAML. So a listing can live in git next to your code, and a change to it is reviewed and moved between environments like any other configuration change. Build it in Gather&#8217;s visual query builder in the admin, or edit the YAML by hand.</p>
-        <p>The news, blog and documentation listings on this site are Gather queries. The recent posts at the bottom of this page aren&#8217;t: they come from the plugin whose manifest is shown above.</p>
-      </div>
-      <div class="proof__art">
-        <img src="/static/art/diagram-gather.svg" alt="" aria-hidden="true" width="720" height="400">
       </div>
     </section>

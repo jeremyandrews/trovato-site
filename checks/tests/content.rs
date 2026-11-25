@@ -413,19 +413,20 @@ fn a_translated_field_has_the_shape_the_item_it_overlays_stores() {
 
 #[test]
 fn the_translated_pages_are_the_ones_that_were_promised() {
-    // Five: the four core pages and the front page. The front page was absent
-    // until 0.102.0, because routes/front.rs rendered the configured front-page
-    // item without applying a translation overlay and a front-page translation
-    // was configuration nothing read. It applies the overlay now and serves the
-    // result at `/it/`, which is also the address the switcher and the hreflang
-    // alternates name.
+    // Ten: the four original core pages, the five claim pages the C7 redesign
+    // added (/performance, /privacy, /languages, /ai, /ai-search), and the front
+    // page. The front page was absent until 0.102.0, because routes/front.rs
+    // rendered the configured front-page item without applying a translation
+    // overlay and a front-page translation was configuration nothing read. It
+    // applies the overlay now and serves the result at `/it/`, which is also the
+    // address the switcher and the hreflang alternates name.
     let path = config_dir().join("variable.plugin.trovato_site.site_translations.yml");
     let text = std::fs::read_to_string(&path).expect("the translations file is readable");
     let json = text.split_once("value: ").expect("the file has a value").1;
     let value: serde_json::Value = serde_json::from_str(json).expect("the value is valid JSON");
 
     let count = value.as_object().map_or(0, serde_json::Map::len);
-    assert_eq!(count, 5, "expected five translated pages, found {count}");
+    assert_eq!(count, 10, "expected ten translated pages, found {count}");
 
     let front = "0193b000-0000-7000-8000-000000000001";
     assert!(

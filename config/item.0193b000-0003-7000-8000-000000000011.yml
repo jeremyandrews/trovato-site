@@ -1,0 +1,22 @@
+id: '0193b000-0003-7000-8000-000000000011'
+type: page
+title: Fast at any scale
+language: en
+status: 1
+created: 1785542400
+changed: 1785542400
+fields:
+  body:
+    value: |
+      <p>Trovato is written in Rust end to end: the kernel, the plugins and Gather, the query engine that builds your listings, are all Rust.</p>
+
+      <p>Each piece of content, an item, is one row in PostgreSQL, with every field in a single JSONB column. Loading an item for a page is one read, whichever fields it carries:</p>
+
+      <pre><code>SELECT title, fields FROM item WHERE id = $1;</code></pre>
+
+      <p>Adding a field changes nothing about how that read works.</p>
+
+      <p>Plugins run compiled to WebAssembly inside the kernel rather than as separate services, so a page built from several plugins still renders in one process, one request. The design holds at ten pages, and it holds at ten million.</p>
+
+      <p><a href="/learn/design-architecture">The architecture</a> walks through the rest of it.</p>
+    format: filtered_html
