@@ -7,7 +7,7 @@
 // rather than as something to notice in an image.
 import { chromium } from "playwright";
 import { mkdir, writeFile } from "node:fs/promises";
-import { PAGES, BASE } from "./pages.mjs";
+import { PAGES, BASE, LAUNCH } from "./pages.mjs";
 
 const WIDTHS = [
   { width: 360, height: 780 },
@@ -16,7 +16,7 @@ const WIDTHS = [
 const SCHEMES = ["light", "dark"];
 const OUT = "screenshots";
 
-const browser = await chromium.launch();
+const browser = await chromium.launch(LAUNCH);
 await mkdir(OUT, { recursive: true });
 
 const report = [];

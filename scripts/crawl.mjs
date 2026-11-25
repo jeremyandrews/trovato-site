@@ -14,7 +14,7 @@
 // navigation and no styling, and returns it with a 200. A crawler that only
 // looks at status codes reports a perfectly healthy site.
 import { chromium } from "playwright";
-import { BASE } from "./pages.mjs";
+import { BASE, LAUNCH } from "./pages.mjs";
 
 const startPaths = ["/", "/llms.txt"];
 if (process.argv.includes("--lang")) {
@@ -106,7 +106,7 @@ const queue = [...startPaths];
 const problems = [];
 const pages = [];
 
-const browser = await chromium.launch();
+const browser = await chromium.launch(LAUNCH);
 const context = await browser.newContext();
 const page = await context.newPage();
 

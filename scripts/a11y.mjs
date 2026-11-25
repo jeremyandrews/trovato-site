@@ -12,7 +12,7 @@
 // is not checked rather than what is checked and ignored.
 import { chromium } from "playwright";
 import { AxeBuilder } from "@axe-core/playwright";
-import { PAGES, BASE } from "./pages.mjs";
+import { PAGES, BASE, LAUNCH } from "./pages.mjs";
 
 // WCAG 2.2 AA is the target, and best-practice rules are included because they
 // are cheap and this site has no legacy markup to grandfather in.
@@ -20,7 +20,7 @@ const TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa", "best-prac
 
 const SCHEMES = ["light", "dark"];
 
-const browser = await chromium.launch();
+const browser = await chromium.launch(LAUNCH);
 let violations = 0;
 let checked = 0;
 
