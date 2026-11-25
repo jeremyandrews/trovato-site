@@ -1,8 +1,8 @@
 # Build ledger
 
-**Status:** Complete. Eleven gates passed: Gate 10 reworked the site visually and
-Gate 11 moved the kernel to 0.102.0, and the two are now on one branch.
-**Last updated:** 2026-09-18
+**Status:** Complete. Gate 13 rebuilt the front page as a grid of eight bold
+claims with five new pages behind it; the kernel pin is unchanged.
+**Last updated:** 2026-11-25
 **Where things stand:** The site is built, checked and reproducible. A clean-room rebuild
 reaches a populated, themed, working site in 22.5 seconds from destroyed volumes, and every
 gate passes against it. What stands between this repository and https://trovato.rs serving
@@ -1240,3 +1240,40 @@ review. The kernel and its pin are unchanged.
   at `v0.102.0`.
 - The `/learn` pages mirrored from the kernel were read with the same checklist
   and not edited; the findings belong in the kernel repository.
+
+## Gate 13: a bold, visual front page and five claim pages
+
+**Attempt 1, 2026-11-25: done in one pass**
+
+**Goal:** the front page becomes a short, visual page: one lede, one supporting
+line, a grid of eight bold claims with art, and the existing gallery and calls
+to action, in English and Italian. Five new pages back the claims that need
+more than a sentence. The kernel pin is unchanged.
+
+| Check | Result |
+|---|---|
+| The feature paragraph, three cards and the `proof` deep dives | Replaced by a grid of eight claims (performance, security, privacy, languages, AI, search, openness, editors), each an icon, a headline and one sentence, the whole card a link |
+| New pages | `/performance`, `/privacy`, `/languages`, `/ai`, `/search` (shipped at `/ai-search`; `/search` is the kernel's own live search route and could not be reused, see below) |
+| New art | `icon-performance.svg`, `icon-privacy.svg`, `icon-languages.svg`, `icon-ai.svg`, `icon-search.svg`, drawn in `static/art/gen_art.py` in the existing illustration language; the four `shot-*.svg` cards now carry the gallery in place of the three real screenshots |
+| Word count above the gallery | 176 words (hero and all eight claims) |
+| Italian | The hero, all eight claims, the four gallery captions and all five new pages translated in `variable.plugin.trovato_site.site_translations.yml` |
+| `checks/tests/content.rs` | `the_translated_pages_are_the_ones_that_were_promised` now expects ten; the config-count sentence in "This site runs on a released Trovato" moved from 20 to 30 URL aliases and from 13 to 18 content items, the only two prefixes the five new pages and their aliases touch |
+| No dash in shipped prose | PASS |
+| `cargo fmt`, `clippy -D warnings`, `cargo test --all` | PASS |
+
+### Left open
+
+- **`/search` was promised, `/ai-search` shipped.** The kernel registers
+  `/search` directly (`.route("/search", get(search_page))`), not through
+  `url_alias`; a claim page at the same path would either never resolve or
+  shadow the site's working search feature. The claim card links to
+  `/ai-search` instead.
+- **No published performance number backs "ten pages to ten million."** Per
+  `docs/LAUNCH.md`, no benchmark has been run; the EPYC harness exists and
+  has not.
+- **The AI claim and the search claim both depend on a provider nobody has
+  configured yet.** Per `docs/LAUNCH.md`, without an AI provider, model and
+  budget, the two AI stages of search do not run (search is keyword-only) and
+  the assistant has nothing to call. Both fail safe, and `/ai` and
+  `/ai-search` say what the feature does once a provider is set, not that one
+  is set today.

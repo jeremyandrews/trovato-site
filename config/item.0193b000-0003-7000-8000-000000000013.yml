@@ -1,0 +1,16 @@
+id: '0193b000-0003-7000-8000-000000000013'
+type: page
+title: Every language
+language: en
+status: 1
+created: 1785542400
+changed: 1785542400
+fields:
+  body:
+    value: |
+      <p>Trovato serves every page, menu and listing in whatever languages your site publishes. A translation is a per-language overlay: the title and fields you write for a page in a second language sit beside the original, and a reader gets the version for the language they asked for, with the original as a fallback for anything untranslated.</p>
+
+      <p>Menus follow the same rule: a link in the main navigation or the footer resolves to the translated page when one exists, and to the original otherwise, so a reader never lands on the right page in the wrong language. Listings built with Gather, the query engine behind pages like this site&#8217;s news and blog, carry the same overlay, so a filtered, sorted list reads in the visitor&#8217;s language too.</p>
+
+      <p>This page and the whole front page ship in English and Italian. <a href="/learn/tutorial-07-going-global">The translations tutorial</a> shows how to add a third.</p>
+    format: filtered_html

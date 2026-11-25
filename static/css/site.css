@@ -493,13 +493,29 @@ button.site-nav__logout {
     height: auto;
 }
 
-/* ── The three claims, as cards ──────────────────────────────────────────── */
+/* ── The eight claims, as cards ──────────────────────────────────────────── */
 
+/* One column on a phone (the scroll-snap gallery below is the only strip on
+   this page; the claims stack instead, so they stay readable at 360px). Two
+   on a tablet, four across on a wide screen: the breakpoints match the ones
+   `.front-gallery__grid` and `.front-hero` already use. */
 .front-features {
     display: grid;
     gap: var(--space-4);
-    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+    grid-template-columns: 1fr;
     margin-block: var(--space-10);
+}
+
+@media (min-width: 48rem) {
+    .front-features {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 60rem) {
+    .front-features {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
 }
 
 .feature-card {
@@ -515,16 +531,24 @@ button.site-nav__logout {
         translate var(--motion-fast) var(--motion-ease);
 }
 
+/* The lift is a translate, not an animation, so prefers-reduced-motion (which
+   zeroes transition-duration site-wide) leaves the card moving to its hovered
+   position instantly rather than removing the cue outright. */
 .feature-card:hover {
     border-color: var(--border-control);
     translate: 0 -2px;
     text-decoration: none;
 }
 
+/* object-fit: contain rather than cover: three of the eight claims reuse art
+   drawn at other aspect ratios (a banner, a square icon at a different native
+   size), and a reused illustration should sit inside the square, never crop
+   or stretch to fill it. */
 .feature-card img {
     display: block;
     width: 3.5rem;
     height: 3.5rem;
+    object-fit: contain;
     margin-bottom: var(--space-3);
 }
 
@@ -535,16 +559,7 @@ button.site-nav__logout {
 
 .feature-card__text {
     color: var(--text-muted);
-    margin: 0 0 var(--space-3);
-}
-
-.feature-card__more {
-    color: var(--link);
-    font-weight: var(--weight-semibold);
-}
-
-.feature-card:hover .feature-card__more {
-    text-decoration: underline;
+    margin: 0;
 }
 
 /* ── What it looks like ──────────────────────────────────────────────────── */
@@ -582,17 +597,22 @@ button.site-nav__logout {
     .front-gallery__grid {
         grid-auto-flow: row;
         grid-auto-columns: auto;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-columns: repeat(2, minmax(0, 1fr));
         overflow-x: visible;
         scroll-snap-type: none;
     }
 }
 
-/* The gallery shows the tutorial's real screenshots, and real screenshots
-   come at real sizes — one is a full-page capture eight screens tall. Each
-   card crops to the same ratio from the top, which is where every admin
-   screen keeps its identity; the anchor around the image opens the whole
-   file. */
+@media (min-width: 60rem) {
+    .front-gallery__grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
+/* The gallery is four stylized illustrations rather than real screenshots, at
+   a shared aspect ratio, so cropping is cosmetic rather than something that
+   could cut off real content. Each card crops to the same ratio from the top;
+   the anchor around the image opens the standalone file. */
 .front-gallery__grid img {
     display: block;
     width: 100%;
@@ -609,65 +629,6 @@ button.site-nav__logout {
     font-size: var(--text-sm);
     margin-top: var(--space-2);
     padding-inline: var(--space-2);
-}
-
-/* ── The proofs ──────────────────────────────────────────────────────────── */
-
-.proof {
-    margin-top: var(--space-10);
-    padding-top: var(--space-6);
-    border-top: 1px solid var(--border);
-}
-
-.proof__title {
-    margin-top: 0;
-    font-size: var(--text-xl);
-}
-
-/* A proof with a diagram: copy beside art, art below on a narrow screen.
-   `.proof-flip` swaps the sides rather than an nth-of-type trick, because
-   the section order on this page is content, and content moves. */
-.proof-split {
-    display: grid;
-    gap: var(--space-6);
-    align-items: center;
-}
-
-/* A grid item's min-width is auto, so a code block's longest line would set
-   the column's floor and shove the page sideways at 360px. Found by the
-   overflow check, at exactly the width it guards. */
-.proof-split > * {
-    min-width: 0;
-}
-
-@media (min-width: 60rem) {
-    .proof-split {
-        grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
-        gap: var(--space-8);
-    }
-
-    .proof-split .proof__title {
-        grid-column: 1 / -1;
-        margin-bottom: 0;
-    }
-
-    .proof-flip .proof__copy { order: 2; }
-    .proof-flip .proof__art { order: 1; }
-}
-
-.proof__copy > :last-child {
-    margin-bottom: 0;
-}
-
-.proof__copy {
-    max-width: var(--measure);
-}
-
-.proof__art img,
-.proof__art svg {
-    display: block;
-    width: 100%;
-    height: auto;
 }
 
 /* ── Recent posts, as cards ──────────────────────────────────────────────── */

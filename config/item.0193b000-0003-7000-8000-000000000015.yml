@@ -1,0 +1,16 @@
+id: '0193b000-0003-7000-8000-000000000015'
+type: page
+title: Search that understands
+language: en
+status: 1
+created: 1785542400
+changed: 1785542400
+fields:
+  body:
+    value: |
+      <p>Type into the search box and results appear in your browser instantly, built from an index of the site&#8217;s own published pages; that first list never makes a round trip to the server.</p>
+
+      <p>Layered on top: the kernel can expand your search into related terms and stream a short written summary of what it found, both powered by the AI provider you configure. Search still works with JavaScript turned off; the same query posts to the server and comes back as an ordinary results page.</p>
+
+      <p><a href="/learn/design-search">Search architecture</a> has the full four-stage design.</p>
+    format: filtered_html

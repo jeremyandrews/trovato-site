@@ -466,6 +466,67 @@ svg("icon-gather", 120, 120, both(icon_gather),
     title="A small listing with the clay dot beside its first row.")
 
 
+# ── 13. Icons: five more front-page claims, at card size ─────────────────────
+
+def icon_performance(p):
+    p.path("M 18 84 A 48 48 0 0 1 102 84", role="soft", w=8)
+    for x, y in [(24, 66), (40, 40), (60, 32), (80, 40), (96, 66)]:
+        p.circle(x, y, 3.2, role="faint", sw=4)
+    p.circle(60, 84, 9, role="stroke", sw=8)
+    p.line(60, 84, 88, 42, role="stroke", w=9)
+    p.dot(88, 42, 6)
+
+
+def icon_privacy(p):
+    p.path(
+        "M 60 12 L 104 28 L 104 60 C 104 90 84 106 60 114 "
+        "C 36 106 16 90 16 60 L 16 28 Z",
+        role="stroke", w=9)
+    p.path("M 40 60 L 54 76 L 82 42", role="stroke", w=9)
+    p.dot(82, 42, 6)
+
+
+def icon_languages(p):
+    p.circle(60, 60, 46, role="soft", sw=8)
+    p.path("M 60 14 C 40 14 40 106 60 106 C 80 106 80 14 60 14",
+           role="soft", w=6)
+    p.line(14, 60, 106, 60, role="soft", w=6)
+    p.line(22, 38, 98, 38, role="faint", w=5)
+    p.line(22, 82, 98, 82, role="faint", w=5)
+    p.dot(60, 60, 7)
+
+
+def icon_ai(p):
+    p.rect(18, 18, 84, 58, r=16, fill="fill")
+    p.rect(18, 18, 84, 58, r=16, role="stroke", sw=9)
+    p.line(60, 32, 60, 62, role="soft", w=7)
+    p.line(44, 47, 76, 47, role="soft", w=7)
+    p.line(30, 92, 90, 92, role="faint", w=8)
+    p.dot(60, 92, 7)
+
+
+def icon_search(p):
+    p.circle(50, 50, 32, role="stroke", sw=10)
+    p.line(74, 74, 100, 100, role="stroke", w=12)
+    p.line(50, 36, 50, 64, role="soft", w=6)
+    p.line(36, 50, 64, 50, role="soft", w=6)
+    p.dot(50, 50, 7)
+
+
+svg("icon-performance", 120, 120, both(icon_performance),
+    title="A gauge with a needle swinging toward the clay dot at its tip.")
+svg("icon-privacy", 120, 120, both(icon_privacy),
+    title="A shield with a check mark ending in the clay dot.")
+svg("icon-languages", 120, 120, both(icon_languages),
+    title="A globe with meridian lines and the clay dot at its center.")
+svg("icon-ai", 120, 120, both(icon_ai),
+    title="A chat panel above a gate line, with the clay dot resting on "
+          "the gate.")
+svg("icon-search", 120, 120, both(icon_search),
+    title="A magnifying glass with a small cross and the clay dot in the "
+          "center of its lens.")
+
+
 if __name__ == "__main__":
     print("regenerated:", ", ".join(sorted(
         f for f in os.listdir(".") if f.endswith(".svg"))))
