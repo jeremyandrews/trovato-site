@@ -247,3 +247,86 @@ fn a_second_moderation_check_cannot_clean_up_the_first() {
     let before = &script[..create];
     assert!(!before.contains("trap cleanup"));
 }
+
+/// The cron sidecar's shell command, as `site.yaml` writes it.
+fn cron_command() -> String {
+    read("site.yaml")
+        .lines()
+        .map(str::trim)
+        .find_map(|l| {
+            l.strip_prefix("- '")?
+                .strip_suffix('\'')
+                .filter(|c| c.contains("/cron/"))
+        })
+        .expect("site.yaml has the cron sidecar's command")
+        .to_string()
+}
+
+/// A new pod has no search index until a cron tick builds one, and it takes
+/// traffic once /health answers. So the sidecar's first tick has to come as
+/// soon as the kernel is up, not one interval after a tick fired too early.
+/// Run the real command against a `curl` that fails /health twice and logs
+/// every call, with an interval far longer than the test waits.
+#[test]
+fn the_cron_sidecar_ticks_as_soon_as_the_kernel_answers() {
+    let dir = std::env::temp_dir().join(format!("trovato-cron-sidecar-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let log = dir.join("calls.log");
+    let stub = dir.join("curl");
+    std::fs::write(
+        &stub,
+        format!(
+            "#!/bin/sh\n\
+             log='{log}'\n\
+             case \"$*\" in\n\
+             *health*)\n\
+               n=$(grep -c health \"$log\" 2>/dev/null || true)\n\
+               echo health >> \"$log\"\n\
+               [ \"${{n:-0}}\" -ge 2 ] || exit 7 ;;\n\
+             *cron*) echo cron >> \"$log\" ;;\n\
+             esac\n\
+             exit 0\n",
+            log = log.display()
+        ),
+    )
+    .unwrap();
+    use std::os::unix::fs::PermissionsExt;
+    std::fs::set_permissions(&stub, std::fs::Permissions::from_mode(0o755)).unwrap();
+
+    // Its own process group, so the sleep it leaves running is killed with it.
+    use std::os::unix::process::CommandExt;
+    let mut child = Command::new("sh")
+        .arg("-c")
+        .arg(cron_command())
+        .env("PATH", format!("{}:/usr/bin:/bin", dir.display()))
+        .env("CRON_KEY", "test-key")
+        .env("CRON_INTERVAL", "3600")
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .process_group(0)
+        .spawn()
+        .unwrap();
+    let start = std::time::Instant::now();
+    let mut calls = String::new();
+    while start.elapsed() < std::time::Duration::from_secs(20) {
+        calls = std::fs::read_to_string(&log).unwrap_or_default();
+        if calls.contains("cron") {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(100));
+    }
+    Command::new("kill")
+        .args(["-KILL", &format!("-{}", child.id())])
+        .status()
+        .unwrap();
+    child.wait().unwrap();
+    std::fs::remove_dir_all(&dir).unwrap();
+
+    let calls: Vec<&str> = calls.lines().collect();
+    assert_eq!(
+        calls,
+        ["health", "health", "health", "cron"],
+        "the sidecar polls /health until it answers, then ticks without waiting an interval"
+    );
+}

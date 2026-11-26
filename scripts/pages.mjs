@@ -14,7 +14,16 @@ export const PAGES = [
   // With a query, so the in-browser results render and every check covers
   // them: an excerpt quoting a long URL once pushed this page to 614px at a
   // 390px viewport, and the page without a query showed no results to catch it.
-  { path: "/search?q=Drupal", name: "search", family: "search.html" },
+  //
+  // `ready` is what must be on the page before it is checked: the in-browser
+  // result cards, and the server results hidden behind them. The server
+  // results render for this URL whether or not the in-browser search works, so
+  // without it a broken index would leave the gates checking the fallback and
+  // passing.
+  {
+    path: "/search?q=Drupal", name: "search", family: "search.html",
+    ready: [".scolta-result-card", "#search-fallback[hidden]"],
+  },
   { path: "/user/login", name: "login",  family: "user/*" },
   { path: "/learn",    name: "learn",    family: "gather/query--trovato_site.docs_index" },
   { path: "/learn/tutorial-01-hello-trovato", name: "docs", family: "elements/item--docs" },
@@ -49,3 +58,25 @@ export const BASE = process.env.SITE_BASE ?? "http://127.0.0.1:3080";
 export const LAUNCH = process.env.PLAYWRIGHT_CHANNEL
   ? { channel: process.env.PLAYWRIGHT_CHANNEL }
   : {};
+
+// How long a page has to show everything its `ready` list names.
+export const READY_TIMEOUT_MS = 15_000;
+
+// Wait until every selector in the entry's `ready` list matches. Returns null
+// when the page is ready (or has no list), else the selectors still missing.
+export async function waitReady(page, entry) {
+  if (!entry.ready) return null;
+  try {
+    await page.waitForFunction(
+      (selectors) => selectors.every((s) => document.querySelector(s)),
+      entry.ready,
+      { timeout: READY_TIMEOUT_MS },
+    );
+    return null;
+  } catch {
+    return await page.evaluate(
+      (selectors) => selectors.filter((s) => !document.querySelector(s)),
+      entry.ready,
+    );
+  }
+}

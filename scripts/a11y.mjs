@@ -12,7 +12,7 @@
 // is not checked rather than what is checked and ignored.
 import { chromium } from "playwright";
 import { AxeBuilder } from "@axe-core/playwright";
-import { PAGES, BASE, LAUNCH } from "./pages.mjs";
+import { PAGES, BASE, LAUNCH, waitReady } from "./pages.mjs";
 import { retryAfterMs } from "./ratelimit.mjs";
 
 // WCAG 2.2 AA is the target, and best-practice rules are included because they
@@ -29,7 +29,8 @@ for (const scheme of SCHEMES) {
   const context = await browser.newContext({ colorScheme: scheme, viewport: { width: 1280, height: 900 } });
   const page = await context.newPage();
 
-  for (const { path, name, family } of PAGES) {
+  for (const entry of PAGES) {
+    const { path, family } = entry;
     // The kernel rate-limits every GET at 100 a minute per IP, static assets
     // included, and axe needs a fully rendered page. See docs/LEDGER.md, Gate 2.
     let response = await page.goto(BASE + path, { waitUntil: "networkidle" });
@@ -49,6 +50,15 @@ for (const scheme of SCHEMES) {
     // The front page plays a short entrance (site.css, the Motion section).
     // Let it finish so axe measures the page at rest, not mid-fade.
     await page.waitForTimeout(1800);
+
+    // A page that did not render what it is listed for is not the page to
+    // check: the search page with no in-browser results is only its fallback.
+    const missing = await waitReady(page, entry);
+    if (missing) {
+      console.error(`NOT READY  ${scheme.padEnd(5)} ${path}: missing ${missing.join(", ")}`);
+      violations++;
+      continue;
+    }
 
     const results = await new AxeBuilder({ page }).withTags(TAGS).analyze();
     checked++;

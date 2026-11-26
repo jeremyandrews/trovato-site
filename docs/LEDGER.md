@@ -1473,6 +1473,19 @@ search settings model, and a `templates/search.html` with `scolta-config` and
   the column shrink, breaks long words, and puts every text colour the
   results use on a checked token; `tokens.css` adds `--highlight`, checked
   against `--text`, `--text-muted` and `--link` in both schemes.
+- The cron sidecar in `deploy/k3s/site.yaml` waited a whole interval after a
+  first tick that fired before the kernel was up, so a new pod served the
+  search page without its index for about a minute, while taking traffic.
+  It now polls `/health` and ticks as soon as the kernel answers. A test in
+  `checks/tests/deploy_k3s.rs` runs the manifest's own command against a stub
+  `curl`. Readiness does not wait for the index, deliberately: a fresh
+  install has none until the deploy populates it after the rollout, and the
+  server results are the page until then.
+- Both browser gates now require what a page is listed for. The search page
+  must show in-browser result cards with the server results hidden, or the
+  gate fails, because the server results render for the same URL even when
+  the index does not load. `scripts/test/search-ready.test.mjs` serves a
+  search page with only server results and checks that both gates fail on it.
 - The render and accessibility gates now load `/search?q=Drupal` rather than
   `/search`, so they cover the in-browser results. Without the CSS above,
   shoot fails it on overflow and on the highlight, and a11y fails it on

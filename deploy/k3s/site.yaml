@@ -206,9 +206,15 @@ spec:
           command:
             - /bin/sh
             - -c
-            # The trap and the backgrounded sleep let it stop at once on
+            # The trap and the backgrounded sleeps let it stop at once on
             # SIGTERM, instead of holding every restart for the grace period.
-            - 'trap "exit 0" TERM; while true; do curl -fsS -m 30 -X POST "http://127.0.0.1:3000/cron/$CRON_KEY" >/dev/null || true; sleep "$CRON_INTERVAL" & wait $!; done'
+            #
+            # It waits for the kernel to answer /health and then ticks at once.
+            # A new pod has no search index until a tick builds one, and the
+            # pod takes traffic as soon as /health answers. A first tick fired
+            # before the kernel was up would fail and leave the search page on
+            # its server results for a whole interval.
+            - 'trap "exit 0" TERM; until curl -fsS -m 5 -o /dev/null "http://127.0.0.1:3000/health"; do sleep 1 & wait $!; done; while true; do curl -fsS -m 30 -X POST "http://127.0.0.1:3000/cron/$CRON_KEY" >/dev/null || true; sleep "$CRON_INTERVAL" & wait $!; done'
           resources:
             requests:
               cpu: 10m
