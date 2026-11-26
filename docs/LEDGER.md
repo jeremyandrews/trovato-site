@@ -1502,5 +1502,6 @@ search settings model, and a `templates/search.html` with `scolta-config` and
 | Pod deleted | index 404 on the new pod, built by the sidecar's first tick 61 s later ("the live directory /app/static/pagefind has no pagefind-entry.json"), check repeated clean |
 | `/admin/config/search` | expansion, summary, follow ups, analytics and sentiment off |
 | `deploy/k3s/gate.sh` on the review site | crawl, a11y, shoot, roundtrip, moderation PASS |
+| Pod deleted, with the sidecar waiting for `/health` | index published at 10:47:24.28, before the pod was Ready at 10:47:24.89 |
 
 Screenshots: `docs/screenshots/c8-*.png`.
