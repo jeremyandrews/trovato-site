@@ -11,5 +11,5 @@
 # resolves the tag to its commit and rewrites every location. Then rebuild the
 # overlay and bring the stack up from destroyed volumes rather than restarting
 # it, because a plugin is read at load.
-version = "0.102.0"
-rev = "20baa121810b5c656b3f80028335770069fab5e0"
+version = "0.105.0"
+rev = "61f72a130fe51d8e02f68b1aa81230d74c63f761"

@@ -1,0 +1,35 @@
+# The news content type, written here for one setting: `moderation: true`.
+#
+# A moderated type's items move between Draft, Published and Archived, each move
+# gated by its own `use editorial transition ...` permission (kernel 0.105.0,
+# crates/kernel/src/content/moderation.rs). A draft saved over a published item
+# is kept as a revision only, so visitors see the published text until the draft
+# is published.
+#
+# Import replaces the whole `settings` column, so the field list below is the
+# one the type already has, copied from `trovato config export`. Plugin
+# registration at boot merges its declared fields into it and keeps every other
+# key, `moderation` included. `docs` and `front_page` are not moderated.
+type: news
+label: News
+description: 'An announcement in the site''s voice: a release, a milestone, a change worth knowing about.'
+has_title: true
+title_label: Title
+plugin: trovato_site
+settings:
+  fields:
+  - cardinality: 1
+    field_name: body
+    field_type: TextLong
+    label: Body
+    personal_data: false
+    required: true
+    settings: {}
+  - cardinality: 1
+    field_name: summary
+    field_type: TextLong
+    label: Summary
+    personal_data: false
+    required: false
+    settings: {}
+  moderation: true

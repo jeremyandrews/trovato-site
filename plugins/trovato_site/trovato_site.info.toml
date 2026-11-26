@@ -1,7 +1,7 @@
 name = "trovato_site"
 description = "The trovato.rs website: the news content type and the front-page listing"
 version = "0.1.0"
-api_version = "0.102"
+api_version = "0.105"
 default_enabled = false
 dependencies = []
 

@@ -20,10 +20,10 @@ only thing that would change is the remote.
 ## Pinned kernel release
 
 <!-- kernel-release:begin -->
-The site is built against Trovato `0.102.0` (tag `v0.102.0`, commit
-`20baa121`): the SDK is pinned to that commit, the plugin declares
-`api_version = "0.102"`, and the stack runs
-`ghcr.io/jeremyandrews/trovato:0.102.0`.
+The site is built against Trovato `0.105.0` (tag `v0.105.0`, commit
+`61f72a13`): the SDK is pinned to that commit, the plugin declares
+`api_version = "0.105"`, and the stack runs
+`ghcr.io/jeremyandrews/trovato:0.105.0`.
 <!-- kernel-release:end -->
 
 That block is generated, and so is every other place in this repository that names
