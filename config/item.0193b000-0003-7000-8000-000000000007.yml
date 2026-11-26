@@ -28,7 +28,7 @@ fields:
 
       <h2>Reporting a security problem</h2>
 
-      <p>Please do not open a public issue for a vulnerability. Report it privately by email to the maintainer, at the address in <a href="/learn/code-of-conduct">the code of conduct</a>.</p>
+      <p>Please do not open a public issue for a vulnerability. Report it privately through <a href="https://github.com/jeremyandrews/trovato/security/advisories/new">GitHub&#8217;s private vulnerability reporting</a> on Trovato&#8217;s repository.</p>
 
       <p>You&#8217;ll get an acknowledgement and an assessment of the report, and when there&#8217;s a fix, you&#8217;ll get credit unless you&#8217;d rather not. There&#8217;s no security team and no guaranteed response time.</p>
 

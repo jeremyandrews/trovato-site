@@ -45,7 +45,7 @@ fields:
 
       <h2>Before you rely on it</h2>
 
-      <p>Trovato isn&#8217;t at 1.0 yet. The plugin contract, what plugins and Trovato&#8217;s core agree on, is frozen, so a plugin you write now keeps working on every release before 1.0. The rest is still moving. There&#8217;s no plugin registry, some settings can only be changed by editing the site&#8217;s configuration files and importing them, and migrations only move forward, so a failed upgrade is recovered from a backup.</p>
+      <p>Trovato isn&#8217;t at 1.0 yet. The plugin contract, what plugins and Trovato&#8217;s core agree on, is frozen, so a plugin you write now keeps working on every release before 1.0. The rest is still moving. There&#8217;s no plugin registry, some settings can only be changed by editing the site&#8217;s configuration files and importing them, and migrations only move forward, so rolling back means running the previous release on the newer schema.</p>
 
       <p><a href="/learn/known-issues">Known issues</a> lists what&#8217;s missing, and <a href="/why">Why Trovato</a> explains the design. Read both before you put a site you care about on it.</p>
     format: filtered_html
