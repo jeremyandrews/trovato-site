@@ -6,7 +6,7 @@
 // coverage of templates, not of URLs, and two pages that render through the same
 // template only pay for one of them.
 export const PAGES = [
-  { path: "/",         name: "front",    family: "page--front.html" },
+  { path: "/",         name: "front",    family: "page--item--<front page id>.html" },
   { path: "/why",      name: "why",      family: "elements/item--page" },
   { path: "/news",     name: "news",     family: "gather/query--*" },
   { path: "/blog",     name: "blog",     family: "gather/query--blog_listing" },
@@ -45,7 +45,7 @@ export const PAGES = [
   // and stay invisible to this gate. What it does buy is everything structural:
   // `<html lang>`, contrast in both schemes, names and roles, on a render that
   // no automated check had ever visited.
-  { path: "/it/",     name: "front-it", family: "page--front.html (it)" },
+  { path: "/it/",     name: "front-it", family: "page--item--<front page id>.html (it)" },
 ];
 
 export const BASE = process.env.SITE_BASE ?? "http://127.0.0.1:3080";

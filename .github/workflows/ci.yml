@@ -75,6 +75,11 @@ jobs:
       - name: Crawl
         run: npm run crawl
 
+      # The front page, English and Italian: each part once, and none of the
+      # item's own fields printed again as escaped text below the gallery.
+      - name: Front page
+        run: npm run front
+
       # axe-core over one page per template family, in both colour schemes.
       # Nothing is allowlisted.
       - name: Accessibility

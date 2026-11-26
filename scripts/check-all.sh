@@ -62,6 +62,7 @@ if ! curl -fsS -o /dev/null --max-time 5 "$BASE/"; then
 fi
 
 run "crawl"          npm run crawl                    || exit 1
+run "front page"     npm run front                    || exit 1
 run "a11y"           npm run a11y                     || exit 1
 run "shoot"          npm run shoot                    || exit 1
 run "moderation"     ./scripts/check-moderation.sh    || exit 1

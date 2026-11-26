@@ -1505,3 +1505,96 @@ search settings model, and a `templates/search.html` with `scolta-config` and
 | Pod deleted, with the sidecar waiting for `/health` | index published at 10:47:24.28, before the pod was Ready at 10:47:24.89 |
 
 Screenshots: `docs/screenshots/c8-*.png`.
+
+## C11: the front page printed its own fields under the gallery
+
+**2026-11-26.** Kernel pin unchanged at `v0.105.0`.
+
+### Root cause
+
+Kernel 0.105.0 serves `/` through the ordinary item route. Kernel commit
+`9b964d2` ([B122], kernel PR 227) is an ancestor of the tag, and it removed
+the separate front page handler in `crates/kernel/src/routes/front.rs`; `/` is
+now rewritten to the configured path and answered by `crates/kernel/src/routes/item.rs`.
+That route renders every plain string field into `children` as
+`<div class="field field-NAME"><strong class="field__label">LABEL:</strong> TEXT</div>`,
+with TEXT run through `plain_text`, so escaped (the field loop in
+`render_item_fields`), and appends the plugins' output after the fields. The
+front page template printed `children` for the recent posts listing, so on
+0.105.0 it printed `body` and `proof` again below the gallery, as visible
+markup under "Body:" and "proof:". Gate 14 moved the pin and reported the front
+page unchanged without looking at it, and no check compared what the page
+holds with how often it holds it.
+
+The route change brought three more differences from the C7b front page
+(`docs/screenshots/c7/`, taken on 0.102.0):
+
+- A breadcrumb, "Home > Front Page > trovato", above the hero. The old handler
+  rendered the page as `page--front`; the item route renders it as
+  `page--item--<id>`, so `templates/page--front.html` was never used and
+  page.html printed its breadcrumb.
+- A "Comments" block with log in and create account links. The item route
+  renders the comment thread under every item; the old handler never did.
+  This one stays, see below.
+- The `<div class="front">` wrapper from `page--front.html` was gone. No
+  stylesheet rule reads it, so it changed nothing visible.
+
+### What changed
+
+- `templates/elements/item--front_page.html` prints `plugin_output`, which
+  the item route passes on its own for a theme that places its own fields,
+  instead of `children`. `body` and `proof` stay bare strings, placed from
+  `item.fields` as before. Its comment says how the fields and the listing
+  reach it on the pinned kernel.
+- `templates/page--front.html` is now
+  `templates/page--item--0193b000-0000-7000-8000-000000000001.html`, the name
+  the item route asks for. It overrides `content`, so there is no breadcrumb.
+- `scripts/front.mjs` (`npm run front`) fetches `/` and `/it/` and fails on
+  `&lt;p`, `&lt;section`, `field__label`, `Body:`, `proof:`, a breadcrumb,
+  the lede more than once in `<main>`, or anything other than one hero, eight
+  cards, one gallery and one listing. It does not follow redirects, it
+  requires `<html lang>` to name the language asked for, and it fails if `/it/`
+  carries the English lede, so the English page served at `/it/` cannot pass
+  as a second correct page. The rules are in
+  `scripts/front-check.mjs` and have their own tests in
+  `scripts/test/front.test.mjs`. It runs in CI after the crawl, in
+  `scripts/check-all.sh` and in `deploy/k3s/gate.sh`.
+
+### Left as it is: comments on the front page
+
+The Comments block stays under the front page. The kernel has no way to turn
+comments off for one item or one type: `render_thread` in
+`crates/kernel/src/routes/comment.rs` (line 817 at the tag) asks only whether
+the comments plugin is on, `crates/kernel/src/routes/item.rs` (line 844) calls
+it for every item, and `create_comment_inner` (line 359) accepts a comment on
+any item the commenter may view. Hiding the thread in the site's template would
+leave the front page open to comments with no way to read them. This needs a
+kernel change: a per type or per item comment switch that both the thread and
+the create route honour.
+
+### Rejected
+
+- Storing `body` and `proof` as `{value, format}` objects: the item route
+  renders those into `children` too, filtered rather than escaped, so the page
+  would print the copy twice instead of once as text.
+- Cutting the fields out of `children` in the template, hiding them with CSS,
+  or a regex in the plugin: each treats the output, not the cause.
+- A kernel switch to keep a type's fields out of `children`: none exists at
+  the tag, and `plugin_output` already does the job.
+
+### Checked
+
+| Check | Result |
+|---|---|
+| `scripts/front.mjs` against the review site on `main` (`36bcee7`) | FAIL on `/` and `/it/`: `&lt;p` 10 times, `&lt;section` twice, `field__label` twice, "Body:", "proof:", a breadcrumb, the lede twice |
+| `scripts/front.mjs` against a fixture serving the English front page at `/` and `/it/` | FAIL on `/it/`: `<html lang>` is "en", and the English lede |
+| `scripts/front.mjs` with the fix, local and on the review site | PASS on `/` and `/it/` |
+| `./scripts/check-all.sh` on `./scripts/run.sh --fresh --proxy` | all 11 gates PASS, the new front page gate included |
+| `npm test` | 11 PASS |
+| `deploy/k3s/gate.sh` on the review site | crawl, front, a11y, shoot, roundtrip, moderation PASS |
+| Escaped markup count on the review site, `/` and `/it/` | 0 and 0 |
+| Chrome on the review site | `/` and `/it/`: one hero, eight cards, one gallery, "Recent posts" once, the Comments block once at the end, no breadcrumb, no console error |
+| Front page saved unchanged in `/admin/content/<id>/edit` | "has been updated"; `<main>` of `/` and `/it/` identical before and after |
+| `field__label` on all 57 sitemap pages | none |
+
+Screenshots: `docs/screenshots/c11-*.png`.

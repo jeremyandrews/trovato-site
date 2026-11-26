@@ -346,8 +346,9 @@ fn every_translation_names_an_item_that_exists() {
 ///
 /// `{value, format}` is what a filtered field carries and what the renderer
 /// looks for. A bare string is what the front page's `body` and `proof` carry on
-/// purpose, so that the handler passes them through untouched and the template
-/// places them.
+/// purpose: the front page template places them itself from `item.fields`, as
+/// HTML, and prints `plugin_output` rather than `children`, where the item
+/// route prints every field again as escaped text.
 fn field_shape(field: &serde_json::Value) -> &'static str {
     if field.get("value").and_then(|v| v.as_str()).is_some()
         && field.get("format").and_then(|v| v.as_str()).is_some()
