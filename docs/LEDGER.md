@@ -1436,3 +1436,44 @@ and write in `trovato_site` off `raw_sql` onto the kernel's `query` and
   restored by `config import`.
 - The comment form posts (`POST /api/item/{id}/comments`, 303) and the comment shows.
 - Screenshots: `docs/screenshots/c6-*.png`.
+
+## C8: in-browser search on, every AI stage off
+
+**2026-11-26.** Kernel pin unchanged at `v0.105.0`, which contains kernel PR 252
+(`01495410be074d232b79b41cbcc6558757047ec8` is an ancestor of the tag), the
+search settings model, and a `templates/search.html` with `scolta-config` and
+`scolta.js`.
+
+### What changed
+
+- `templates/search.html` carries the kernel's search stylesheet (in the
+  `head` block), the `scolta-config` data block and `scolta.js` (in the
+  `scripts` block, before `search-init.js`), as the kernel's template writes
+  them. `checks/tests/search_template.rs` reads the kernel's template at the
+  pinned tag from `raw.githubusercontent.com`, as the documentation mirror
+  does, and fails if any of the three is missing or differs.
+- `config/variable.search.yml` ships the `search` settings: `expand`,
+  `summarize`, `followup`, `analytics_enabled` and `sentiment_enabled` false,
+  every other field at the kernel default, written out in full because the
+  kernel falls back to all defaults (AI on) for a value it cannot load.
+- The index is not kept on a volume. A cron tick that finds no
+  `pagefind-entry.json` builds the index in full (`run_index` in the kernel's
+  `crates/kernel/src/cron/search_update.rs`), and the pod's cron sidecar ticks
+  every 60 seconds. `deploy/k3s/lib.sh` and `scripts/run.sh` now fail if the
+  index is not served after the first tick.
+- The search explainer describes the in-browser search and the server
+  fallback. The accessibility page, English and Italian, no longer says
+  search works the same with JavaScript on or off.
+
+### Checked
+
+| Check | Result |
+|---|---|
+| `cargo fmt`, `clippy -D warnings`, `cargo test --all`, docs mirror, crawl, a11y, shoot, moderation, config round-trip, production profile | PASS locally |
+| Review site `/search?q=Drupal` in Chrome | `pagefind.js`, entry, meta, wasm and 19 fragments 200; 10 cards; fallback hidden; no `/api/v1/search/` request, nothing off host, no console error |
+| JavaScript off | server results, as before |
+| Excerpts | "Look & Feel" and `"<uuid>"` render once escaped |
+| Pod deleted | index 404 on the new pod, built by the sidecar's first tick 61 s later ("the live directory /app/static/pagefind has no pagefind-entry.json"), check repeated clean |
+| `/admin/config/search` | expansion, summary, follow ups, analytics and sentiment off |
+
+Screenshots: `docs/screenshots/c8-*.png`.
