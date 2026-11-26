@@ -33,17 +33,19 @@ spec:
     spec:
       enableServiceLinks: false
       terminationGracePeriodSeconds: 5
+      tolerations:
+        - key: pozza/workload
+          operator: Equal
+          value: plex
+          effect: NoSchedule
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
               - matchExpressions:
-                  - key: kubernetes.io/arch
-                    operator: In
-                    values: [arm64]
                   - key: kubernetes.io/hostname
-                    operator: NotIn
-                    values: [ks2.pozza, ks3.pozza]
+                    operator: In
+                    values: [kw3.pozza]
       initContainers:
         - name: postgres
           image: pgvector/pgvector:pg17

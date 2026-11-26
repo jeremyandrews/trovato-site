@@ -24,10 +24,10 @@ restarts the site so queries and menus load, and runs cron once.
 Image: `registry.pozza/jeremyandrews/trovato-site:<short sha>`, with
 `-dirty-<content hash>` appended when the tree has uncommitted changes, so every
 distinct content gets its own tag. The push goes straight to the registry if
-this machine is logged in (`docker login registry.pozza -u jeremyandrews`);
-otherwise it is relayed through ks1, whose root podman holds the login. The
-relay loads the image into a throwaway podman store under `/var/tmp`, pushes
-from there and deletes the store, so ks1's own images are never touched.
+this machine is logged in (`docker login registry.pozza -u jeremyandrews`),
+and `apply.sh` stops if it is not. It is never relayed through a node. The
+image is `linux/amd64`, for kw3; the Dockerfile only copies files onto the
+multi-arch kernel image, so building it on an arm64 Mac runs nothing emulated.
 
 Every script works in namespace `trovato-site` and nothing else: the namespace
 is not read from the environment, and the `docker` shim refuses any other.
@@ -46,7 +46,7 @@ the production value.
 
 Environment: `KUBECONFIG` (default `~/.kube/ks1.yaml`), `LB_IP` (default
 `10.20.250.17`), `SITE_HOST` (default `<LB_IP>.nip.io`), `SITE_BASE` for the
-gates (default `http://<LB_IP>.nip.io`), `PUSH_HOST` (default `ks1.pozza`),
+gates (default `http://<LB_IP>.nip.io`),
 `PLAYWRIGHT_CHANNEL` for the browser gates (set it to `chrome` on a Mac whose
 bundled Chromium has no Local Network access and fails every page with
 `net::ERR_ADDRESS_UNREACHABLE`; unset, the bundled Chromium runs).
@@ -66,10 +66,16 @@ kubectl -n trovato-site get secret trovato-site-secrets -o jsonpath='{.data.ADMI
   port 80, `deploy/shared.caddy` with the upstream pointed at loopback; it
   serves `/static` itself from a copy the init container takes out of the
   image) and the cron poker (`cron`). Uploads on a 1Gi `local-path` volume.
-- Service `trovato-site`: LoadBalancer, `externalTrafficPolicy: Local`, address
+- Service `trovato-site`: LoadBalancer, `externalTrafficPolicy: Cluster`, address
   fixed by the `metallb.io/loadBalancerIPs` annotation.
 
-Every pod requires arm64 and excludes ks2 and ks3, which leaves ks1.
+Every pod is pinned to kw3 (`kubernetes.io/hostname In [kw3.pozza]`) and
+tolerates its `pozza/workload=plex:NoSchedule` taint. kw3 is amd64 and carries
+no load test: ks1, ks2, ks3 and kw1 run the load tests, kw4 is the Minecraft
+node and kw2 runs Roon. The site sat on ks1 until C10, when an idle pod there
+used 1.4 cores and held up a load-test arm that waits for ks1 to be quiet;
+`docs/LEDGER.md` has the account. The `local-path` volumes live on kw3's disk,
+so moving the site to another node means a dump and restore, not a reschedule.
 
 ## Why SITE_URL is a nip.io name
 

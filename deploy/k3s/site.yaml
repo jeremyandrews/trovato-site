@@ -44,17 +44,19 @@ spec:
         trovato.rs/caddy-config-hash: "__CADDY_HASH__"
     spec:
       enableServiceLinks: false
+      tolerations:
+        - key: pozza/workload
+          operator: Equal
+          value: plex
+          effect: NoSchedule
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
               - matchExpressions:
-                  - key: kubernetes.io/arch
-                    operator: In
-                    values: [arm64]
                   - key: kubernetes.io/hostname
-                    operator: NotIn
-                    values: [ks2.pozza, ks3.pozza]
+                    operator: In
+                    values: [kw3.pozza]
       initContainers:
         # Caddy serves the site's /static itself, from the same files the
         # kernel has, so they are copied out of the site image at start.
@@ -243,7 +245,11 @@ metadata:
     metallb.io/loadBalancerIPs: __LB_IP__
 spec:
   type: LoadBalancer
-  externalTrafficPolicy: Local
+  # Cluster, not Local: the pod runs on kw3, and the kw nodes run no MetalLB
+  # speaker, so with Local nothing would announce the address. A speaker on
+  # ks1 to ks3 answers for it and kube-proxy forwards to kw3. The cost is that
+  # the kernel sees a node address, not the reader's, as the client.
+  externalTrafficPolicy: Cluster
   selector:
     app: trovato-site
   ports:

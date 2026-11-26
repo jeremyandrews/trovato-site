@@ -1,8 +1,8 @@
 # PostgreSQL for the review site: the same image docker-compose.yml runs.
 #
 # local-path storage binds the volume to the node the pod first lands on, which
-# is fine because every pod in this namespace is pinned to ks1 (arm64, and not
-# ks2 or ks3, which carry load tests and the Minecraft servers).
+# is fine because every pod in this namespace is pinned to kw3 (amd64, clear of
+# ks1 to ks3 and kw1, which carry the load tests, and of kw4, the Minecraft node).
 apiVersion: v1
 kind: Service
 metadata:
@@ -38,17 +38,19 @@ spec:
         app: trovato-postgres
     spec:
       enableServiceLinks: false
+      tolerations:
+        - key: pozza/workload
+          operator: Equal
+          value: plex
+          effect: NoSchedule
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
               - matchExpressions:
-                  - key: kubernetes.io/arch
-                    operator: In
-                    values: [arm64]
                   - key: kubernetes.io/hostname
-                    operator: NotIn
-                    values: [ks2.pozza, ks3.pozza]
+                    operator: In
+                    values: [kw3.pozza]
       containers:
         - name: postgres
           image: pgvector/pgvector:pg17
