@@ -193,6 +193,26 @@ populate() {
     in_site sh -c 'curl -fsS -o /dev/null -m 60 -X POST "http://127.0.0.1:3000/cron/$1"' sh "$CRON_KEY" \
         || { echo "the cron tick failed" >&2; return 1; }
 
+    # The search page's in-browser search needs the index the kernel builds
+    # into /app/static/pagefind, inside the container. Nothing keeps it across
+    # a restart, and nothing has to: `config import` above asks for a full
+    # rebuild, and any cron tick that finds no index entry file builds one in
+    # full (run_index in the kernel's crates/kernel/src/cron/search_update.rs),
+    # so a restarted pod has its index back on the cron sidecar's first tick.
+    # A deployment is finished when the index is served. The wait covers a
+    # tick that found the cron lock held by the sidecar's own tick.
+    echo "==> Checking the search index"
+    local tries=0
+    until in_site curl -fs -o /dev/null -m 10 http://127.0.0.1:3000/static/pagefind/pagefind-entry.json; do
+        tries=$((tries + 1))
+        if [ "$tries" -ge 24 ]; then
+            echo "the search index was not built" >&2
+            return 1
+        fi
+        sleep 5
+    done
+    echo "    the search index is served"
+
     # The cron tick is what copies the Italian overlays into place, so a site
     # that came up without them is not a finished deployment.
     echo "==> Checking the Italian pages"

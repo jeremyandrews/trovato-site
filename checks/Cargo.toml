@@ -12,3 +12,8 @@ workspace = true
 [dependencies]
 serde_yml = { workspace = true }
 serde_json = { workspace = true }
+
+[dev-dependencies]
+# The search template test reads the kernel's template at the pinned tag from
+# raw.githubusercontent.com, as the documentation mirror does.
+ureq = { workspace = true }

@@ -9,13 +9,22 @@
    search. #}
 {% extends "page.html" %}
 
+{# The kernel's search stylesheet. static/css/site.css maps its custom
+   properties onto the site's tokens. #}
+{% block head %}
+<link rel="stylesheet" href="/static/css/scolta.css">
+{% endblock %}
+
 {% block title %}Search{% if query %}: {{ query }}{% endif %}{% endblock %}
 
 {% block content %}
 <div class="search-page">
     <h1>Search</h1>
 
-    {# The client-side widget takes this element over when JavaScript is available. #}
+    {# The in-browser search builds its interface here when JavaScript is on.
+       search-init.js hides the server results below only once the index has
+       loaded; with JavaScript off, or no index built, the server results are
+       the page. #}
     <div id="scolta-search"></div>
 
     {# Server-rendered results. Shown on the initial load and whenever the widget
@@ -64,13 +73,25 @@
     <section class="search-explainer prose">
         <h2>What happens when you search</h2>
 
-        <p>The form above sends your search to this server. The server runs a PostgreSQL full-text query over the site&#8217;s published content and returns the results as a page, with JavaScript on or off.</p>
+        <p>With JavaScript on, your browser downloads a small search index that this server builds from the site&#8217;s published content. Your browser then matches your words against that index, in the page itself.</p>
 
-        <p>Trovato, the content management system this site runs on, can also run keyword search in the browser, and it can use a language model to expand a query and summarise the results. This site uses neither. The search page loads no in-browser search, and no AI provider is configured, so nothing you type leaves this server. If that changes, this page will say so and name the provider.</p>
+        <p>With JavaScript off, or before the index has loaded, the form sends your search to this server. The server runs a PostgreSQL full-text query and returns a page of results.</p>
+
+        <p>This site uses no AI and no outside service for search, so what you type stays in your browser or on this server. If an AI provider is added, this page will say so and name it.</p>
     </section>
 </div>
 {% endblock %}
 
 {% block scripts %}
-<script src="/static/js/search-init.js" defer></script>
+{# The kernel's search configuration, script and start up, as the pinned
+   kernel's templates/search.html writes them (checks/tests/search_template.rs
+   holds the two together). The configuration is rendered from the search
+   settings in config/variable.search.yml, which switch every AI stage and
+   analytics off. It is a data block: type="application/json" does not run,
+   and every `<` is written `\u003c` so no value can close the tag. #}
+<script id="scolta-config" type="application/json">
+{{ scolta_config | json_encode() | replace(from="<", to="\u003c") | safe }}
+</script>
+<script src="/static/js/scolta.js"></script>
+<script src="/static/js/search-init.js"></script>
 {% endblock %}

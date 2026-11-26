@@ -112,6 +112,10 @@ fn populate_does_not_shrug_off_a_failed_step() {
     assert!(!lib.contains("WARNING: the cron tick failed"));
     assert!(lib.contains("require_enabled \"${IMAGE_PLUGINS[@]}\" \"${SITE_PLUGINS[@]}\""));
     assert!(lib.contains("/it/why is not served in Italian"));
+    // The search page's in-browser search needs the index, so a deployment
+    // that does not serve one has failed.
+    assert!(lib.contains("/static/pagefind/pagefind-entry.json"));
+    assert!(lib.contains("the search index was not built"));
 }
 
 #[test]

@@ -120,6 +120,10 @@ spec:
               value: /app/plugins:/site/plugins
             - name: TEMPLATES_DIR
               value: /app/templates:/site/templates
+            # The search index is written to /app/static/pagefind, inside the
+            # container, with no PAGEFIND_OUTPUT_DIR and no volume. A restart
+            # loses it and the cron sidecar's first tick builds it again: the
+            # kernel builds in full whenever the index entry file is missing.
             - name: STATIC_DIR
               value: /app/static:/site/static
             - name: UPLOADS_DIR
