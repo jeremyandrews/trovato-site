@@ -1,0 +1,35 @@
+# Search settings, the ones /admin/config/search edits.
+#
+# Every AI stage is off: the site has no AI provider, so the search page must
+# never ask for query expansion, a summary or a follow up. Analytics is off
+# too, because the search page tells a reader that nothing they type is kept.
+#
+# Every other field is the kernel's default (crates/kernel/src/search/settings.rs
+# at the pinned tag), written out in full. The kernel loads this value whole:
+# one field it cannot parse or one number out of range, and it falls back to
+# its defaults for every field, which turns the AI stages back on.
+key: search
+value:
+  recency_boost_max: 0.5
+  recency_half_life_days: 365.0
+  recency_penalty_after_days: 1825.0
+  recency_max_penalty: 0.3
+  title_match_boost: 1.0
+  title_all_terms_multiplier: 1.5
+  content_match_boost: 0.4
+  excerpt_length: 300
+  results_per_page: 10
+  max_pagefind_results: 50
+  ai_summary_top_n: 5
+  ai_summary_max_chars: 2000
+  type_boosts: {}
+  priority_pages: []
+  priority_boost: 10.0
+  expand: false
+  summarize: false
+  followup: false
+  max_followups: 3
+  analytics_enabled: false
+  analytics_retention_days: 90
+  sentiment_enabled: false
+  index_compaction_percent: 5.0

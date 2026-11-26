@@ -7,7 +7,7 @@
 // rather than as something to notice in an image.
 import { chromium } from "playwright";
 import { mkdir, writeFile } from "node:fs/promises";
-import { PAGES, BASE, LAUNCH } from "./pages.mjs";
+import { PAGES, BASE, LAUNCH, waitReady } from "./pages.mjs";
 import { retryAfterMs } from "./ratelimit.mjs";
 
 const WIDTHS = [
@@ -78,6 +78,7 @@ const report = [];
 let overflows = 0;
 let unthemedTotal = 0;
 let badStatus = 0;
+let notReady = 0;
 const offOrigin = new Set();
 
 for (const scheme of SCHEMES) {
@@ -96,7 +97,8 @@ for (const scheme of SCHEMES) {
       }
     });
 
-    for (const { path, name, family } of PAGES) {
+    for (const entry of PAGES) {
+      const { path, name, family } = entry;
       // The kernel rate-limits every GET at 100 a minute per IP, static assets
       // included, and a screenshot pass is ten pages of real rendering in four
       // configurations. A 429 is answered the way the header asks rather than
@@ -121,12 +123,13 @@ for (const scheme of SCHEMES) {
         if (r.status() === 429 && !limited) limited = r;
       };
       page.on("response", onResponse);
-      let response, overflow, hit;
+      let response, overflow, hit, missing;
       for (let attempt = 0; ; attempt++) {
         limited = null;
         overflow = null;
         response = await page.goto(BASE + path, { waitUntil: "networkidle" });
         await page.waitForTimeout(1800);
+        missing = response?.status() === 200 ? await waitReady(page, entry) : null;
         if (response?.status() === 200 && !limited) {
           overflow = await page.evaluate(measure, scheme);
           await page.screenshot({ path: file, fullPage: true });
@@ -153,6 +156,13 @@ for (const scheme of SCHEMES) {
         console.log(`${scheme.padEnd(5)} ${String(viewport.width).padStart(4)}  ${status}  SKIPPED   ${path}`);
         report.push({ path, name, family, scheme, width: viewport.width, status, skipped: true });
         continue;
+      }
+
+      // Measured, but not what the page is listed for: the search page showing
+      // only its fallback says nothing about the in-browser results.
+      if (missing) {
+        notReady++;
+        console.log(`      NOT READY ${scheme} ${viewport.width} ${path}: missing ${missing.join(", ")}`);
       }
 
       const overflowing = overflow.scrollWidth > overflow.clientWidth + 1;
@@ -193,6 +203,10 @@ if (offOrigin.size > 0) {
 }
 if (unthemedTotal > 0) {
   console.error(`${unthemedTotal} elements carry a background from the wrong scheme`);
+  failed = true;
+}
+if (notReady > 0) {
+  console.error(`${notReady} page/viewport combinations did not render what they are listed for`);
   failed = true;
 }
 if (failed) process.exit(1);

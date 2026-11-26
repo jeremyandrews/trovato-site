@@ -19,7 +19,8 @@ const PNG = Buffer.from(
   "base64",
 );
 const PAGE = `<!doctype html><html lang="en"><head><title>fixture</title></head>
-<body><main><p>A page whose image arrives late.</p></main>
+<body><main><p>A page whose image arrives late.</p>
+<div class="scolta-result-card">A result</div><div id="search-fallback" hidden></div></main>
 <script>setTimeout(() => { const i = new Image(1, 1); i.src = "/late.png?" + Date.now(); document.body.append(i); }, 1000);</script>
 </body></html>`;
 

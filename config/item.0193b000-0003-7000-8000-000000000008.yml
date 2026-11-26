@@ -24,10 +24,10 @@ fields:
       <h2>Built in on purpose</h2>
 
       <ul>
-      <li>Every navigation region has its own label, which is how a screen reader tells them apart. The two search forms on the search page are labelled separately for the same reason.</li>
+      <li>Every navigation region has its own label, which is how a screen reader tells them apart. The two search forms on the search page are labelled separately for the same reason. With JavaScript on, the in-browser search takes the place of the second form, and its search box is named only by its placeholder text.</li>
       <li>The current page is marked with <code>aria-current="page"</code>, so a screen reader announces which page you&#8217;re on.</li>
       <li>The narrow-screen menu is a native disclosure element. It opens by click or keyboard, announces whether it&#8217;s open, and works without JavaScript.</li>
-      <li>Search is a form that submits to the server, and it works the same with JavaScript on or off.</li>
+      <li>Search works with JavaScript on or off. With it off, the search form sends your search to the server, which returns a page of results.</li>
       <li>The site name in the header is text inside the link, not an image&#8217;s alt text, so the link keeps its name in both colour schemes.</li>
       <li>A code block in the documentation copied in from Trovato&#8217;s repository takes keyboard focus and has a name, so you can scroll it without a mouse. Code blocks aren&#8217;t landmarks, because some documentation pages have dozens of them.</li>
       <li>Focus is always visible, with an outline that meets the contrast requirement for interface components in both colour schemes.</li>

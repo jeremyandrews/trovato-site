@@ -66,6 +66,12 @@
     /* @contrast --on-accent on --accent AA */
     --on-accent: #FFFFFF;
 
+    /* The background behind a matched word in search results. */
+    /* @contrast --text on --highlight AA */
+    /* @contrast --text-muted on --highlight AA */
+    /* @contrast --link on --highlight AA */
+    --highlight: #FFD9A8;
+
     /* ── Lines (light) ───────────────────────────────────────────────────── */
     /* A decorative rule between items. Not a control boundary and not checked:
        WCAG 1.4.11 is about components and state, not about separators. */
@@ -213,6 +219,11 @@
         --code-type: #DFC085;
         /* @contrast --code-variable on --surface-sunken AA */
         --code-variable: #E39AA4;
+
+        /* @contrast --text on --highlight AA */
+        /* @contrast --text-muted on --highlight AA */
+        /* @contrast --link on --highlight AA */
+        --highlight: #45301F;
 
         --border: #3A2E26;
         /* @contrast --border-control on --surface UI */

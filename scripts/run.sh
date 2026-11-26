@@ -159,6 +159,21 @@ wait_for_site
 echo "==> Running cron once"
 curl -fsS -o /dev/null -m 30 -X POST "${BASE}/cron/${CRON_KEY:-local-development-cron-key}" || true
 
+# The same tick builds the search index the search page loads in the browser:
+# `config import` asked for a full rebuild, and a tick that finds no index entry
+# file builds one anyway, so a restarted container gets its index back within a
+# minute. Wait for it, so the site is complete when this command finishes.
+echo "==> Checking the search index"
+tries=0
+until curl -fs -o /dev/null -m 10 "${BASE}/static/pagefind/pagefind-entry.json"; do
+    tries=$((tries + 1))
+    if [ "$tries" -ge 24 ]; then
+        echo "the search index was not built" >&2
+        exit 1
+    fi
+    sleep 5
+done
+
 if [ "$WITH_PROXY" = "1" ]; then
     echo "==> Starting the front proxy"
     dc up -d proxy

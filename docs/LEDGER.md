@@ -1436,3 +1436,72 @@ and write in `trovato_site` off `raw_sql` onto the kernel's `query` and
   restored by `config import`.
 - The comment form posts (`POST /api/item/{id}/comments`, 303) and the comment shows.
 - Screenshots: `docs/screenshots/c6-*.png`.
+
+## C8: in-browser search on, every AI stage off
+
+**2026-11-26.** Kernel pin unchanged at `v0.105.0`, which contains kernel PR 252
+(`01495410be074d232b79b41cbcc6558757047ec8` is an ancestor of the tag), the
+search settings model, and a `templates/search.html` with `scolta-config` and
+`scolta.js`.
+
+### What changed
+
+- `templates/search.html` carries the kernel's search stylesheet (in the
+  `head` block), the `scolta-config` data block and `scolta.js` (in the
+  `scripts` block, before `search-init.js`), as the kernel's template writes
+  them. `checks/tests/search_template.rs` reads the kernel's template at the
+  pinned tag from `raw.githubusercontent.com`, as the documentation mirror
+  does, and fails if any of the three is missing or differs.
+- `config/variable.search.yml` ships the `search` settings: `expand`,
+  `summarize`, `followup`, `analytics_enabled` and `sentiment_enabled` false,
+  every other field at the kernel default, written out in full because the
+  kernel falls back to all defaults (AI on) for a value it cannot load.
+- The index is not kept on a volume. A cron tick that finds no
+  `pagefind-entry.json` builds the index in full (`run_index` in the kernel's
+  `crates/kernel/src/cron/search_update.rs`), and the pod's cron sidecar ticks
+  every 60 seconds. `deploy/k3s/lib.sh` and `scripts/run.sh` now fail if the
+  index is not served after the first tick.
+- The search explainer describes the in-browser search and the server
+  fallback. The accessibility page, English and Italian, no longer says
+  search works the same with JavaScript on or off, and says the in-browser
+  search box is named only by its placeholder (the kernel's `scolta.js`
+  gives it no label).
+- The in-browser results needed the site's styling. At 390px an excerpt
+  quoting a long URL pushed the page to 614px (the kernel's narrow layout is a
+  bare `1fr` column), and the kernel stylesheet's literal greys and the
+  site's peach highlight failed contrast in both schemes. `site.css` now lets
+  the column shrink, breaks long words, and puts every text colour the
+  results use on a checked token; `tokens.css` adds `--highlight`, checked
+  against `--text`, `--text-muted` and `--link` in both schemes.
+- The cron sidecar in `deploy/k3s/site.yaml` waited a whole interval after a
+  first tick that fired before the kernel was up, so a new pod served the
+  search page without its index for about a minute, while taking traffic.
+  It now polls `/health` and ticks as soon as the kernel answers. A test in
+  `checks/tests/deploy_k3s.rs` runs the manifest's own command against a stub
+  `curl`. Readiness does not wait for the index, deliberately: a fresh
+  install has none until the deploy populates it after the rollout, and the
+  server results are the page until then.
+- Both browser gates now require what a page is listed for. The search page
+  must show in-browser result cards with the server results hidden, or the
+  gate fails, because the server results render for the same URL even when
+  the index does not load. `scripts/test/search-ready.test.mjs` serves a
+  search page with only server results and checks that both gates fail on it.
+- The render and accessibility gates now load `/search?q=Drupal` rather than
+  `/search`, so they cover the in-browser results. Without the CSS above,
+  shoot fails it on overflow and on the highlight, and a11y fails it on
+  contrast.
+
+### Checked
+
+| Check | Result |
+|---|---|
+| `cargo fmt`, `clippy -D warnings`, `cargo test --all`, docs mirror, crawl, a11y, shoot, moderation, config round-trip, production profile | PASS locally |
+| Review site `/search?q=Drupal` in Chrome | `pagefind.js`, entry, meta, wasm and 19 fragments 200; 10 cards; fallback hidden; no `/api/v1/search/` request, nothing off host, no console error |
+| JavaScript off | server results, as before |
+| Excerpts | "Look & Feel" and `"<uuid>"` render once escaped |
+| Pod deleted | index 404 on the new pod, built by the sidecar's first tick 61 s later ("the live directory /app/static/pagefind has no pagefind-entry.json"), check repeated clean |
+| `/admin/config/search` | expansion, summary, follow ups, analytics and sentiment off |
+| `deploy/k3s/gate.sh` on the review site | crawl, a11y, shoot, roundtrip, moderation PASS |
+| Pod deleted, with the sidecar waiting for `/health` | index published at 10:47:24.28, before the pod was Ready at 10:47:24.89 |
+
+Screenshots: `docs/screenshots/c8-*.png`.
