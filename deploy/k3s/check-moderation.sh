@@ -53,9 +53,23 @@ SITE_CONTAINER="site"
 # Not a rollout restart: that would make a new pod and lose the emptyDir
 # database. SIGTERM to the kernel shuts it down cleanly and the kubelet starts
 # the container again inside the same pod.
+# From 0.105.0 the kernel keeps serving for SHUTDOWN_DRAIN_SECS after SIGTERM
+# (5 under Kubernetes), so /health answers from the old process for a while.
+# Wait for the kubelet to count the restart before asking whether it is up;
+# otherwise config import reaches a kernel that never loaded the new plugins.
+restarts() {
+    k get pod "$(pod_for "$SITE_SELECTOR")" \
+        -o jsonpath="{.status.containerStatuses[?(@.name==\"${SITE_CONTAINER}\")].restartCount}"
+}
 restart_container() {
+    local before
+    before="$(restarts)"
     in_site sh -c 'kill -TERM 1' || true
-    sleep 3
+    for _ in $(seq 1 60); do
+        [ "$(restarts)" != "$before" ] && break
+        sleep 2
+    done
+    [ "$(restarts)" != "$before" ] || { echo "the kernel container never restarted" >&2; return 1; }
     wait_for_kernel
 }
 RESTART=restart_container

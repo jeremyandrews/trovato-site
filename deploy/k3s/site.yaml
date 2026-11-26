@@ -105,6 +105,10 @@ spec:
             # Without it every visitor shares one rate-limit bucket.
             - name: TRUSTED_PROXIES
               value: 127.0.0.1
+            # Plain HTTP on the LAN: a Secure session cookie is dropped by the browser,
+            # so nobody could sign in. 0.105.0 allows `never` only with an http SITE_URL.
+            - name: COOKIE_SECURE
+              value: never
             - name: CRON_KEY
               valueFrom:
                 secretKeyRef:

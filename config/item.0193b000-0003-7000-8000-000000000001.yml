@@ -8,30 +8,28 @@ changed: 1785542400
 fields:
   body:
     value: |
-      <p>Trovato is a content management system written in Rust. It takes its content model from Drupal, which is written in PHP and got that model right. In Drupal you add fields to a content type (a kind of content, such as an article) without writing a schema, you build listings with Views, Drupal&#8217;s visual query builder, instead of SQL, and you extend the system with hooks that it calls for you. The cost shows up in storage. Drupal keeps each field in its own table, so content with twenty fields is spread over twenty tables, and loading it from the database means reading every one of them.</p>
-
-      <p>Trovato keeps the model and changes the implementation.</p>
+      <p>Trovato is a content management system written in Rust. It uses a content model inspired by Drupal. Instead of creating a new database table for each new field, Trovato picks a different storage model.</p>
 
       <h2>Content is one row</h2>
 
-      <p>Trovato calls one piece of content an item and stores each item as one row, with its fields in one JSONB column (PostgreSQL&#8217;s JSON type). Loading an item with twenty fields is one read, and you still add fields from the admin without a schema change.</p>
+      <p>With Trovato, a piece of content is referred to as an <code>item</code>. The entire item is stored in a single row of the database. Additional fields are stored in a JSONB column (PostgreSQL&#8217;s JSON type). This means Trovato can load even the most complicated items from the database with a single indexed query. And adding or changing fields does not require a schema change.</p>
 
-      <p>Trovato also keeps each saved version of an item as a revision you can go back to, and no extra code has to opt in: every save through the editor or the item API (Trovato&#8217;s functions for reading and writing content) writes one. Every item also carries a stage (live, or one the site defines, such as draft), the basis for preparing content before it goes live. Nothing moves an item between stages yet, so the editor saves to live.</p>
+      <p>Every save keeps a revision, so you can go back to an earlier version of an item. On the content types a site chooses, an editor can also save a draft. Visitors keep seeing the published version until the draft is published.</p>
 
       <h2>Plugins reach only what they declare</h2>
 
-      <p>Plugins add features to Trovato without changing its core, the kernel. A plugin implements named functions that the kernel calls, the way a Drupal module implements hooks. Unlike a Drupal module, a plugin can touch only what it declares. A plugin is a WebAssembly module with a manifest, a short file listing every host interface (a group of kernel functions, such as database access or logging) the plugin may use. The kernel connects each plugin to those interfaces and to five minimal system stubs every plugin gets, and to nothing else. A plugin that wants the database also lists the tables it needs beyond its own, and the kernel enforces that list on every structured database call.</p>
+      <p>Plugins add features to Trovato without changing its core, the kernel. A plugin implements named functions that the kernel calls at set points, such as when it shows an item. A plugin can touch only what it declares. Each plugin is a WebAssembly module with a manifest: a short file listing every host interface (a group of kernel functions, such as database access or logging) the plugin may use. The kernel connects each plugin to those interfaces and to six small system functions every plugin gets, and to nothing else. A plugin that wants the database also lists the tables it needs beyond its own. The kernel checks that list on every structured database call.</p>
 
       <figure>
       <img src="/static/art/diagram-sandbox.svg" width="720" height="400" alt="A plugin&#8217;s two declared interfaces pass through gates in the kernel wall; an undeclared one stops at the wall.">
       <figcaption>The manifest, drawn: the declared interfaces pass the wall, and an undeclared one has no way through it.</figcaption>
       </figure>
 
-      <p>The kernel applies the manifest each time it loads a plugin. A sandbox like that is much harder to add to a CMS later than to build in from the start. <a href="/">The front page</a> walks through a real manifest line by line, including the one flag that lets a plugin skip the table check.</p>
+      <p>The kernel applies the manifest each time it loads a plugin. A sandbox like that is much harder to add to a CMS later than to build in from the start. <a href="/rust">The Rust page</a> shows this site&#8217;s own manifest and what each line allows.</p>
 
       <h2>Listings come from Gather</h2>
 
-      <p>Gather builds the lists of content a site shows, and it does the job Views does in Drupal; if you&#8217;ve built a View, most of it will look familiar. Each list is a Gather query: a definition (base table, filters, sorts, relationships, display) stored as configuration, so it moves between environments as a reviewed file.</p>
+      <p>Gather builds the lists of content a site shows. It does the job Views does in Drupal, so if you&#8217;ve built a View, most of it will look familiar. Each list is a Gather query. Its definition (base table, filters, sorts, relationships, display) is stored as configuration, so it moves between environments as a file someone has reviewed.</p>
 
       <figure>
       <img src="/static/docs/images/part-03/gather-queries-admin.png" width="1280" height="2046" alt="The Gather queries admin on the tutorial's site: a table of queries with labels, base tables, owning plugins and operations.">
@@ -40,13 +38,12 @@ fields:
 
       <h2>What isn&#8217;t done yet</h2>
 
-      <p>Trovato is working toward 1.0. The plugin contract, what a plugin and the kernel agree on, is frozen, so a plugin written today keeps working on every release before 1.0. The CMS around that contract isn&#8217;t finished:</p>
+      <p>Trovato is working toward 1.0. The plugin contract is what a plugin and the kernel agree on. It is frozen, so a plugin written today keeps working on every release before 1.0. The CMS around that contract isn&#8217;t finished:</p>
 
       <ul>
       <li><strong>There&#8217;s no plugin registry or package format.</strong> A plugin is built from a directory and installed from there. There&#8217;s nowhere to publish one, and no way to install someone else&#8217;s from a URL or an index.</li>
       <li><strong>Some settings have no admin screen.</strong> Settings that plugins define, and the custom robots.txt, can only be changed by editing the site&#8217;s configuration files and importing them.</li>
-      <li><strong>Migrations only move forward.</strong> There&#8217;s no rollback, so a failed upgrade is restored from a backup. Back up before every upgrade.</li>
-      <li><strong>Content can&#8217;t move between stages yet.</strong> Every item carries a stage, and the editor saves to live.</li>
+      <li><strong>Migrations only move forward.</strong> There are no down migrations, so rolling back means running the previous release on the newer schema. A release before 0.105.0 can&#8217;t do that, so going back to one means restoring a backup. Back up before every upgrade.</li>
       <li><strong>Semantic search compares every vector.</strong> Search by meaning, which ranks content by comparing embedding vectors, has no approximate index yet, so each query compares against every stored vector and gets slower as the site grows.</li>
       </ul>
 

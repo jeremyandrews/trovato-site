@@ -2,7 +2,7 @@
 
 **Status:** Complete. Gate 13 rebuilt the front page as a grid of eight bold
 claims with five new pages behind it; the kernel pin is unchanged.
-**Last updated:** 2026-11-25
+**Last updated:** 2026-11-26
 **Where things stand:** The site is built, checked and reproducible. A clean-room rebuild
 reaches a populated, themed, working site in 22.5 seconds from destroyed volumes, and every
 gate passes against it. What stands between this repository and https://trovato.rs serving
@@ -16,11 +16,11 @@ that starts cold reads this file and continues from the first unmet gate.
 
 | Fact | Value |
 |---|---|
-| Kernel release | `v0.102.0` (commit `20baa121810b5c656b3f80028335770069fab5e0`) |
-| Kernel image | `ghcr.io/jeremyandrews/trovato:0.102.0` (local image id `9ff4f8d08ce0`) |
-| Plugin `api_version` | `0.102` |
-| Previous release | `v0.101.0` (commit `5304a68`), image digest `sha256:cf9c7580b4e3…`, until Gate 11 |
-| Documentation mirror | `v0.101.0`, pinned separately by `TAG` in `tools/src/docs_import.rs` |
+| Kernel release | `v0.105.0` (commit `61f72a130fe51d8e02f68b1aa81230d74c63f761`), since Gate 14 |
+| Kernel image | `ghcr.io/jeremyandrews/trovato:0.105.0` (local image id `95c1c8e6b726`) |
+| Plugin `api_version` | `0.105` |
+| Previous release | `v0.102.0` (commit `20baa121810b5c656b3f80028335770069fab5e0`), until Gate 14; `v0.101.0` (commit `5304a68`) until Gate 11 |
+| Documentation mirror | `v0.105.0`, `TAG` in `tools/src/docs_import.rs`, written by `scripts/sync-kernel-release.sh` |
 | Compose project | `trovato-site` |
 | Site port (local) | `127.0.0.1:3080` |
 | Proxy port (local, Phase 8) | `127.0.0.1:8443` |
@@ -1358,3 +1358,81 @@ here and not patched.
   that is now gone. Four tests replace it: the push is never relayed through
   a node, the build is linux/amd64, every manifest is pinned to kw3 and names
   no load-test or Minecraft node, and the Service is `Cluster`.
+
+## Gate 14: Trovato 0.105.0, moderation on, no raw SQL, and a plainer Why page
+
+**Attempt 1, 2026-11-26 (run C6)**
+
+**Goal:** pin kernel 0.105.0; moderate the editorial types; move every read
+and write in `trovato_site` off `raw_sql` onto the kernel's `query` and
+`item-api` interfaces; make the Why page plain and true on 0.105.0.
+
+| Check | Result |
+|---|---|
+| `v0.105.0` tag, `ghcr.io/jeremyandrews/trovato:0.105.0`, and the stage-move (`d0f3b85`), query-surface (`d1a5818`) and moderation (`73915f6`) commits in the tag | PASS |
+| `host::query`, `list_translations`, `save_translation`, `delete_translation` at the tag | PASS, signatures as expected |
+| Pin moved with `scripts/sync-kernel-release.sh --set-version 0.105.0` | PASS; `deploy/k3s/Dockerfile`'s default `KERNEL_IMAGE` is not written by the script and was moved by hand (`apply.sh` passes the real one) |
+| Docs mirror refreshed with `docs-import` | PASS, `--check` clean |
+| Moderation | `item_type.page.yml`, `item_type.blog.yml`, `item_type.news.yml` carry `moderation: true`; `docs` and `front_page` stay unmoderated; existing items stay published. The site has no non-administrator editor role, so no role was given transitions |
+| Plugin manifest | `host_interfaces = ["logging", "variables", "query", "item-api"]`, `item_background = true`; no `db`, no `db_tables`, no `raw_sql`. The boot warning now names `trovato_scheduled_publishing, trovato_search` only |
+| Before and after, fresh stack | Listing (EN, IT), `/llms.txt`, three raw docs and the translation rows identical. The sitemap holds the same 57 entries with the same `lastmod`; only the order of entries with equal `changed` differs, because the old SQL had no tie-break and the new definition sorts `changed desc, id asc` |
+| `cargo fmt`, `clippy -D warnings`, `cargo test --all`, wasm build, crawl, a11y, shoot, comment moderation, config round-trip, production profile | PASS locally |
+
+### Found
+
+- **`host::query` does not work from cron on 0.105.0.** `CronService::background_services`
+  (`crates/kernel/src/cron/mod.rs:1930`) builds the background `RequestServices`
+  without `set_gather_service`, which only `state.rs:1098` calls for request
+  services. Every `query` from `tap_cron` or `tap_queue_worker` answers -10
+  (`ERR_NO_SERVICES`) whatever the manifest declares. The translation sync
+  therefore lists item ids with `item-api`'s `query_items` instead.
+- **`query_items` cannot return a mirrored `docs` item.** It returns whole
+  items, and the largest `docs` item's fields are 637 KB against the SDK's
+  256 KB output buffer. The sync reads stored translations for the declared
+  items and every `front_page`, `page`, `blog` and `news` item, not `docs`.
+  The old SQL saw every row of `item_translation`. So a translation of a
+  `docs` item that the configuration never declared, or stops declaring, is
+  not removed by the sync; the site declares none, and one would have to be
+  deleted by hand until cron can run a query.
+- **Reads that fail now say so.** A sitemap or `/llms.txt` read that fails on
+  any page answers 503 instead of a 200 holding the pages read before the
+  failure, and a failed `/learn/raw/{slug}` read answers 503 instead of 404.
+  The sync's id scan reads a failing window again one item at a time, so one
+  item too large for the output buffer costs only its own id and the declared
+  items still sync; it reads up to 10,000 items of a type and logs a warning
+  when it stops short.
+- **Config import has an `item_translation` entity on 0.105.0**, so the
+  translations variable could become `item_translation.*.yml` files. Not done.
+- **0.105.0 made four sentences on the main pages false:** the Why page's
+  "five minimal system stubs" (six WASI functions now), "There's no rollback"
+  on Why and "a failed upgrade is recovered from a backup" on `/get-started`
+  (rollback is now the previous release on the newer schema), `/rust`'s sqlx 0.8
+  and wasmtime 47 (0.9 and 49), and `/community`'s email reporting channel
+  (`SECURITY.md` now names GitHub private vulnerability reporting).
+
+### On the review site
+
+- **Two 0.105.0 changes reached `deploy/k3s`.** The session cookie is always
+  `Secure` unless `COOKIE_SECURE=never`, so no browser could sign in to the
+  plain HTTP review site (on 0.102.0 it could not either; 0.105.0 adds the
+  setting for exactly this case and refuses it with an https `SITE_URL`).
+  `site.yaml` now sets it. And on SIGTERM the kernel keeps serving for
+  `SHUTDOWN_DRAIN_SECS` (5 under Kubernetes), so `check-moderation.sh`'s
+  restart polled `/health` on the old process and ran config import against a
+  kernel that had not loaded the plugins (`item_type_fkey` on the front page).
+  The restart now waits for the container's restart count to move.
+- **The review site moved under this run.** Run C10 (PR #21) moved it to
+  `kw3.pozza`, amd64, and recreated it from `main`; the first C6 apply, from
+  `main`'s manifests, left every pod Pending. It was redeployed from this
+  branch with C10's `deploy/k3s` in a scratch copy (plus `main`'s ks1 push
+  relay, which C10's script drops), so it runs this branch on kw3. C10 has
+  since merged, and this branch carries its manifests.
+- Upgrade in place from 0.102.0: the first cron wrote the 3 changed Italian
+  translations and left 7 unchanged; every published item stayed published.
+- `deploy/k3s/gate.sh`: crawl, a11y, shoot, roundtrip and moderation PASS.
+- A draft of `/comment-policy`: the anonymous page kept the published text,
+  `/item/{id}/latest` showed the draft, `/admin/content/moderated` listed it,
+  and after publishing the anonymous page showed it. The page was then
+  restored by `config import`.
+- The comment form posts (`POST /api/item/{id}/comments`, 303) and the comment shows.
+- Screenshots: `docs/screenshots/c6-*.png`.

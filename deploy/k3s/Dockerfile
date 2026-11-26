@@ -5,7 +5,7 @@
 # paths in both places. The build context is not the repository: apply.sh
 # assembles a staging directory holding plugins/, templates/, static/ and
 # config/ and builds from that.
-ARG KERNEL_IMAGE=ghcr.io/jeremyandrews/trovato:0.102.0
+ARG KERNEL_IMAGE=ghcr.io/jeremyandrews/trovato:0.105.0
 FROM ${KERNEL_IMAGE}
 
 COPY plugins/   /site/plugins/

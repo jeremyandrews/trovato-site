@@ -1,40 +1,35 @@
 //! The trovato.rs website.
 //!
-//! This plugin is the whole of the site's Rust. Everything else the site adds —
-//! templates, config, static assets, seed content — is data layered on through the
-//! kernel's `TEMPLATES_DIR`, `STATIC_DIR` and config import. Nothing in the Trovato
-//! tree is modified, and nothing here is a copy of something the kernel already does.
+//! This plugin is the whole of the site's Rust. Everything else the site adds
+//! (templates, config, static assets, seed content) is data layered on through
+//! the kernel's `TEMPLATES_DIR`, `STATIC_DIR` and config import. Nothing in the
+//! Trovato tree is modified.
 //!
-//! It contributes two things:
+//! It adds:
 //!
-//! 1. The `news` content type. Announcements written in the site's own voice, kept
-//!    separate from `blog` so that a release note and an essay can be listed, styled
-//!    and syndicated apart from each other.
+//! 1. Three content types: `news`, `docs` (the mirrored kernel documentation)
+//!    and `front_page`.
+//! 2. The front page's listing of recent posts, rendered on the server.
+//! 3. A sitemap at `/sitemap/pages.xml`, `/llms.txt`, and each documentation
+//!    page's markdown at `/learn/raw/:slug`.
+//! 4. A cron task that copies the site's translations from configuration into
+//!    the kernel.
 //!
-//! 2. The front page's listing of recent posts, server-rendered.
+//! Every page the plugin serves reads through the kernel's `query` interface:
+//! a Gather definition, run for the request's viewer, stage and language, with
+//! each row's `url` filled in by the kernel. The cron task lists items and
+//! reads, saves and deletes translations through `item-api`. The plugin
+//! declares no database access of its own.
 //!
-//! # Why the listing is here and not in a template or a tile
+//! # Why the listing is a tap
 //!
-//! The obvious places to put a "recent posts" list on a front page do not work on
-//! 0.101.0, and both failures were found by trying them:
-//!
-//! - A `gather_query` **tile** renders `<div class="tile-gather" data-query-id="…">`
-//!   and stops. Nothing in the kernel's JavaScript hydrates that element, so the tile
-//!   is an empty div wherever it is placed.
-//! - A **template** cannot reach Gather. The theme engine registers filters, not
-//!   functions, and none of them run a query.
-//!
-//! What does work is `tap_item_view`, whose output the front-page handler appends to
-//! the rendered item just as the item route does. So the listing is a plugin that
-//! declares `db`, reads published content, and returns HTML. That is more honest than
-//! the alternatives anyway: the site's front page is a live demonstration of the
-//! sandbox model it describes three paragraphs further down the same page.
-//!
-//! The plugin reads two tables and declares exactly those two. It writes nothing.
+//! A `gather_query` tile renders an empty `<div>` that nothing hydrates, and a
+//! template cannot run a query. `tap_item_view` can: the front page handler
+//! appends its output to the rendered item.
 
 use trovato_sdk::host;
 use trovato_sdk::prelude::*;
-use trovato_sdk::types::{ApiRequest, ApiResponse, MenuRoute};
+use trovato_sdk::types::{ApiRequest, ApiResponse, ItemTranslation, MenuRoute};
 
 /// Plugin name, for logging.
 const PLUGIN_NAME: &str = "trovato_site";
@@ -53,10 +48,23 @@ const NEWS_TYPE: &str = "news";
 const DOCS_TYPE: &str = "docs";
 
 /// How many recent posts the front page lists.
-const FRONT_LISTING_LIMIT: i64 = 5;
+const FRONT_LISTING_LIMIT: u32 = 5;
 
-/// The live stage. Every published page on this site is in it.
-const LIVE_STAGE: &str = "0193a5a0-0000-7000-8000-000000000001";
+/// The content types the front page lists.
+const LISTED_TYPES: [&str; 2] = ["blog", NEWS_TYPE];
+
+/// Rows per page when a read takes everything. The `query` interface allows
+/// at most 100.
+const PAGE: u32 = 100;
+
+/// Pages a read takes before it stops, so a runaway result is bounded.
+const MAX_PAGES: u32 = 50;
+
+/// Item ids per `list_translations` call. The kernel allows at most 100.
+const TRANSLATION_CHUNK: usize = 100;
+
+// The kernel refuses a page over 100 rows and a translation list over 100 ids.
+const _: () = assert!(PAGE <= 100 && FRONT_LISTING_LIMIT <= 100 && TRANSLATION_CHUNK <= 100);
 
 /// The site variable holding the base every absolute URL is built from.
 ///
@@ -219,70 +227,111 @@ pub struct Post {
 }
 
 /// The most recent published blog posts and news items, newest first.
-///
-/// One query rather than two: the listing is a single reverse-chronological
-/// sequence, so the database is the right place to merge and cut it. The alias
-/// join is a LEFT JOIN because a post without an alias still belongs in the list —
-/// it just links to its item path.
-fn recent_posts(limit: i64) -> Vec<Post> {
-    rows(
-        LISTING_SQL,
-        &[serde_json::json!(LIVE_STAGE), serde_json::json!(limit)],
-    )
-    .iter()
-    .filter_map(post_from_row)
-    .collect()
+fn recent_posts(limit: u32) -> Vec<Post> {
+    match host::query(
+        &listing_definition(),
+        &serde_json::json!({ "per_page": limit }),
+    ) {
+        Ok(result) => result.items.iter().filter_map(post_from_row).collect(),
+        Err(code) => {
+            host::log(
+                "error",
+                PLUGIN_NAME,
+                &format!("listing query failed: {code}"),
+            );
+            Vec::new()
+        }
+    }
 }
 
-/// The listing query.
+/// The filter every read here starts from: published items only.
 ///
-/// One stage parameter, compared as a uuid on both sides. `item.stage_id` and
-/// `url_alias.stage_id` are both `uuid` columns on a migrated database — the
-/// `VARCHAR(50) DEFAULT 'live'` in `20260216000004_create_url_alias.sql` is what
-/// the column was created as, not what it is, and a later migration changed it.
-/// Reading the create-table migration and stopping there is how the alias join
-/// ends up comparing a uuid against the text `'live'`, which is not a mismatch
-/// Postgres tolerates: it refuses the query outright, the tap logs and returns
-/// nothing, and the front page renders with no listing at all.
-///
-/// The LEFT JOIN is what lets a post link to its friendly path. A post with no
-/// alias still belongs in the list and falls back to `/item/{uuid}`.
-///
-/// An item can answer at more than one alias (About is served at both
-/// `/authors/jeremy-andrews` and `/about`). Every query here joins only the
-/// newest one, which is the alias the kernel itself treats as canonical
-/// (`get_canonical_alias_with_context`, ordered by `created DESC, id DESC`), so
-/// a second alias never lists a page twice or links it at a path the kernel
-/// does not call its own.
-const LISTING_SQL: &str = "SELECT i.id, i.title, i.type AS kind, i.created, a.alias \
-     FROM item i \
-     LEFT JOIN LATERAL (SELECT u.alias FROM url_alias u \
-       WHERE u.source = '/item/' || i.id::text \
-         AND u.language = COALESCE(i.language, 'en') \
-         AND u.stage_id = $1::uuid \
-       ORDER BY u.created DESC, u.id DESC LIMIT 1) a ON true \
-     WHERE i.status = 1 \
-       AND i.type IN ('blog', 'news') \
-       AND i.stage_id = $1::uuid \
-     ORDER BY i.created DESC \
-     LIMIT $2";
+/// An anonymous visitor sees only published items anyway. The filter keeps an
+/// administrator's front page and sitemap the same as everyone else's.
+fn published() -> serde_json::Value {
+    serde_json::json!({ "field": "status", "operator": "equals", "value": 1 })
+}
+
+/// The front page listing: published blog posts and news items, newest first.
+pub fn listing_definition() -> serde_json::Value {
+    serde_json::json!({
+        "base_table": "item",
+        "filters": [
+            published(),
+            { "field": "type", "operator": "in", "value": LISTED_TYPES },
+        ],
+        "fields": [
+            { "field_name": "id" },
+            { "field_name": "title" },
+            { "field_name": "type" },
+            { "field_name": "created" },
+        ],
+        "sorts": [{ "field": "created", "direction": "desc" }],
+    })
+}
 
 /// Build a `Post` from one result row, or nothing if the row is missing a field
 /// the listing cannot render without.
+///
+/// The kernel fills in `url`: the item's alias, or `/item/{id}` when it has
+/// none. An empty or missing `url` falls back to the item path too, because
+/// `href=""` reloads the current page.
 pub fn post_from_row(row: &serde_json::Value) -> Option<Post> {
     let id = row.get("id")?.as_str()?;
     let path = row
-        .get("alias")
+        .get("url")
         .and_then(|v| v.as_str())
-        .filter(|a| !a.is_empty())
+        .filter(|url| !url.is_empty())
         .map_or_else(|| format!("/item/{id}"), String::from);
 
     Some(Post {
         path,
         title: row.get("title")?.as_str()?.to_string(),
-        kind: row.get("kind")?.as_str()?.to_string(),
+        kind: row.get("type")?.as_str()?.to_string(),
         created: row.get("created").and_then(serde_json::Value::as_i64)?,
     })
+}
+
+/// Every row of `definition`, a page at a time, up to `MAX_PAGES` pages.
+///
+/// A failure on any page is the caller's error: a sitemap or an index served
+/// from the pages read before it would look complete and not be.
+fn every_row(definition: &serde_json::Value, what: &str) -> Result<Vec<serde_json::Value>, i32> {
+    every_page(|page| {
+        host::query(
+            definition,
+            &serde_json::json!({ "page": page, "per_page": PAGE }),
+        )
+    })
+    .inspect_err(|code| {
+        host::log(
+            "error",
+            PLUGIN_NAME,
+            &format!("{what} query failed: {code}"),
+        );
+    })
+}
+
+/// The paging behind `every_row`: call `fetch` for page 1, 2, ... until a page
+/// says there is no next one, or `MAX_PAGES` have been read. The first error
+/// ends the read and is returned.
+fn every_page(
+    mut fetch: impl FnMut(u32) -> Result<trovato_sdk::types::QueryResult, i32>,
+) -> Result<Vec<serde_json::Value>, i32> {
+    let mut rows = Vec::new();
+    for page in 1..=MAX_PAGES {
+        let result = fetch(page)?;
+        rows.extend(result.items);
+        if !result.has_next {
+            return Ok(rows);
+        }
+    }
+    host::log(
+        "warn",
+        PLUGIN_NAME,
+        &format!("a read stopped at its cap of {MAX_PAGES} pages"),
+    );
+    Ok(rows)
 }
 
 /// Render the listing.
@@ -406,24 +455,39 @@ pub fn tap_menu() -> Vec<MenuRoute> {
 #[plugin_tap]
 pub fn tap_api(request: ApiRequest) -> ApiResponse {
     match request.callback.as_str() {
-        "sitemap" => {
-            ApiResponse::with_status(200, sitemap()).content_type("application/xml; charset=utf-8")
-        }
+        "sitemap" => generated(sitemap(), "application/xml; charset=utf-8"),
         "doc_raw" => match request.params.get("slug").map(String::as_str) {
-            Some(slug) => match doc_markdown(slug) {
-                Some(markdown) => ApiResponse::with_status(200, markdown)
-                    .content_type("text/markdown; charset=utf-8"),
-                None => ApiResponse::error(404, "no such document"),
-            },
+            Some(slug) => document_response(doc_markdown(slug)),
             None => ApiResponse::error(404, "no such document"),
         },
-        "llms" => {
-            ApiResponse::with_status(200, llms_txt()).content_type("text/plain; charset=utf-8")
-        }
+        "llms" => generated(llms_txt(), "text/plain; charset=utf-8"),
         other => {
             host::log("warn", PLUGIN_NAME, &format!("unknown callback: {other}"));
             ApiResponse::error(404, "not found")
         }
+    }
+}
+
+/// A generated document, or 503 when a read behind it failed.
+///
+/// Not a 200 with what was read before the failure: a crawler takes a sitemap
+/// at its word, and a 503 tells it to come back.
+pub fn generated(body: Result<String, i32>, content_type: &str) -> ApiResponse {
+    match body {
+        Ok(body) => ApiResponse::with_status(200, body).content_type(content_type),
+        Err(_) => ApiResponse::error(503, "temporarily unavailable"),
+    }
+}
+
+/// A documentation page's markdown: 200, 404 when no page has that address,
+/// 503 when the read failed and the answer is not known.
+pub fn document_response(markdown: Result<Option<String>, i32>) -> ApiResponse {
+    match markdown {
+        Ok(Some(markdown)) => {
+            ApiResponse::with_status(200, markdown).content_type("text/markdown; charset=utf-8")
+        }
+        Ok(None) => ApiResponse::error(404, "no such document"),
+        Err(_) => ApiResponse::error(503, "temporarily unavailable"),
     }
 }
 
@@ -446,22 +510,27 @@ const ROUTE_PATHS: [&str; 4] = ["/", "/news", "/blog", "/blog/archive"];
 /// Both are kernel-side and neither is fixed here. What the site does instead is
 /// serve a correct sitemap of its own at a path the kernel has not taken, and
 /// the production proxy maps `/sitemap.xml` onto it. See `docs/DEPLOY.md`.
-pub fn sitemap() -> String {
-    let base = base_url();
+pub fn sitemap() -> Result<String, i32> {
+    let rows = every_row(&sitemap_definition(), "sitemap")?;
+    Ok(sitemap_from(&base_url(), &rows))
+}
+
+/// The sitemap document for `rows`, after the site's own routes.
+pub fn sitemap_from(base: &str, rows: &[serde_json::Value]) -> String {
     let mut xml = String::from("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
     xml.push_str("<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">\n");
 
     for path in ROUTE_PATHS {
-        xml.push_str(&sitemap_entry(&absolute(&base, path), None));
+        xml.push_str(&sitemap_entry(&absolute(base, path), None));
     }
 
-    for row in rows(SITEMAP_SQL, &[serde_json::json!(LIVE_STAGE)]).iter() {
+    for row in rows {
         let Some(post) = post_from_row(row) else {
             continue;
         };
         let changed = row.get("changed").and_then(serde_json::Value::as_i64);
         xml.push_str(&sitemap_entry(
-            &absolute(&base, &post.path),
+            &absolute(base, &post.path),
             changed.map(iso_date),
         ));
     }
@@ -470,27 +539,34 @@ pub fn sitemap() -> String {
     xml
 }
 
-/// Every published item in the live stage, with its alias when it has one.
+/// Every published item, most recently changed first.
 ///
-/// The same shape `LISTING_SQL` returns — `post_from_row` reads both — with
-/// `changed` added for `<lastmod>`.
+/// The same fields as the listing, which `post_from_row` reads, with `changed`
+/// added for `<lastmod>`. The id breaks ties so that paging is stable.
 ///
-/// The front page is excluded. It has no alias, because its address is `/` and
-/// `/` cannot be aliased, so it would otherwise appear a second time as
-/// `/item/{uuid}` — the same page at two URLs, in the document whose whole
-/// purpose is telling a crawler which URLs exist. `/` is listed once, from
-/// `ROUTE_PATHS`.
-const SITEMAP_SQL: &str = "SELECT i.id, i.title, i.type AS kind, i.created, i.changed, a.alias \
-     FROM item i \
-     LEFT JOIN LATERAL (SELECT u.alias FROM url_alias u \
-       WHERE u.source = '/item/' || i.id::text \
-         AND u.language = COALESCE(i.language, 'en') \
-         AND u.stage_id = $1::uuid \
-       ORDER BY u.created DESC, u.id DESC LIMIT 1) a ON true \
-     WHERE i.status = 1 \
-       AND i.stage_id = $1::uuid \
-       AND i.type <> 'front_page' \
-     ORDER BY i.changed DESC";
+/// The front page is left out. Its address is `/`, which cannot be aliased, so
+/// it would otherwise appear a second time as `/item/{uuid}`. `/` is listed
+/// once, from `ROUTE_PATHS`.
+pub fn sitemap_definition() -> serde_json::Value {
+    serde_json::json!({
+        "base_table": "item",
+        "filters": [
+            published(),
+            { "field": "type", "operator": "not_equals", "value": FRONT_PAGE_TYPE },
+        ],
+        "fields": [
+            { "field_name": "id" },
+            { "field_name": "title" },
+            { "field_name": "type" },
+            { "field_name": "created" },
+            { "field_name": "changed" },
+        ],
+        "sorts": [
+            { "field": "changed", "direction": "desc" },
+            { "field": "id", "direction": "asc" },
+        ],
+    })
+}
 
 /// The site's base URL, without a trailing slash.
 pub fn base_url() -> String {
@@ -549,29 +625,21 @@ pub fn escape_xml(raw: &str) -> String {
 
 // ─── Translations ────────────────────────────────────────────────────
 
-/// Copy the site's translations from configuration into the kernel's table.
+/// Copy the site's translations from configuration into the kernel.
 ///
-/// # Why a plugin does this
+/// The translations live in configuration, where they are reviewed and
+/// exported like everything else. Each cron tick reads the declared map,
+/// reads what the kernel stores, and makes the two match through `item-api`:
+/// it saves a declared translation that differs, deletes a stored one that is
+/// no longer declared, and leaves an identical one alone so that its
+/// `changed` does not move.
 ///
-/// The kernel reads translations from `item_translation` and overlays them on an
-/// item when the request's language is not the default: that half works. What is
-/// missing on 0.101.0 is any way to *write* a row. `config import` stores a
-/// per-language field map verbatim in the item's own `fields` and populates no
-/// translation; the two admin routes are registered `GET` only and have no
-/// templates in the image; and there is no API endpoint. Verified all three.
+/// Cron has no user, so `item_background` in the manifest is what lets these
+/// calls run.
 ///
-/// So the site's translations live in configuration, where they can be reviewed
-/// and exported like everything else, and this brings them across on every cron
-/// tick. It writes only what has changed, so a tick with nothing to do is one
-/// read.
-///
-/// This is the one place the site writes to a kernel table, and it is declared:
-/// `db_tables` names `item_translation`.
-///
-/// The signature is the one the other cron taps in the kernel tree use:
-/// `CronInput` in, a JSON value out. A zero-argument version compiles, exports,
-/// and is dispatched, and does nothing at all — the kernel logs `tap_cron
-/// completed` either way.
+/// The signature is the one the kernel's other cron taps use: `CronInput` in,
+/// a JSON value out. A zero-argument version compiles and is dispatched, and
+/// does nothing.
 #[plugin_tap]
 pub fn tap_cron(_input: CronInput) -> serde_json::Value {
     let raw = match host::variables_get(TRANSLATIONS_VARIABLE, "{}") {
@@ -608,12 +676,16 @@ pub fn tap_cron(_input: CronInput) -> serde_json::Value {
         ),
     );
 
+    let Some(stored) = stored_translations(&translations) else {
+        return serde_json::json!({ "translations": "unlisted" });
+    };
+
     let mut written = 0usize;
     let mut skipped = 0usize;
 
     for (item_id, languages) in translations.as_object().into_iter().flatten() {
         for (language, translation) in languages.as_object().into_iter().flatten() {
-            match sync_one(item_id, language, translation) {
+            match sync_one(item_id, language, translation, &stored) {
                 Some(true) => written += 1,
                 Some(false) => skipped += 1,
                 None => {}
@@ -621,11 +693,9 @@ pub fn tap_cron(_input: CronInput) -> serde_json::Value {
         }
     }
 
-    // A translation removed from configuration has to disappear from the site.
-    // Without this the sync only ever adds, and a page keeps serving a
-    // translation that the repository no longer contains — which is the same
-    // failure as content that only a database knows about.
-    let removed = remove_undeclared(&translations);
+    // A translation removed from configuration has to disappear from the site,
+    // or a page keeps serving text the repository no longer contains.
+    let removed = remove_undeclared(&translations, &stored);
 
     if written > 0 || removed > 0 {
         host::log(
@@ -638,45 +708,157 @@ pub fn tap_cron(_input: CronInput) -> serde_json::Value {
     serde_json::json!({ "written": written, "removed": removed, "unchanged": skipped })
 }
 
-/// Write one translation if it differs from what is stored.
+/// The content types whose items the sync reads stored translations for.
 ///
-/// `Some(true)` when it wrote, `Some(false)` when the stored row already matched,
-/// `None` when the entry was malformed.
-fn sync_one(item_id: &str, language: &str, translation: &serde_json::Value) -> Option<bool> {
-    let title = translation.get("title")?.as_str()?;
-    let fields = translation.get("fields")?;
-    let fields_json = serde_json::to_string(fields).ok()?;
+/// Not every type. Kernel 0.105.0 does not give cron the Gather service, so
+/// `host::query` answers -10 there, and the ids come from `item-api`'s
+/// `query_items` instead. That call returns whole items, and one mirrored
+/// `docs` item can be larger than the SDK's 256 KB output buffer, so `docs` is
+/// left out. The site translates none of them, and the import tool rewrites
+/// them from the kernel repository.
+const TRANSLATED_TYPES: [&str; 4] = [FRONT_PAGE_TYPE, "page", "blog", NEWS_TYPE];
 
-    // Compare before writing. A cron tick runs every minute, and rewriting five
-    // rows a minute forever would put a `changed` timestamp in the log that means
-    // nothing and churn the table for no reason.
-    let current = rows(
-        TRANSLATION_READ_SQL,
-        &[serde_json::json!(item_id), serde_json::json!(language)],
-    );
-    if let Some(row) = current.first() {
-        let same_title = row.get("title").and_then(|v| v.as_str()) == Some(title);
-        let same_fields = row
-            .get("fields")
-            .map(|v| v.to_string())
-            .as_deref()
-            .and_then(|s| serde_json::from_str::<serde_json::Value>(s).ok())
-            .as_ref()
-            == Some(fields);
-        if same_title && same_fields {
-            return Some(false);
+/// Items per `query_items` call. Small, because each item comes back whole.
+const ID_PAGE: usize = 20;
+
+/// The most items of one type the sync reads ids for. A site past it gets a
+/// warning in the log, and the items beyond it keep any stored translation
+/// the configuration no longer declares.
+const MAX_ID_ITEMS: usize = 10_000;
+
+/// The ids of every item one `fetch(limit, offset)` call after another can
+/// reach, and whether that was all of them.
+///
+/// A window that fails as a whole is read again one item at a time, so one
+/// item too large for the SDK's output buffer costs only its own id. A window
+/// in which every single item fails as well ends the read: the failure is not
+/// about one item. The read also ends at `MAX_ID_ITEMS`. Either way the ids
+/// already read are returned, with `false`.
+fn item_ids(
+    mut fetch: impl FnMut(usize, usize) -> Result<Vec<String>, i32>,
+) -> (Vec<String>, bool) {
+    let mut ids = Vec::new();
+    let mut complete = true;
+    let mut offset = 0;
+    while offset < MAX_ID_ITEMS {
+        match fetch(ID_PAGE, offset) {
+            Ok(batch) => {
+                let done = batch.len() < ID_PAGE;
+                ids.extend(batch);
+                if done {
+                    return (ids, complete);
+                }
+            }
+            Err(_) => {
+                let mut read = 0;
+                for at in offset..offset + ID_PAGE {
+                    match fetch(1, at) {
+                        Ok(one) if one.is_empty() => return (ids, complete),
+                        Ok(one) => {
+                            read += 1;
+                            ids.extend(one);
+                        }
+                        Err(_) => complete = false,
+                    }
+                }
+                if read == 0 {
+                    return (ids, false);
+                }
+            }
+        }
+        offset += ID_PAGE;
+    }
+    (ids, false)
+}
+
+/// Every translation the kernel stores for the declared items and for every
+/// item of `TRANSLATED_TYPES`, or `None` if the stored translations could not
+/// be read.
+///
+/// `None` rather than an empty list: an empty list would read as "nothing is
+/// stored", and the sync would then write every declared translation again.
+/// An item list that could not be read in full is not `None`: the declared
+/// items are always asked about, so their translations still sync, and only
+/// the removal of undeclared translations misses the items that were not read.
+fn stored_translations(translations: &serde_json::Value) -> Option<Vec<ItemTranslation>> {
+    let mut ids: Vec<String> = translations
+        .as_object()
+        .map(|items| items.keys().cloned().collect())
+        .unwrap_or_default();
+
+    for item_type in TRANSLATED_TYPES {
+        let (found, complete) = item_ids(|limit, offset| {
+            host::query_items(&serde_json::json!({
+                "type": item_type,
+                "limit": limit,
+                "offset": offset,
+            }))
+            .map(|items| items.into_iter().map(|item| item.id.to_string()).collect())
+        });
+        if !complete {
+            host::log(
+                "warn",
+                PLUGIN_NAME,
+                &format!(
+                    "read the ids of {} {item_type} item(s), not all of them; \
+                     undeclared translations of the rest stay until a later run",
+                    found.len()
+                ),
+            );
+        }
+        ids.extend(found);
+    }
+    ids.sort();
+    ids.dedup();
+
+    let mut stored = Vec::new();
+    for chunk in ids.chunks(TRANSLATION_CHUNK) {
+        let refs: Vec<&str> = chunk.iter().map(String::as_str).collect();
+        match host::list_translations(&refs) {
+            Ok(found) => stored.extend(found),
+            Err(code) => {
+                host::log(
+                    "error",
+                    PLUGIN_NAME,
+                    &format!("could not list stored translations: {code}"),
+                );
+                return None;
+            }
         }
     }
+    Some(stored)
+}
 
-    match host::execute_raw(
-        TRANSLATION_WRITE_SQL,
-        &[
-            serde_json::json!(item_id),
-            serde_json::json!(language),
-            serde_json::json!(title),
-            serde_json::json!(fields_json),
-        ],
-    ) {
+/// Save one translation if it differs from what is stored.
+///
+/// `Some(true)` when it saved, `Some(false)` when the stored translation
+/// already matched, `None` when the entry was malformed or the save failed.
+fn sync_one(
+    item_id: &str,
+    language: &str,
+    translation: &serde_json::Value,
+    stored: &[ItemTranslation],
+) -> Option<bool> {
+    let title = translation.get("title")?.as_str()?;
+    let fields = translation.get("fields")?;
+
+    let same = stored.iter().any(|t| {
+        t.item_id.to_string() == item_id
+            && t.language == language
+            && t.title == title
+            && &t.fields == fields
+    });
+    if same {
+        return Some(false);
+    }
+
+    let entry = serde_json::json!({
+        "item_id": item_id,
+        "language": language,
+        "title": title,
+        "fields": fields,
+    });
+    match host::save_translation(&entry) {
         Ok(_) => Some(true),
         Err(code) => {
             host::log(
@@ -689,73 +871,44 @@ fn sync_one(item_id: &str, language: &str, translation: &serde_json::Value) -> O
     }
 }
 
+/// The stored translations the configuration does not declare.
+fn undeclared<'a>(
+    translations: &serde_json::Value,
+    stored: &'a [ItemTranslation],
+) -> Vec<&'a ItemTranslation> {
+    stored
+        .iter()
+        .filter(|t| {
+            translations
+                .get(t.item_id.to_string())
+                .and_then(|languages| languages.get(&t.language))
+                .is_none()
+        })
+        .collect()
+}
+
 /// Delete every stored translation the configuration no longer declares.
 ///
 /// Returns how many were removed.
-fn remove_undeclared(translations: &serde_json::Value) -> usize {
-    let declared: Vec<String> = translations
-        .as_object()
-        .into_iter()
-        .flatten()
-        .flat_map(|(item_id, languages)| {
-            languages
-                .as_object()
-                .into_iter()
-                .flatten()
-                .map(move |(language, _)| format!("{item_id}:{language}"))
-        })
-        .collect();
-
+fn remove_undeclared(translations: &serde_json::Value, stored: &[ItemTranslation]) -> usize {
     let mut removed = 0usize;
-    for row in rows(TRANSLATION_LIST_SQL, &[]).iter() {
-        let (Some(item_id), Some(language)) = (
-            row.get("item_id").and_then(|v| v.as_str()),
-            row.get("language").and_then(|v| v.as_str()),
-        ) else {
-            continue;
-        };
-        if declared.contains(&format!("{item_id}:{language}")) {
-            continue;
-        }
-        match host::execute_raw(
-            TRANSLATION_DELETE_SQL,
-            &[serde_json::json!(item_id), serde_json::json!(language)],
-        ) {
-            Ok(_) => removed += 1,
+    for t in undeclared(translations, stored) {
+        let item_id = t.item_id.to_string();
+        match host::delete_translation(&item_id, &t.language) {
+            Ok(true) => removed += 1,
+            Ok(false) => {}
             Err(code) => host::log(
                 "error",
                 PLUGIN_NAME,
-                &format!("could not remove the {language} translation of {item_id}: {code}"),
+                &format!(
+                    "could not remove the {} translation of {item_id}: {code}",
+                    t.language
+                ),
             ),
         }
     }
     removed
 }
-
-/// Every stored translation.
-const TRANSLATION_LIST_SQL: &str =
-    "SELECT item_id::text AS item_id, language FROM item_translation";
-
-/// One stored translation, by item and language.
-const TRANSLATION_DELETE_SQL: &str =
-    "DELETE FROM item_translation WHERE item_id = $1::uuid AND language = $2";
-
-/// What is stored for one item in one language.
-const TRANSLATION_READ_SQL: &str =
-    "SELECT title, fields FROM item_translation WHERE item_id = $1::uuid AND language = $2";
-
-/// Upsert one translation.
-///
-/// `changed` moves only when the content does, which is what makes the comparison
-/// above worth doing.
-const TRANSLATION_WRITE_SQL: &str = "INSERT INTO item_translation \
-     (item_id, language, title, fields, created, changed) \
-     VALUES ($1::uuid, $2, $3, $4::jsonb, \
-             EXTRACT(epoch FROM now())::bigint, EXTRACT(epoch FROM now())::bigint) \
-     ON CONFLICT (item_id, language) DO UPDATE SET \
-       title = EXCLUDED.title, \
-       fields = EXCLUDED.fields, \
-       changed = EXCLUDED.changed";
 
 // ─── The machine-readable surface ────────────────────────────────────
 
@@ -768,34 +921,45 @@ const TRANSLATION_WRITE_SQL: &str = "INSERT INTO item_translation \
 ///
 /// The `docs` item template ignores `children` and reads the fields it wants
 /// directly, so neither of these renders as an ordinary field on the page.
-fn doc_markdown(slug: &str) -> Option<String> {
+///
+/// `Ok(None)` when no published page has that address, `Err` when the read
+/// failed: the route answers 404 for the first and 503 for the second.
+fn doc_markdown(slug: &str) -> Result<Option<String>, i32> {
     if !is_safe_slug(slug) {
-        return None;
+        return Ok(None);
     }
 
-    let alias = format!("/learn/{slug}");
-    rows(
-        DOC_MARKDOWN_SQL,
-        &[serde_json::json!(LIVE_STAGE), serde_json::json!(alias)],
+    let result = host::query(
+        &doc_markdown_definition(slug),
+        &serde_json::json!({ "per_page": 1 }),
     )
-    .first()?
-    .get("markdown")?
-    .as_str()
-    .map(str::to_string)
+    .inspect_err(|code| {
+        host::log(
+            "error",
+            PLUGIN_NAME,
+            &format!("document query failed: {code}"),
+        );
+    })?;
+    Ok(result
+        .items
+        .first()
+        .and_then(|row| row.get("markdown"))
+        .and_then(serde_json::Value::as_str)
+        .map(str::to_string))
 }
 
-/// One documentation page's source, found by the alias it is served at.
-const DOC_MARKDOWN_SQL: &str = "SELECT i.fields->>'markdown' AS markdown \
-     FROM item i \
-     JOIN url_alias a \
-       ON a.source = '/item/' || i.id::text \
-      AND a.language = COALESCE(i.language, 'en') \
-      AND a.stage_id = $1::uuid \
-     WHERE i.status = 1 \
-       AND i.type = 'docs' \
-       AND i.stage_id = $1::uuid \
-       AND a.alias = $2 \
-     LIMIT 1";
+/// One published documentation page, found by the address it is served at.
+pub fn doc_markdown_definition(slug: &str) -> serde_json::Value {
+    serde_json::json!({
+        "base_table": "item",
+        "filters": [
+            published(),
+            { "field": "type", "operator": "equals", "value": DOCS_TYPE },
+            { "field": "url", "operator": "equals", "value": format!("/learn/{slug}") },
+        ],
+        "fields": [{ "field_name": "fields.markdown", "label": "markdown" }],
+    })
+}
 
 /// Whether a slug can only ever name a document.
 ///
@@ -818,8 +982,13 @@ pub fn is_safe_slug(slug: &str) -> bool {
 /// sections. What makes it worth serving here rather than writing by hand is the
 /// document list, which comes from the same rows the site renders — so it cannot
 /// list a page that does not exist or miss one that does.
-pub fn llms_txt() -> String {
-    let base = base_url();
+pub fn llms_txt() -> Result<String, i32> {
+    let docs = listed_docs(&every_row(&docs_definition(), "docs")?);
+    Ok(llms_txt_from(&base_url(), &docs))
+}
+
+/// The llms.txt document, listing `docs` as (title, address) pairs.
+pub fn llms_txt_from(base: &str, docs: &[(String, String)]) -> String {
     let mut out = String::from("# Trovato\n\n");
     out.push_str(
         "> A content management system written in Rust. Content is one row per item, with \
@@ -833,23 +1002,16 @@ pub fn llms_txt() -> String {
     );
 
     out.push_str("## Documentation\n\n");
-    let docs = rows(DOCS_SQL, &[serde_json::json!(LIVE_STAGE)]);
     if docs.is_empty() {
         out.push_str("The documentation has not been imported yet.\n\n");
     }
-    for row in docs.iter() {
-        let Some(title) = row.get("title").and_then(|v| v.as_str()) else {
-            continue;
-        };
-        let Some(alias) = row.get("alias").and_then(|v| v.as_str()) else {
-            continue;
-        };
-        let slug = alias.rsplit('/').next().unwrap_or_default();
+    for (title, url) in docs {
+        let slug = url.rsplit('/').next().unwrap_or_default();
         out.push_str(&format!(
             "- [{}]({}): markdown at {}\n",
             title,
-            absolute(&base, alias),
-            absolute(&base, &format!("/learn/raw/{slug}")),
+            absolute(base, url),
+            absolute(base, &format!("/learn/raw/{slug}")),
         ));
     }
 
@@ -881,7 +1043,7 @@ pub fn llms_txt() -> String {
         out.push_str(&format!(
             "- [{}]({}): {}\n",
             path,
-            absolute(&base, path),
+            absolute(base, path),
             description
         ));
     }
@@ -892,28 +1054,42 @@ pub fn llms_txt() -> String {
     out
 }
 
-/// Every documentation page, in reading order, with its alias.
-const DOCS_SQL: &str = "SELECT i.title, a.alias, i.fields->>'weight' AS weight \
-     FROM item i \
-     JOIN LATERAL (SELECT u.alias FROM url_alias u \
-       WHERE u.source = '/item/' || i.id::text \
-         AND u.language = COALESCE(i.language, 'en') \
-         AND u.stage_id = $1::uuid \
-       ORDER BY u.created DESC, u.id DESC LIMIT 1) a ON true \
-     WHERE i.status = 1 \
-       AND i.type = 'docs' \
-       AND i.stage_id = $1::uuid \
-     ORDER BY (i.fields->>'weight')::int NULLS LAST, i.title";
+/// Every published documentation page, in reading order: by weight, pages
+/// without one last, then by title.
+pub fn docs_definition() -> serde_json::Value {
+    serde_json::json!({
+        "base_table": "item",
+        "filters": [
+            published(),
+            { "field": "type", "operator": "equals", "value": DOCS_TYPE },
+        ],
+        "fields": [
+            { "field_name": "id" },
+            { "field_name": "title" },
+            { "field_name": "fields.weight", "label": "weight" },
+        ],
+        "sorts": [
+            { "field": "fields.weight", "direction": "asc", "nulls": "last" },
+            { "field": "title", "direction": "asc" },
+        ],
+    })
+}
 
-/// Run a query and return its rows, or an empty list and a log line on failure.
-fn rows(sql: &str, params: &[serde_json::Value]) -> Vec<serde_json::Value> {
-    match host::query_raw(sql, params) {
-        Ok(json) => serde_json::from_str(&json).unwrap_or_default(),
-        Err(code) => {
-            host::log("error", PLUGIN_NAME, &format!("query failed: {code}"));
-            Vec::new()
-        }
-    }
+/// The title and address of each documentation page that has an alias.
+///
+/// A page whose `url` is `/item/{id}` has no alias, so it has no address under
+/// `/learn` and no markdown route. It is left out.
+pub fn listed_docs(rows: &[serde_json::Value]) -> Vec<(String, String)> {
+    rows.iter()
+        .filter_map(|row| {
+            let title = row.get("title")?.as_str()?;
+            let url = row.get("url")?.as_str()?;
+            if url.is_empty() || url.starts_with("/item/") {
+                return None;
+            }
+            Some((title.to_string(), url.to_string()))
+        })
+        .collect()
 }
 
 #[cfg(test)]
@@ -1069,46 +1245,37 @@ mod tests {
 
     // ─── Row mapping ─────────────────────────────────────────────────
 
-    #[test]
-    fn a_row_with_an_alias_uses_it() {
-        let row = serde_json::json!({
+    fn row(url: serde_json::Value) -> serde_json::Value {
+        serde_json::json!({
             "id": "0193a5a0-0000-7000-8000-00000000000a",
             "title": "Hello",
-            "kind": "blog",
+            "type": "blog",
             "created": 1_767_225_600_i64,
-            "alias": "/blog/hello",
-        });
-        assert_eq!(post_from_row(&row).unwrap().path, "/blog/hello");
+            "url": url,
+        })
     }
 
     #[test]
-    fn a_row_without_an_alias_falls_back_to_the_item_path() {
-        let row = serde_json::json!({
-            "id": "0193a5a0-0000-7000-8000-00000000000a",
-            "title": "Hello",
-            "kind": "blog",
-            "created": 1_767_225_600_i64,
-            "alias": serde_json::Value::Null,
-        });
+    fn a_row_takes_its_path_from_the_kernels_url() {
+        let post = post_from_row(&row(serde_json::json!("/blog/hello"))).unwrap();
+        assert_eq!(post.path, "/blog/hello");
+        assert_eq!(post.kind, "blog");
+        assert_eq!(post.title, "Hello");
+    }
+
+    #[test]
+    fn a_row_without_a_url_falls_back_to_the_item_path() {
         assert_eq!(
-            post_from_row(&row).unwrap().path,
+            post_from_row(&row(serde_json::Value::Null)).unwrap().path,
             "/item/0193a5a0-0000-7000-8000-00000000000a"
         );
     }
 
     #[test]
-    fn an_empty_alias_is_not_a_path() {
-        // A LEFT JOIN can hand back an empty string as readily as a null, and
+    fn an_empty_url_is_not_a_path() {
         // href="" reloads the current page.
-        let row = serde_json::json!({
-            "id": "0193a5a0-0000-7000-8000-00000000000a",
-            "title": "Hello",
-            "kind": "blog",
-            "created": 1_767_225_600_i64,
-            "alias": "",
-        });
         assert_eq!(
-            post_from_row(&row).unwrap().path,
+            post_from_row(&row(serde_json::json!(""))).unwrap().path,
             "/item/0193a5a0-0000-7000-8000-00000000000a"
         );
     }
@@ -1117,71 +1284,225 @@ mod tests {
     fn a_row_missing_a_title_is_dropped_rather_than_rendered_blank() {
         let row = serde_json::json!({
             "id": "0193a5a0-0000-7000-8000-00000000000a",
-            "kind": "blog",
+            "type": "blog",
             "created": 1_767_225_600_i64,
+            "url": "/blog/hello",
         });
         assert_eq!(post_from_row(&row), None);
     }
 
-    // ─── The query ───────────────────────────────────────────────────
+    // ─── The Gather definitions ──────────────────────────────────────
+
+    fn filters(definition: &serde_json::Value) -> Vec<(String, String, serde_json::Value)> {
+        definition["filters"]
+            .as_array()
+            .map(|filters| {
+                filters
+                    .iter()
+                    .map(|f| {
+                        (
+                            f["field"].as_str().unwrap().to_string(),
+                            f["operator"].as_str().unwrap().to_string(),
+                            f["value"].clone(),
+                        )
+                    })
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+
+    fn sorts(definition: &serde_json::Value) -> Vec<(String, String)> {
+        definition["sorts"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|s| {
+                (
+                    s["field"].as_str().unwrap().to_string(),
+                    s["direction"].as_str().unwrap().to_string(),
+                )
+            })
+            .collect()
+    }
+
+    fn field_names(definition: &serde_json::Value) -> Vec<String> {
+        definition["fields"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|f| f["field_name"].as_str().unwrap().to_string())
+            .collect()
+    }
+
+    fn published_filter() -> (String, String, serde_json::Value) {
+        ("status".into(), "equals".into(), serde_json::json!(1))
+    }
+
+    fn every_definition() -> Vec<(&'static str, serde_json::Value)> {
+        vec![
+            ("listing", listing_definition()),
+            ("sitemap", sitemap_definition()),
+            ("docs", docs_definition()),
+            ("doc", doc_markdown_definition("readme")),
+        ]
+    }
 
     #[test]
-    fn the_listing_compares_both_stage_columns_against_one_parameter() {
-        // url_alias.stage_id is text and item.stage_id is a uuid. Binding them
-        // from two different literals is how the alias join silently matches
-        // nothing and every link in the listing falls back to /item/{uuid}.
-        assert!(LISTING_SQL.contains("u.stage_id = $1::uuid"));
-        assert!(LISTING_SQL.contains("i.stage_id = $1::uuid"));
-        assert!(
-            !LISTING_SQL.contains("'live'"),
-            "the alias stage must come from the parameter, not a literal"
+    fn the_listing_reads_published_blog_posts_and_news_newest_first() {
+        let definition = listing_definition();
+        assert_eq!(
+            filters(&definition),
+            vec![
+                published_filter(),
+                (
+                    "type".into(),
+                    "in".into(),
+                    serde_json::json!(["blog", "news"])
+                ),
+            ]
+        );
+        assert_eq!(sorts(&definition), vec![("created".into(), "desc".into())]);
+        assert_eq!(
+            field_names(&definition),
+            vec!["id", "title", "type", "created"]
         );
     }
 
     #[test]
-    fn every_alias_join_takes_only_the_canonical_alias() {
-        // A plain join to url_alias returns one row per alias, so an item with
-        // two aliases appeared twice in the sitemap and in llms.txt. Each query
-        // must pick the newest alias, the one the kernel calls canonical.
-        for (name, sql) in [
-            ("LISTING_SQL", LISTING_SQL),
-            ("SITEMAP_SQL", SITEMAP_SQL),
-            ("DOCS_SQL", DOCS_SQL),
-        ] {
-            assert!(
-                sql.contains("JOIN LATERAL (SELECT u.alias FROM url_alias u"),
-                "{name} joins url_alias without choosing one alias per item"
-            );
-            assert!(
-                sql.contains("ORDER BY u.created DESC, u.id DESC LIMIT 1) a ON true"),
-                "{name} does not take the newest alias"
-            );
-            assert!(
-                !sql.contains("JOIN url_alias a"),
-                "{name} still joins every alias"
-            );
+    fn the_sitemap_excludes_the_front_page_item() {
+        // `/` is listed once, from ROUTE_PATHS. The front page item has no
+        // alias, because `/` cannot be aliased, so without this it appears a
+        // second time as /item/{uuid}.
+        let definition = sitemap_definition();
+        assert_eq!(
+            filters(&definition),
+            vec![
+                published_filter(),
+                (
+                    "type".into(),
+                    "not_equals".into(),
+                    serde_json::json!("front_page")
+                ),
+            ]
+        );
+    }
+
+    #[test]
+    fn the_sitemap_is_newest_change_first_with_a_stable_tie_break() {
+        // Read a page at a time, so ties need an order or a row can land on
+        // two pages, or none.
+        let definition = sitemap_definition();
+        assert_eq!(
+            sorts(&definition),
+            vec![
+                ("changed".into(), "desc".into()),
+                ("id".into(), "asc".into())
+            ]
+        );
+        assert!(field_names(&definition).contains(&"changed".to_string()));
+    }
+
+    #[test]
+    fn the_docs_are_read_in_reading_order() {
+        let definition = docs_definition();
+        assert_eq!(
+            filters(&definition),
+            vec![
+                published_filter(),
+                ("type".into(), "equals".into(), serde_json::json!("docs")),
+            ]
+        );
+        assert_eq!(
+            sorts(&definition),
+            vec![
+                ("fields.weight".into(), "asc".into()),
+                ("title".into(), "asc".into())
+            ]
+        );
+        // A page without a weight comes after every page with one.
+        assert_eq!(definition["sorts"][0]["nulls"], "last");
+    }
+
+    #[test]
+    fn the_docs_list_skips_a_page_without_an_alias() {
+        let rows = vec![
+            serde_json::json!({ "title": "Readme", "url": "/learn/readme" }),
+            serde_json::json!({ "title": "Orphan", "url": "/item/0193a5a0-0000-7000-8000-00000000000a" }),
+            serde_json::json!({ "title": "No url" }),
+            serde_json::json!({ "title": "Empty", "url": "" }),
+        ];
+        assert_eq!(
+            listed_docs(&rows),
+            vec![("Readme".to_string(), "/learn/readme".to_string())]
+        );
+    }
+
+    #[test]
+    fn a_document_is_found_by_the_address_it_is_served_at() {
+        let definition = doc_markdown_definition("plugin-development");
+        assert_eq!(
+            filters(&definition),
+            vec![
+                published_filter(),
+                ("type".into(), "equals".into(), serde_json::json!("docs")),
+                (
+                    "url".into(),
+                    "equals".into(),
+                    serde_json::json!("/learn/plugin-development")
+                ),
+            ]
+        );
+        assert_eq!(definition["fields"][0]["field_name"], "fields.markdown");
+        assert_eq!(definition["fields"][0]["label"], "markdown");
+    }
+
+    #[test]
+    fn the_translation_sync_reads_every_type_the_site_translates() {
+        // Every type with an item in the translations variable, so a
+        // translation removed from configuration is deleted.
+        for item_type in ["front_page", "page", "blog", "news"] {
+            assert!(TRANSLATED_TYPES.contains(&item_type), "{item_type}");
         }
     }
 
     #[test]
-    fn the_listing_is_limited_and_ordered_newest_first() {
-        assert!(LISTING_SQL.contains("ORDER BY i.created DESC"));
-        assert!(LISTING_SQL.contains("LIMIT $2"));
-    }
-
-    #[test]
-    fn the_listing_only_reads_the_tables_the_manifest_declares() {
-        // db_tables in trovato_site.info.toml is ["item", "url_alias"].
-        // A table read here without being declared there is refused at load.
-        for table in ["comment", "users", "session"] {
+    fn every_definition_reads_items_within_the_kernels_bounds() {
+        // The kernel refuses more than 32 filters or 8 sorts.
+        // Every definition here is an item read: the kernel applies the
+        // viewer, the stage and the language, and fills in each row's url.
+        for (name, definition) in every_definition() {
+            assert_eq!(definition["base_table"], "item", "{name}");
+            assert!(filters(&definition).len() <= 32, "{name}");
             assert!(
-                !LISTING_SQL.contains(table),
-                "the listing reads {table}, which the manifest does not declare"
+                definition["sorts"].as_array().map_or(0, Vec::len) <= 8,
+                "{name}"
             );
+            assert!(definition.get("relationships").is_none(), "{name}");
+            assert!(definition.get("stage_aware").is_none(), "{name}");
         }
     }
 
-    // ─── The sitemap ─────────────────────────────────────────────────
+    #[test]
+    fn the_manifest_declares_no_database_access() {
+        // The capabilities are exactly these two keys: no database interface,
+        // no table list and no SQL grant.
+        let manifest = include_str!("../trovato_site.info.toml");
+        let capabilities: Vec<&str> = manifest
+            .split("[capabilities]")
+            .nth(1)
+            .unwrap()
+            .lines()
+            .map(str::trim)
+            .filter(|line| !line.is_empty() && !line.starts_with('#'))
+            .collect();
+        assert_eq!(
+            capabilities,
+            vec![
+                r#"host_interfaces = ["logging", "variables", "query", "item-api"]"#,
+                "item_background = true",
+            ]
+        );
+    }
 
     #[test]
     fn the_sitemap_route_is_not_the_kernels() {
@@ -1233,23 +1554,6 @@ mod tests {
     }
 
     #[test]
-    fn the_queries_are_written_as_one_line_each() {
-        // A `\\` where a `\` belongs turns a Rust line continuation into a
-        // literal backslash in the SQL, and Postgres answers `syntax error at or
-        // near "\"`. It is silent: the tap logs, returns nothing, and the page
-        // renders as though there were no rows.
-        for (name, sql) in [
-            ("LISTING_SQL", LISTING_SQL),
-            ("SITEMAP_SQL", SITEMAP_SQL),
-            ("DOCS_SQL", DOCS_SQL),
-            ("DOC_MARKDOWN_SQL", DOC_MARKDOWN_SQL),
-        ] {
-            assert!(!sql.contains('\\'), "{name} carries a literal backslash");
-            assert!(!sql.contains('\n'), "{name} carries a newline");
-        }
-    }
-
-    #[test]
     fn absolute_joins_exactly_one_slash() {
         assert_eq!(
             absolute("https://trovato.rs", "/news"),
@@ -1285,7 +1589,7 @@ mod tests {
         // No database in a unit test, so this is the route half of the document:
         // the declaration, the namespace, and every listing route as an absolute
         // URL. The item half is covered by the crawl in scripts/crawl.mjs.
-        let xml = sitemap();
+        let xml = sitemap().expect("the native query stub answers");
         assert!(xml.starts_with("<?xml version=\"1.0\" encoding=\"UTF-8\"?>"));
         assert!(xml.contains("xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\""));
         assert!(xml.trim_end().ends_with("</urlset>"));
@@ -1301,7 +1605,7 @@ mod tests {
         // The kernel's own sitemap emits `<loc>/news</loc>`, which the sitemap
         // protocol does not permit. That defect is the reason this one exists,
         // so it is the one thing worth asserting outright.
-        for line in sitemap().lines() {
+        for line in sitemap().expect("the native query stub answers").lines() {
             if let Some(rest) = line.trim().strip_prefix("<loc>") {
                 assert!(
                     rest.starts_with("https://") || rest.starts_with("http://"),
@@ -1311,13 +1615,140 @@ mod tests {
         }
     }
 
+    fn rows(first: u32, count: u32) -> Vec<serde_json::Value> {
+        (first..first + count)
+            .map(|n| serde_json::json!({ "n": n }))
+            .collect()
+    }
+
+    fn query_page(
+        items: Vec<serde_json::Value>,
+        has_next: bool,
+    ) -> trovato_sdk::types::QueryResult {
+        trovato_sdk::types::QueryResult {
+            items,
+            has_next,
+            ..Default::default()
+        }
+    }
+
     #[test]
-    fn the_sitemap_excludes_the_front_page_item() {
-        // `/` is listed once, from ROUTE_PATHS. The front page item has no alias
-        // — `/` cannot be aliased — so without this it appears a second time as
-        // /item/{uuid}: the same page at two URLs, in the one document whose job
-        // is to say which URLs exist.
-        assert!(SITEMAP_SQL.contains("i.type <> 'front_page'"));
+    fn every_page_reads_until_there_is_no_next_page() {
+        let read = every_page(|page| Ok(query_page(rows(page * 10, 2), page < 3)));
+        assert_eq!(read.unwrap().len(), 6);
+    }
+
+    #[test]
+    fn a_failed_later_page_fails_the_whole_read() {
+        // Rows from page one and an error from page two are not a result: a
+        // sitemap built from them would leave out every row after page one.
+        let read = every_page(|page| {
+            if page == 1 {
+                Ok(query_page(rows(0, 100), true))
+            } else {
+                Err(-1)
+            }
+        });
+        assert_eq!(read, Err(-1));
+    }
+
+    #[test]
+    fn a_failed_read_is_a_503_not_a_short_document() {
+        let failed = generated(Err(-10), "application/xml; charset=utf-8");
+        assert_eq!(failed.status, 503);
+
+        let served = generated(
+            Ok("<urlset/>".to_string()),
+            "application/xml; charset=utf-8",
+        );
+        assert_eq!(served.status, 200);
+        assert_eq!(served.body, "<urlset/>");
+        assert!(served.content_type.starts_with("application/xml"));
+    }
+
+    #[test]
+    fn a_missing_document_is_a_404_and_a_failed_read_a_503() {
+        assert_eq!(document_response(Ok(None)).status, 404);
+        assert_eq!(document_response(Err(-10)).status, 503);
+
+        let found = document_response(Ok(Some("# Title".to_string())));
+        assert_eq!(found.status, 200);
+        assert!(found.content_type.starts_with("text/markdown"));
+    }
+
+    #[test]
+    fn the_sitemap_lists_the_rows_it_was_given() {
+        let row = serde_json::json!({
+            "id": "0193b000-0002-7000-8000-000000000001",
+            "type": "blog",
+            "url": "/blog/twenty-fields-one-row",
+            "title": "Twenty fields, one row",
+            "created": 1_700_000_000,
+            "changed": 1_700_000_000,
+        });
+        let xml = sitemap_from(DEFAULT_BASE_URL, &[row]);
+        assert!(xml.contains(&format!(
+            "<loc>{DEFAULT_BASE_URL}/blog/twenty-fields-one-row</loc>"
+        )));
+    }
+
+    /// `count` items, as `fetch(limit, offset)` would page through them, with
+    /// any window wider than one item that covers a `bad` offset failing, and
+    /// the `bad` items failing on their own too.
+    fn listing(
+        count: usize,
+        bad: &'static [usize],
+    ) -> impl FnMut(usize, usize) -> Result<Vec<String>, i32> {
+        move |limit, offset| {
+            let end = (offset + limit).min(count);
+            let window = offset.min(end)..end;
+            if window.clone().any(|at| bad.contains(&at)) {
+                return Err(-1);
+            }
+            Ok(window.map(|at| format!("id-{at}")).collect())
+        }
+    }
+
+    #[test]
+    fn item_ids_reads_every_window() {
+        let (ids, complete) = item_ids(listing(45, &[]));
+        assert_eq!(ids.len(), 45);
+        assert!(complete);
+
+        let (ids, complete) = item_ids(listing(ID_PAGE * 2, &[]));
+        assert_eq!(ids.len(), ID_PAGE * 2);
+        assert!(complete);
+    }
+
+    #[test]
+    fn one_unreadable_item_costs_only_its_own_id() {
+        // An item too large for the output buffer fails its whole window. The
+        // other items in that window, and every later window, are still read.
+        let (ids, complete) = item_ids(listing(50, &[23]));
+        assert_eq!(ids.len(), 49);
+        assert!(!ids.contains(&"id-23".to_string()));
+        assert!(ids.contains(&"id-24".to_string()));
+        assert!(ids.contains(&"id-49".to_string()));
+        assert!(!complete);
+    }
+
+    #[test]
+    fn a_window_failing_item_by_item_ends_the_read() {
+        let mut calls = 0;
+        let (ids, complete) = item_ids(|_, _| {
+            calls += 1;
+            Err(-10)
+        });
+        assert!(ids.is_empty());
+        assert!(!complete);
+        assert_eq!(calls, 1 + ID_PAGE);
+    }
+
+    #[test]
+    fn item_ids_says_when_it_stopped_at_the_cap() {
+        let (ids, complete) = item_ids(listing(MAX_ID_ITEMS + 1, &[]));
+        assert_eq!(ids.len(), MAX_ID_ITEMS);
+        assert!(!complete);
     }
 
     #[test]
@@ -1342,52 +1773,92 @@ mod tests {
 
     // ─── Translations ────────────────────────────────────────────────
 
-    #[test]
-    fn a_translation_entry_needs_a_title_and_fields() {
-        // A malformed entry is skipped, not written as an empty translation:
-        // apply_translation_overlay replaces the title only when it is non-empty,
-        // so a blank one would leave a page half-translated instead of untranslated.
-        assert_eq!(sync_one("x", "it", &serde_json::json!({})), None);
-        assert_eq!(
-            sync_one("x", "it", &serde_json::json!({ "title": "T" })),
-            None
-        );
-        assert_eq!(
-            sync_one("x", "it", &serde_json::json!({ "fields": {} })),
-            None
-        );
-    }
-
-    #[test]
-    fn the_translation_queries_name_only_the_declared_table() {
-        // db_tables declares item, url_alias and item_translation. These three
-        // are the only statements that write anything at all.
-        for sql in [
-            TRANSLATION_READ_SQL,
-            TRANSLATION_WRITE_SQL,
-            TRANSLATION_LIST_SQL,
-            TRANSLATION_DELETE_SQL,
-        ] {
-            assert!(sql.contains("item_translation"), "{sql}");
-            assert!(!sql.contains("users"), "{sql}");
-            assert!(!sql.contains("comment"), "{sql}");
+    fn stored(title: &str, fields: serde_json::Value) -> ItemTranslation {
+        ItemTranslation {
+            item_id: Uuid::from_u128(5),
+            language: "it".into(),
+            title: title.into(),
+            fields,
+            created: 0,
+            changed: 0,
         }
     }
 
     #[test]
-    fn writing_a_translation_is_an_upsert_keyed_by_item_and_language() {
-        // The table's primary key is (item_id, language). Without the conflict
-        // clause a second cron tick is a duplicate-key error every minute.
-        assert!(TRANSLATION_WRITE_SQL.contains("ON CONFLICT (item_id, language) DO UPDATE"));
-        assert!(TRANSLATION_WRITE_SQL.contains("changed = EXCLUDED.changed"));
+    fn a_translation_entry_needs_a_title_and_fields() {
+        // A malformed entry is skipped, not written as an empty translation:
+        // the overlay replaces the title only when it is non-empty, so a blank
+        // one would leave a page half translated instead of untranslated.
+        assert_eq!(sync_one("x", "it", &serde_json::json!({}), &[]), None);
+        assert_eq!(
+            sync_one("x", "it", &serde_json::json!({ "title": "T" }), &[]),
+            None
+        );
+        assert_eq!(
+            sync_one("x", "it", &serde_json::json!({ "fields": {} }), &[]),
+            None
+        );
     }
 
     #[test]
-    fn nothing_declared_means_nothing_kept() {
-        // Not a database test — the host stubs return nothing — but it pins that
-        // an empty configuration is a request to remove everything rather than a
-        // reason to do nothing.
-        assert_eq!(remove_undeclared(&serde_json::json!({})), 0);
+    fn an_identical_translation_is_not_written_again() {
+        // Cron runs every minute. Saving an unchanged translation would move
+        // its `changed` every minute for nothing.
+        let id = Uuid::from_u128(5).to_string();
+        let fields =
+            serde_json::json!({ "body": { "value": "<p>Ciao</p>", "format": "full_html" } });
+        let declared = serde_json::json!({ "title": "Ciao", "fields": fields });
+        assert_eq!(
+            sync_one(&id, "it", &declared, &[stored("Ciao", fields.clone())]),
+            Some(false)
+        );
+    }
+
+    #[test]
+    fn a_changed_translation_is_written() {
+        // The native stub for save_translation refuses, so a write attempt is
+        // `None` here. What matters is that it was attempted, not skipped.
+        let id = Uuid::from_u128(5).to_string();
+        let declared = serde_json::json!({ "title": "Ciao", "fields": { "body": "nuovo" } });
+        assert_eq!(
+            sync_one(
+                &id,
+                "it",
+                &declared,
+                &[stored("Ciao", serde_json::json!({ "body": "vecchio" }))]
+            ),
+            None
+        );
+        assert_eq!(
+            sync_one(
+                &id,
+                "it",
+                &declared,
+                &[stored("Salve", serde_json::json!({ "body": "nuovo" }))]
+            ),
+            None
+        );
+    }
+
+    #[test]
+    fn nothing_declared_and_nothing_stored_removes_nothing() {
+        assert_eq!(remove_undeclared(&serde_json::json!({}), &[]), 0);
+    }
+
+    #[test]
+    fn only_an_undeclared_translation_is_removed() {
+        let id = Uuid::from_u128(5).to_string();
+        let mut french = stored("Salut", serde_json::json!({}));
+        french.language = "fr".into();
+        let held = [stored("Ciao", serde_json::json!({})), french];
+        let declared = serde_json::json!({ id: { "it": { "title": "Ciao", "fields": {} } } });
+        let gone: Vec<&str> = undeclared(&declared, &held)
+            .iter()
+            .map(|t| t.language.as_str())
+            .collect();
+        assert_eq!(gone, vec!["fr"]);
+        // Nothing declared: everything stored goes.
+        assert_eq!(undeclared(&serde_json::json!({}), &held).len(), 2);
     }
 
     #[test]

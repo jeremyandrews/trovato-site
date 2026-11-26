@@ -17,10 +17,10 @@ fields:
       <tbody>
       <tr><td>HTTP</td><td><a href="https://github.com/tokio-rs/axum">axum</a> 0.8, on <a href="https://github.com/tower-rs/tower">tower</a> 0.5</td><td>Routing, middleware, extractors</td></tr>
       <tr><td>Runtime</td><td><a href="https://tokio.rs/">tokio</a> 1</td><td>Everything asynchronous</td></tr>
-      <tr><td>Database</td><td><a href="https://github.com/launchbadge/sqlx">sqlx</a> 0.8, <a href="https://www.postgresql.org/">PostgreSQL</a></td><td>Async PostgreSQL access, parameterised queries</td></tr>
+      <tr><td>Database</td><td><a href="https://github.com/launchbadge/sqlx">sqlx</a> 0.9, <a href="https://www.postgresql.org/">PostgreSQL</a></td><td>Async PostgreSQL access, parameterised queries</td></tr>
       <tr><td>Templates</td><td><a href="https://keats.github.io/tera/">tera</a> 1</td><td>The theme layer, which uses the most specific template file that exists for a page</td></tr>
       <tr><td>Cache</td><td><a href="https://github.com/moka-rs/moka">moka</a> 0.12 in process, <a href="https://github.com/redis-rs/redis-rs">redis</a> 0.27 shared</td><td>Two tiers, deliberately</td></tr>
-      <tr><td>Plugins</td><td><a href="https://wasmtime.dev/">wasmtime</a> 47</td><td>One sandbox per plugin per call</td></tr>
+      <tr><td>Plugins</td><td><a href="https://wasmtime.dev/">wasmtime</a> 49</td><td>One sandbox per plugin per call</td></tr>
       <tr><td>Passwords</td><td><a href="https://github.com/RustCrypto/password-hashes/tree/master/argon2">argon2</a> 0.5</td><td>Hashing</td></tr>
       <tr><td>Sanitising</td><td><a href="https://github.com/rust-ammonia/ammonia">ammonia</a> 4</td><td>Cleaning the HTML that users submit before it is shown</td></tr>
       </tbody>
@@ -78,16 +78,15 @@ fields:
 
       <p>That defines a content type. You don&#8217;t write a schema migration or a form for it.</p>
 
-      <p>What a plugin may reach is declared separately, in its manifest, a short TOML file that ships with the plugin. These are the capabilities of the AI comment moderation plugin:</p>
+      <p>What a plugin may reach is declared separately, in its manifest, a short TOML file that ships with the plugin. These are the capabilities of this site&#8217;s own plugin:</p>
 
       <pre><code>[capabilities]
-      host_interfaces = ["logging", "queue", "ai-api", "db"]
-      ai_background = true
-      db_tables = ["comment"]</code></pre>
+      host_interfaces = ["logging", "variables", "query", "item-api"]
+      item_background = true</code></pre>
 
-      <p>The moderation plugin can log, use the job queue, call the configured AI provider, and use the database. A plugin can always use the tables its own migrations create; this one creates none, so <code>db_tables</code> is its entire database reach: the <code>comment</code> table and nothing else. The plugin doesn&#8217;t set <code>raw_sql</code>, the flag that would let it skip the table check, so every query it runs is checked. <code>ai_background</code> lets it call the AI provider from a queue job, where there&#8217;s no logged-in user whose permissions would cover the call.</p>
+      <p>The plugin can log and read its own settings. It runs its queries through Gather, the query engine behind every listing on this site, the front page&#8217;s recent posts included. It reads and writes content through the kernel&#8217;s item functions. The plugin asks for no database access of its own, so the kernel decides what each read may see. <code>item_background</code> lets it use the item functions from a scheduled task, where there&#8217;s no logged-in user whose permissions would cover the call.</p>
 
-      <p>The kernel enforces both lists: it connects the plugin only to the interfaces in <code>host_interfaces</code>, and checks every structured database call against <code>db_tables</code>.</p>
+      <p>The kernel connects the plugin only to the interfaces in <code>host_interfaces</code>. A plugin that does use the database also lists the tables it needs in <code>db_tables</code>, and the kernel checks every structured database call against that list.</p>
 
       <p><a href="/learn/plugin-development">The plugin development guide</a> is the long version, <a href="/learn/plugin-quick-reference">the quick reference</a> is the short one, and <a href="/learn/design-plugin-system">the plugin system design</a> explains why it works this way.</p>
     format: filtered_html

@@ -10,7 +10,7 @@ That is a dated fact about where these bytes came from, and it does not move whe
 the site's pinned kernel does. The pin itself is generated:
 
 <!-- kernel-release:begin -->
-The site currently runs Trovato `0.102.0` (tag `v0.102.0`).
+The site currently runs Trovato `0.105.0` (tag `v0.105.0`).
 <!-- kernel-release:end -->
 
 `assets/brand/BRAND.md` in that repository is the source of truth for the palette,
