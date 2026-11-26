@@ -1302,3 +1302,59 @@ turns the header's HTTP-date form into an immediate retry. Load, settle,
 measurement and capture now retry as one unit, and `scripts/ratelimit.mjs`
 reads both forms of the header for shoot, a11y and crawl. `npm test` covers
 both, with a fixture server, and runs in CI.
+
+## C10: the review site moved off ks1, to kw3
+
+**Attempt 1, 2026-11-26:** the review site's pods sat on ks1 (the manifests
+required arm64 and excluded ks2 and ks3) and used 1.37 cores while idle. A
+load-test arm that waits for ks1 to be quiet had failed that check about 100
+times since 2026-11-25 21:52Z. All of it was the `site` container (1370m by
+`kubectl top`). Two of its tokio worker threads were in state R with no system
+call in progress, so they were spinning in user space, and each had about
+24,000 s of CPU time. Postgres used 7m and Redis 13m.
+
+**What spun.** The logs and the kernel source (v0.102.0, `20baa12`) tell the
+same story. At 21:47:14Z ks1's kernel logged a SYN flood on port 8080, and
+the site's Redis connections and DNS lookups failed for the next minute or
+two. The cron run that began at 21:49:03 logged its first three cleanups and
+never logged `processed queue items`. It was stuck in `process_queues`
+(`crates/kernel/src/cron/tasks.rs:271`), whose `pop`
+(`crates/kernel/src/cron/queue.rs:62`) opens a multiplexed Redis connection
+with no timeout. The Redis client is opened without connect or response
+timeouts (`crates/kernel/src/state.rs:276`, redis 0.27). The spinning was
+inside that await, which never resolved; the redis crate itself was not read.
+For the same reason the run's heartbeat (`crates/kernel/src/cron/mod.rs:622`,
+`run_heartbeat`) kept renewing `cron:lock` to 300 s each minute. The lock
+never expired, so every later tick logged only `cron triggered via HTTP` and
+skipped the run (the skip logs at `debug`), and the cron poker's 30 s curl
+timed out. Nothing in this repository's config causes or cures it. The fix
+belongs in the kernel: a timeout on each cron task and on every Redis call,
+and a cap on how long the heartbeat may keep a lock alive. That is reported
+here and not patched.
+
+**The move.** In order:
+- `pg_dump -Fc` (54 items, 2 users), Redis's `dump.rdb` (checksum matched) and
+  the uploads volume (empty: no files and no `file_managed` rows) copied to
+  the Studio. Then every workload was scaled to zero. ks1 was clear of the
+  namespace at 07:33:06Z.
+- kw3 was chosen over kw2 because it had more CPU free after requests (920m
+  against 670m). Both have room for the site's requests in memory.
+- The image was built for linux/amd64 from main at `147aa39`, the squash of the
+  C7b branch whose `30c7d1e` the site had been serving. The Dockerfile only
+  copies files onto the multi-arch kernel image, so nothing was emulated.
+- Every manifest, including the moderation check's, now pins
+  `kubernetes.io/hostname In [kw3.pozza]` and tolerates
+  `pozza/workload=plex:NoSchedule`. Requests and limits are unchanged.
+- The Service went from `externalTrafficPolicy: Local` to `Cluster`. The kw
+  nodes run no MetalLB speaker, so with Local nothing announced 10.20.250.17.
+  A ks speaker now announces it and forwards to kw3.
+- `apply.sh` builds amd64 and no longer relays the push through ks1. Without a
+  `registry.pozza` login on the machine it stops and says so.
+- After the restore, `/`, `/why`, `/news` and `/search?q=Drupal` all answered
+  200, with 54 items and 2 users. Full-page screenshots are in
+  `docs/screenshots/c10/`.
+- `checks/tests/deploy_k3s.rs` loses
+  `the_push_relay_never_touches_the_hosts_own_images`, which tested the relay
+  that is now gone. Four tests replace it: the push is never relayed through
+  a node, the build is linux/amd64, every manifest is pinned to kw3 and names
+  no load-test or Minecraft node, and the Service is `Cluster`.
