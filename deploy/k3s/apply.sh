@@ -11,8 +11,7 @@
 #
 # Environment: KUBECONFIG (default ~/.kube/ks1.yaml), LB_IP (default
 # 10.20.250.17), SITE_HOST (default <LB_IP>.nip.io, the host SITE_URL names),
-# IMAGE_REPO (default registry.pozza/jeremyandrews/trovato-site), PUSH_HOST
-# (default ks1.pozza, used only when this machine has no push login).
+# IMAGE_REPO (default registry.pozza/jeremyandrews/trovato-site).
 set -euo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -73,26 +72,25 @@ else
 fi
 SITE_IMAGE="${IMAGE_REPO}:${TAG}"
 
-echo "==> Building ${SITE_IMAGE} for linux/arm64 on ${KERNEL_IMAGE}"
-docker build --platform linux/arm64 --build-arg "KERNEL_IMAGE=${KERNEL_IMAGE}" \
+# Every pod is pinned to kw3, an amd64 node (see site.yaml). The Dockerfile
+# only copies files onto the multi-arch kernel image and runs nothing, so this
+# build is a pull of the amd64 base plus a few COPY layers on any machine, with
+# no emulated step.
+echo "==> Building ${SITE_IMAGE} for linux/amd64 on ${KERNEL_IMAGE}"
+docker build --platform linux/amd64 --build-arg "KERNEL_IMAGE=${KERNEL_IMAGE}" \
     -t "$SITE_IMAGE" "$ctx"
-# registry.pozza takes anonymous pulls and authenticated pushes. If this Mac's
-# docker has been logged in (docker login registry.pozza -u jeremyandrews), the
-# push goes straight there. Otherwise the image is relayed through ks1, whose
-# root podman holds the push login: docker save, piped over ssh into podman
-# load, then podman push. The load goes into a throwaway image store made for
-# this push and deleted after it (--root and --runroot), so ks1's own images
-# are never read, retagged or removed. The password never leaves ks1.
+# registry.pozza takes anonymous pulls and authenticated pushes, so this
+# machine's docker must be logged in. The push is never relayed through a
+# cluster node: ks1 to ks3 and kw1 carry the load tests.
 echo "==> Pushing"
 if docker push "$SITE_IMAGE" >"$work/push.log" 2>&1; then
     tail -n 1 "$work/push.log"
 else
-    if ! grep -q "no basic auth credentials\|unauthorized\|authorization" "$work/push.log"; then
-        cat "$work/push.log" >&2; exit 1
+    cat "$work/push.log" >&2
+    if grep -q "no basic auth credentials\|unauthorized\|authorization" "$work/push.log"; then
+        echo "no push login for registry.pozza here: docker login registry.pozza -u jeremyandrews" >&2
     fi
-    echo "    no push login here; relaying through ${PUSH_HOST:=ks1.pozza}"
-    docker save "$SITE_IMAGE" | ssh -o BatchMode=yes "$PUSH_HOST" \
-        "set -e; d=\$(sudo -n mktemp -d /var/tmp/trovato-site-push.XXXXXX); trap 'sudo -n rm -rf \$d' EXIT; sudo -n podman --root \$d/root --runroot \$d/run --storage-driver vfs load -q >/dev/null; sudo -n podman --root \$d/root --runroot \$d/run --storage-driver vfs push -q '$SITE_IMAGE'"
+    exit 1
 fi
 # Confirm the registry has it, anonymously, the way the nodes will pull it.
 curl -fsS -o /dev/null -H 'Accept: application/vnd.oci.image.index.v1+json, application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json' \

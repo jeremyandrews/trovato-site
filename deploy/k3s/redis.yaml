@@ -35,17 +35,19 @@ spec:
         app: trovato-redis
     spec:
       enableServiceLinks: false
+      tolerations:
+        - key: pozza/workload
+          operator: Equal
+          value: plex
+          effect: NoSchedule
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
               - matchExpressions:
-                  - key: kubernetes.io/arch
-                    operator: In
-                    values: [arm64]
                   - key: kubernetes.io/hostname
-                    operator: NotIn
-                    values: [ks2.pozza, ks3.pozza]
+                    operator: In
+                    values: [kw3.pozza]
       containers:
         - name: redis
           image: redis:7-alpine
