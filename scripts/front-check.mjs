@@ -6,8 +6,7 @@
 // which renders every plain string field into `children` as a labelled,
 // escaped `<div class="field">`. The front page template printed `children`,
 // so below the gallery the page printed its own body and proof as visible
-// markup, under "Body:" and "proof:", with a comment thread under that and a
-// breadcrumb over the hero. The crawl, the accessibility pass and the
+// markup, under "Body:" and "proof:", and a breadcrumb sat over the hero. The crawl, the accessibility pass and the
 // screenshots all passed, because each of them checks that things are there
 // and none of them checks that a thing is there once. This does.
 
@@ -19,7 +18,6 @@ const FORBIDDEN = [
   { needle: "field__label", why: "a field label from the item route's field rendering" },
   { needle: "Body:", why: "the body field's label" },
   { needle: "proof:", why: "the proof field's label" },
-  { needle: 'class="comments"', why: "a comment thread" },
   { needle: 'class="breadcrumb"', why: "a breadcrumb" },
 ];
 
@@ -36,9 +34,23 @@ function count(haystack, needle) {
   return (haystack.match(needle) ?? []).length;
 }
 
-/** The problems with one served front page, as readable lines; empty is good. */
-export function frontPageProblems(html) {
+/** The hero's lede sentence, or null when the page has none. */
+export function ledeOf(html) {
+  const m = html.match(/<p class="front-hero__lede">([^<]+)<\/p>/);
+  return m ? m[1].trim() : null;
+}
+
+/**
+ * The problems with one served front page, as readable lines; empty is good.
+ *
+ * `lang` is the language the page was asked for. The document element has to
+ * name it, so the English page served at `/it/` fails here rather than passing
+ * as a second copy of a correct page.
+ */
+export function frontPageProblems(html, lang) {
   const problems = [];
+  const htmlLang = html.match(/<html[^>]*\slang="([^"]*)"/)?.[1];
+  if (htmlLang !== lang) problems.push(`<html lang> is "${htmlLang ?? ""}", expected "${lang}"`);
   const start = html.indexOf("<main");
   const end = html.lastIndexOf("</main>");
   if (start < 0 || end < start) return ["no <main> element"];
@@ -57,12 +69,12 @@ export function frontPageProblems(html) {
   // The lede, read from the page itself so the same rule holds in every
   // language. Counted inside <main> only: the site header prints the same
   // sentence as its tagline, which is correct and not a repeat.
-  const lede = main.match(/<p class="front-hero__lede">([^<]+)<\/p>/);
+  const lede = ledeOf(main);
   if (!lede) {
     problems.push("no lede paragraph in the hero");
   } else {
-    const n = count(main, lede[1].trim());
-    if (n !== 1) problems.push(`the lede "${lede[1].trim()}" appears ${n} times in <main>`);
+    const n = count(main, lede);
+    if (n !== 1) problems.push(`the lede "${lede}" appears ${n} times in <main>`);
   }
 
   return problems;

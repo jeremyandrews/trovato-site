@@ -20,15 +20,7 @@
    The form posts `application/x-www-form-urlencoded` to the same route the JSON
    API uses. The kernel accepts both encodings, takes the token from `_csrf` for a
    form, and answers a form with a redirect rather than JSON. So this works with
-   JavaScript switched off, which is the point.
-
-   Not on the front page. On the pinned kernel `/` is served by the ordinary
-   item route, and that route renders this thread under every item, of every
-   type: the kernel has no switch to turn comments off for one item or one
-   type. The route passes `current_path` as `/` when it serves the front page,
-   in either language, so that is what this checks. Until 0.105.0 a separate
-   front page handler served `/` and never asked for a thread at all. #}
-{% if current_path != "/" %}
+   JavaScript switched off, which is the point. #}
 <section class="comments" aria-labelledby="comments-heading">
     <h2 class="comments__heading" id="comments-heading">
         {% if total == 0 %}Comments{% elif total == 1 %}One comment{% else %}{{ total }} comments{% endif %}
@@ -93,4 +85,3 @@
     </p>
     {% endif %}
 </section>
-{% endif %}

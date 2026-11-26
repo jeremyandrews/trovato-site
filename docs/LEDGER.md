@@ -1535,6 +1535,7 @@ The route change brought three more differences from the C7b front page
   page.html printed its breadcrumb.
 - A "Comments" block with log in and create account links. The item route
   renders the comment thread under every item; the old handler never did.
+  This one stays, see below.
 - The `<div class="front">` wrapper from `page--front.html` was gone. No
   stylesheet rule reads it, so it changed nothing visible.
 
@@ -1548,17 +1549,28 @@ The route change brought three more differences from the C7b front page
 - `templates/page--front.html` is now
   `templates/page--item--0193b000-0000-7000-8000-000000000001.html`, the name
   the item route asks for. It overrides `content`, so there is no breadcrumb.
-- `templates/elements/comments.html` prints nothing when `current_path` is
-  `/`. The item route sets that for the front page in every language. The
-  kernel has no switch to turn comments off for one item or one type; a site
-  template is the only place this can be decided without a kernel change.
 - `scripts/front.mjs` (`npm run front`) fetches `/` and `/it/` and fails on
-  `&lt;p`, `&lt;section`, `field__label`, `Body:`, `proof:`, a comment thread,
-  a breadcrumb, the lede more than once in `<main>`, or anything other than
-  one hero, eight cards, one gallery and one listing. The rules are in
+  `&lt;p`, `&lt;section`, `field__label`, `Body:`, `proof:`, a breadcrumb,
+  the lede more than once in `<main>`, or anything other than one hero, eight
+  cards, one gallery and one listing. It does not follow redirects, it
+  requires `<html lang>` to name the language asked for, and it fails if `/it/`
+  carries the English lede, so the English page served at `/it/` cannot pass
+  as a second correct page. The rules are in
   `scripts/front-check.mjs` and have their own tests in
   `scripts/test/front.test.mjs`. It runs in CI after the crawl, in
   `scripts/check-all.sh` and in `deploy/k3s/gate.sh`.
+
+### Left as it is: comments on the front page
+
+The Comments block stays under the front page. The kernel has no way to turn
+comments off for one item or one type: `render_thread` in
+`crates/kernel/src/routes/comment.rs` (line 817 at the tag) asks only whether
+the comments plugin is on, `crates/kernel/src/routes/item.rs` (line 844) calls
+it for every item, and `create_comment_inner` (line 359) accepts a comment on
+any item the commenter may view. Hiding the thread in the site's template would
+leave the front page open to comments with no way to read them. This needs a
+kernel change: a per type or per item comment switch that both the thread and
+the create route honour.
 
 ### Rejected
 
@@ -1574,13 +1586,14 @@ The route change brought three more differences from the C7b front page
 
 | Check | Result |
 |---|---|
-| `scripts/front.mjs` against the review site on `main` (`36bcee7`) | FAIL on `/` and `/it/`: `&lt;p` 10 times, `&lt;section` twice, `field__label` twice, "Body:", "proof:", a comment thread, a breadcrumb, the lede twice |
+| `scripts/front.mjs` against the review site on `main` (`36bcee7`) | FAIL on `/` and `/it/`: `&lt;p` 10 times, `&lt;section` twice, `field__label` twice, "Body:", "proof:", a breadcrumb, the lede twice |
+| `scripts/front.mjs` against a fixture serving the English front page at `/` and `/it/` | FAIL on `/it/`: `<html lang>` is "en", and the English lede |
 | `scripts/front.mjs` with the fix, local and on the review site | PASS on `/` and `/it/` |
 | `./scripts/check-all.sh` on `./scripts/run.sh --fresh --proxy` | all 11 gates PASS, the new front page gate included |
 | `npm test` | 11 PASS |
 | `deploy/k3s/gate.sh` on the review site | crawl, front, a11y, shoot, roundtrip, moderation PASS |
 | Escaped markup count on the review site, `/` and `/it/` | 0 and 0 |
-| Chrome on the review site | `/` and `/it/`: one hero, eight cards, one gallery, "Recent posts" once, no comments, no breadcrumb, no console error |
+| Chrome on the review site | `/` and `/it/`: one hero, eight cards, one gallery, "Recent posts" once, the Comments block once at the end, no breadcrumb, no console error |
 | Front page saved unchanged in `/admin/content/<id>/edit` | "has been updated"; `<main>` of `/` and `/it/` identical before and after |
 | `field__label` on all 57 sitemap pages | none |
 
