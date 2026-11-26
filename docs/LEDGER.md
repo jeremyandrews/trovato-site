@@ -1463,7 +1463,20 @@ search settings model, and a `templates/search.html` with `scolta-config` and
   index is not served after the first tick.
 - The search explainer describes the in-browser search and the server
   fallback. The accessibility page, English and Italian, no longer says
-  search works the same with JavaScript on or off.
+  search works the same with JavaScript on or off, and says the in-browser
+  search box is named only by its placeholder (the kernel's `scolta.js`
+  gives it no label).
+- The in-browser results needed the site's styling. At 390px an excerpt
+  quoting a long URL pushed the page to 614px (the kernel's narrow layout is a
+  bare `1fr` column), and the kernel stylesheet's literal greys and the
+  site's peach highlight failed contrast in both schemes. `site.css` now lets
+  the column shrink, breaks long words, and puts every text colour the
+  results use on a checked token; `tokens.css` adds `--highlight`, checked
+  against `--text`, `--text-muted` and `--link` in both schemes.
+- The render and accessibility gates now load `/search?q=Drupal` rather than
+  `/search`, so they cover the in-browser results. Without the CSS above,
+  shoot fails it on overflow and on the highlight, and a11y fails it on
+  contrast.
 
 ### Checked
 
@@ -1475,5 +1488,6 @@ search settings model, and a `templates/search.html` with `scolta-config` and
 | Excerpts | "Look & Feel" and `"<uuid>"` render once escaped |
 | Pod deleted | index 404 on the new pod, built by the sidecar's first tick 61 s later ("the live directory /app/static/pagefind has no pagefind-entry.json"), check repeated clean |
 | `/admin/config/search` | expansion, summary, follow ups, analytics and sentiment off |
+| `deploy/k3s/gate.sh` on the review site | crawl, a11y, shoot, roundtrip, moderation PASS |
 
 Screenshots: `docs/screenshots/c8-*.png`.
