@@ -177,26 +177,58 @@ fn the_installer_is_closed_to_the_lan() {
 }
 
 #[test]
-fn the_push_relay_never_touches_the_hosts_own_images() {
+fn the_push_is_never_relayed_through_a_node() {
+    // ks1 to ks3 and kw1 carry the load tests; the image goes from this
+    // machine to the registry or not at all.
     let apply = read("apply.sh");
-    let relay = apply
-        .lines()
-        .find(|l| l.contains("sudo -n podman"))
-        .expect("no podman relay line");
-    assert!(
-        !relay.contains("rmi"),
-        "the relay removes images from the host store"
-    );
-    let podman_calls = relay.matches("sudo -n podman ").count();
-    let isolated = relay
-        .matches("sudo -n podman --root \\$d/root --runroot \\$d/run --storage-driver vfs ")
-        .count();
-    assert_eq!(
-        isolated, 2,
-        "load and push should both use the throwaway store"
-    );
-    assert_eq!(podman_calls, isolated, "a podman call uses the host store");
-    assert!(relay.contains("trap 'sudo -n rm -rf \\$d' EXIT"));
+    assert!(!apply.contains("ssh "), "apply.sh reaches a node over ssh");
+    assert!(!apply.contains("podman"), "apply.sh relays through podman");
+    assert!(!apply.contains("PUSH_HOST"));
+    assert!(apply.contains("docker push \"$SITE_IMAGE\""));
+    assert!(apply.contains("docker login registry.pozza -u jeremyandrews"));
+}
+
+#[test]
+fn the_image_is_built_for_the_node_it_runs_on() {
+    let apply = read("apply.sh");
+    assert!(apply.contains("docker build --platform linux/amd64 "));
+    assert!(!apply.contains("linux/arm64"));
+}
+
+#[test]
+fn every_pod_is_pinned_to_kw3_and_none_to_the_load_test_nodes() {
+    for name in ["site.yaml", "postgres.yaml", "redis.yaml", "modcheck.yaml"] {
+        let m = read(name);
+        assert!(
+            m.contains("- key: kubernetes.io/hostname\n") && m.contains("values: [kw3.pozza]"),
+            "{name} is not pinned to kw3"
+        );
+        assert!(
+            !m.contains("kubernetes.io/arch"),
+            "{name} still selects on arch"
+        );
+        for node in [
+            "ks1.pozza",
+            "ks2.pozza",
+            "ks3.pozza",
+            "kw1.pozza",
+            "kw4.pozza",
+        ] {
+            assert!(!m.contains(node), "{name} names {node}");
+        }
+        assert!(
+            m.contains("value: plex"),
+            "{name} does not tolerate kw3's taint"
+        );
+    }
+}
+
+#[test]
+fn the_lan_address_is_announced_for_a_pod_on_a_kw_node() {
+    // No MetalLB speaker runs on the kw nodes, so Local would announce nothing.
+    let site = read("site.yaml");
+    assert!(site.contains("externalTrafficPolicy: Cluster"));
+    assert!(site.contains("metallb.io/loadBalancerIPs: __LB_IP__"));
 }
 
 #[test]

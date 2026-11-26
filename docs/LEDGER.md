@@ -1353,3 +1353,8 @@ here and not patched.
 - After the restore, `/`, `/why`, `/news` and `/search?q=Drupal` all answered
   200, with 54 items and 2 users. Full-page screenshots are in
   `docs/screenshots/c10/`.
+- `checks/tests/deploy_k3s.rs` loses
+  `the_push_relay_never_touches_the_hosts_own_images`, which tested the relay
+  that is now gone. Four tests replace it: the push is never relayed through
+  a node, the build is linux/amd64, every manifest is pinned to kw3 and names
+  no load-test or Minecraft node, and the Service is `Cluster`.
