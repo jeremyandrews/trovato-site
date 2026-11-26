@@ -1334,7 +1334,17 @@ and write in `trovato_site` off `raw_sql` onto the kernel's `query` and
   items, and the largest `docs` item's fields are 637 KB against the SDK's
   256 KB output buffer. The sync reads stored translations for the declared
   items and every `front_page`, `page`, `blog` and `news` item, not `docs`.
-  The old SQL saw every row of `item_translation`.
+  The old SQL saw every row of `item_translation`. So a translation of a
+  `docs` item that the configuration never declared, or stops declaring, is
+  not removed by the sync; the site declares none, and one would have to be
+  deleted by hand until cron can run a query.
+- **Reads that fail now say so.** A sitemap or `/llms.txt` read that fails on
+  any page answers 503 instead of a 200 holding the pages read before the
+  failure, and a failed `/learn/raw/{slug}` read answers 503 instead of 404.
+  The sync's id scan reads a failing window again one item at a time, so one
+  item too large for the output buffer costs only its own id and the declared
+  items still sync; it reads up to 10,000 items of a type and logs a warning
+  when it stops short.
 - **Config import has an `item_translation` entity on 0.105.0**, so the
   translations variable could become `item_translation.*.yml` files. Not done.
 - **0.105.0 made four sentences on the main pages false:** the Why page's

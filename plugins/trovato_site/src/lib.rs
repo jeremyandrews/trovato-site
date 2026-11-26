@@ -294,31 +294,44 @@ pub fn post_from_row(row: &serde_json::Value) -> Option<Post> {
 
 /// Every row of `definition`, a page at a time, up to `MAX_PAGES` pages.
 ///
-/// A failure is logged and ends the read with the rows found so far.
-fn every_row(definition: &serde_json::Value, what: &str) -> Vec<serde_json::Value> {
-    let mut rows = Vec::new();
-    for page in 1..=MAX_PAGES {
-        match host::query(
+/// A failure on any page is the caller's error: a sitemap or an index served
+/// from the pages read before it would look complete and not be.
+fn every_row(definition: &serde_json::Value, what: &str) -> Result<Vec<serde_json::Value>, i32> {
+    every_page(|page| {
+        host::query(
             definition,
             &serde_json::json!({ "page": page, "per_page": PAGE }),
-        ) {
-            Ok(result) => {
-                rows.extend(result.items);
-                if !result.has_next {
-                    break;
-                }
-            }
-            Err(code) => {
-                host::log(
-                    "error",
-                    PLUGIN_NAME,
-                    &format!("{what} query failed on page {page}: {code}"),
-                );
-                break;
-            }
+        )
+    })
+    .inspect_err(|code| {
+        host::log(
+            "error",
+            PLUGIN_NAME,
+            &format!("{what} query failed: {code}"),
+        );
+    })
+}
+
+/// The paging behind `every_row`: call `fetch` for page 1, 2, ... until a page
+/// says there is no next one, or `MAX_PAGES` have been read. The first error
+/// ends the read and is returned.
+fn every_page(
+    mut fetch: impl FnMut(u32) -> Result<trovato_sdk::types::QueryResult, i32>,
+) -> Result<Vec<serde_json::Value>, i32> {
+    let mut rows = Vec::new();
+    for page in 1..=MAX_PAGES {
+        let result = fetch(page)?;
+        rows.extend(result.items);
+        if !result.has_next {
+            return Ok(rows);
         }
     }
-    rows
+    host::log(
+        "warn",
+        PLUGIN_NAME,
+        &format!("a read stopped at its cap of {MAX_PAGES} pages"),
+    );
+    Ok(rows)
 }
 
 /// Render the listing.
@@ -442,24 +455,39 @@ pub fn tap_menu() -> Vec<MenuRoute> {
 #[plugin_tap]
 pub fn tap_api(request: ApiRequest) -> ApiResponse {
     match request.callback.as_str() {
-        "sitemap" => {
-            ApiResponse::with_status(200, sitemap()).content_type("application/xml; charset=utf-8")
-        }
+        "sitemap" => generated(sitemap(), "application/xml; charset=utf-8"),
         "doc_raw" => match request.params.get("slug").map(String::as_str) {
-            Some(slug) => match doc_markdown(slug) {
-                Some(markdown) => ApiResponse::with_status(200, markdown)
-                    .content_type("text/markdown; charset=utf-8"),
-                None => ApiResponse::error(404, "no such document"),
-            },
+            Some(slug) => document_response(doc_markdown(slug)),
             None => ApiResponse::error(404, "no such document"),
         },
-        "llms" => {
-            ApiResponse::with_status(200, llms_txt()).content_type("text/plain; charset=utf-8")
-        }
+        "llms" => generated(llms_txt(), "text/plain; charset=utf-8"),
         other => {
             host::log("warn", PLUGIN_NAME, &format!("unknown callback: {other}"));
             ApiResponse::error(404, "not found")
         }
+    }
+}
+
+/// A generated document, or 503 when a read behind it failed.
+///
+/// Not a 200 with what was read before the failure: a crawler takes a sitemap
+/// at its word, and a 503 tells it to come back.
+pub fn generated(body: Result<String, i32>, content_type: &str) -> ApiResponse {
+    match body {
+        Ok(body) => ApiResponse::with_status(200, body).content_type(content_type),
+        Err(_) => ApiResponse::error(503, "temporarily unavailable"),
+    }
+}
+
+/// A documentation page's markdown: 200, 404 when no page has that address,
+/// 503 when the read failed and the answer is not known.
+pub fn document_response(markdown: Result<Option<String>, i32>) -> ApiResponse {
+    match markdown {
+        Ok(Some(markdown)) => {
+            ApiResponse::with_status(200, markdown).content_type("text/markdown; charset=utf-8")
+        }
+        Ok(None) => ApiResponse::error(404, "no such document"),
+        Err(_) => ApiResponse::error(503, "temporarily unavailable"),
     }
 }
 
@@ -482,22 +510,27 @@ const ROUTE_PATHS: [&str; 4] = ["/", "/news", "/blog", "/blog/archive"];
 /// Both are kernel-side and neither is fixed here. What the site does instead is
 /// serve a correct sitemap of its own at a path the kernel has not taken, and
 /// the production proxy maps `/sitemap.xml` onto it. See `docs/DEPLOY.md`.
-pub fn sitemap() -> String {
-    let base = base_url();
+pub fn sitemap() -> Result<String, i32> {
+    let rows = every_row(&sitemap_definition(), "sitemap")?;
+    Ok(sitemap_from(&base_url(), &rows))
+}
+
+/// The sitemap document for `rows`, after the site's own routes.
+pub fn sitemap_from(base: &str, rows: &[serde_json::Value]) -> String {
     let mut xml = String::from("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
     xml.push_str("<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">\n");
 
     for path in ROUTE_PATHS {
-        xml.push_str(&sitemap_entry(&absolute(&base, path), None));
+        xml.push_str(&sitemap_entry(&absolute(base, path), None));
     }
 
-    for row in &every_row(&sitemap_definition(), "sitemap") {
+    for row in rows {
         let Some(post) = post_from_row(row) else {
             continue;
         };
         let changed = row.get("changed").and_then(serde_json::Value::as_i64);
         xml.push_str(&sitemap_entry(
-            &absolute(&base, &post.path),
+            &absolute(base, &post.path),
             changed.map(iso_date),
         ));
     }
@@ -688,11 +721,65 @@ const TRANSLATED_TYPES: [&str; 4] = [FRONT_PAGE_TYPE, "page", "blog", NEWS_TYPE]
 /// Items per `query_items` call. Small, because each item comes back whole.
 const ID_PAGE: usize = 20;
 
+/// The most items of one type the sync reads ids for. A site past it gets a
+/// warning in the log, and the items beyond it keep any stored translation
+/// the configuration no longer declares.
+const MAX_ID_ITEMS: usize = 10_000;
+
+/// The ids of every item one `fetch(limit, offset)` call after another can
+/// reach, and whether that was all of them.
+///
+/// A window that fails as a whole is read again one item at a time, so one
+/// item too large for the SDK's output buffer costs only its own id. A window
+/// in which every single item fails as well ends the read: the failure is not
+/// about one item. The read also ends at `MAX_ID_ITEMS`. Either way the ids
+/// already read are returned, with `false`.
+fn item_ids(
+    mut fetch: impl FnMut(usize, usize) -> Result<Vec<String>, i32>,
+) -> (Vec<String>, bool) {
+    let mut ids = Vec::new();
+    let mut complete = true;
+    let mut offset = 0;
+    while offset < MAX_ID_ITEMS {
+        match fetch(ID_PAGE, offset) {
+            Ok(batch) => {
+                let done = batch.len() < ID_PAGE;
+                ids.extend(batch);
+                if done {
+                    return (ids, complete);
+                }
+            }
+            Err(_) => {
+                let mut read = 0;
+                for at in offset..offset + ID_PAGE {
+                    match fetch(1, at) {
+                        Ok(one) if one.is_empty() => return (ids, complete),
+                        Ok(one) => {
+                            read += 1;
+                            ids.extend(one);
+                        }
+                        Err(_) => complete = false,
+                    }
+                }
+                if read == 0 {
+                    return (ids, false);
+                }
+            }
+        }
+        offset += ID_PAGE;
+    }
+    (ids, false)
+}
+
 /// Every translation the kernel stores for the declared items and for every
-/// item of `TRANSLATED_TYPES`, or `None` if it could not be read.
+/// item of `TRANSLATED_TYPES`, or `None` if the stored translations could not
+/// be read.
 ///
 /// `None` rather than an empty list: an empty list would read as "nothing is
 /// stored", and the sync would then write every declared translation again.
+/// An item list that could not be read in full is not `None`: the declared
+/// items are always asked about, so their translations still sync, and only
+/// the removal of undeclared translations misses the items that were not read.
 fn stored_translations(translations: &serde_json::Value) -> Option<Vec<ItemTranslation>> {
     let mut ids: Vec<String> = translations
         .as_object()
@@ -700,29 +787,26 @@ fn stored_translations(translations: &serde_json::Value) -> Option<Vec<ItemTrans
         .unwrap_or_default();
 
     for item_type in TRANSLATED_TYPES {
-        for page in 0..MAX_PAGES as usize {
-            let query = serde_json::json!({
+        let (found, complete) = item_ids(|limit, offset| {
+            host::query_items(&serde_json::json!({
                 "type": item_type,
-                "limit": ID_PAGE,
-                "offset": page * ID_PAGE,
-            });
-            let items = match host::query_items(&query) {
-                Ok(items) => items,
-                Err(code) => {
-                    host::log(
-                        "error",
-                        PLUGIN_NAME,
-                        &format!("could not list {item_type} items: {code}"),
-                    );
-                    return None;
-                }
-            };
-            let done = items.len() < ID_PAGE;
-            ids.extend(items.into_iter().map(|item| item.id.to_string()));
-            if done {
-                break;
-            }
+                "limit": limit,
+                "offset": offset,
+            }))
+            .map(|items| items.into_iter().map(|item| item.id.to_string()).collect())
+        });
+        if !complete {
+            host::log(
+                "warn",
+                PLUGIN_NAME,
+                &format!(
+                    "read the ids of {} {item_type} item(s), not all of them; \
+                     undeclared translations of the rest stay until a later run",
+                    found.len()
+                ),
+            );
         }
+        ids.extend(found);
     }
     ids.sort();
     ids.dedup();
@@ -837,30 +921,31 @@ fn remove_undeclared(translations: &serde_json::Value, stored: &[ItemTranslation
 ///
 /// The `docs` item template ignores `children` and reads the fields it wants
 /// directly, so neither of these renders as an ordinary field on the page.
-fn doc_markdown(slug: &str) -> Option<String> {
+///
+/// `Ok(None)` when no published page has that address, `Err` when the read
+/// failed: the route answers 404 for the first and 503 for the second.
+fn doc_markdown(slug: &str) -> Result<Option<String>, i32> {
     if !is_safe_slug(slug) {
-        return None;
+        return Ok(None);
     }
 
-    match host::query(
+    let result = host::query(
         &doc_markdown_definition(slug),
         &serde_json::json!({ "per_page": 1 }),
-    ) {
-        Ok(result) => result
-            .items
-            .first()?
-            .get("markdown")?
-            .as_str()
-            .map(str::to_string),
-        Err(code) => {
-            host::log(
-                "error",
-                PLUGIN_NAME,
-                &format!("document query failed: {code}"),
-            );
-            None
-        }
-    }
+    )
+    .inspect_err(|code| {
+        host::log(
+            "error",
+            PLUGIN_NAME,
+            &format!("document query failed: {code}"),
+        );
+    })?;
+    Ok(result
+        .items
+        .first()
+        .and_then(|row| row.get("markdown"))
+        .and_then(serde_json::Value::as_str)
+        .map(str::to_string))
 }
 
 /// One published documentation page, found by the address it is served at.
@@ -897,8 +982,13 @@ pub fn is_safe_slug(slug: &str) -> bool {
 /// sections. What makes it worth serving here rather than writing by hand is the
 /// document list, which comes from the same rows the site renders — so it cannot
 /// list a page that does not exist or miss one that does.
-pub fn llms_txt() -> String {
-    let base = base_url();
+pub fn llms_txt() -> Result<String, i32> {
+    let docs = listed_docs(&every_row(&docs_definition(), "docs")?);
+    Ok(llms_txt_from(&base_url(), &docs))
+}
+
+/// The llms.txt document, listing `docs` as (title, address) pairs.
+pub fn llms_txt_from(base: &str, docs: &[(String, String)]) -> String {
     let mut out = String::from("# Trovato\n\n");
     out.push_str(
         "> A content management system written in Rust. Content is one row per item, with \
@@ -912,17 +1002,16 @@ pub fn llms_txt() -> String {
     );
 
     out.push_str("## Documentation\n\n");
-    let docs = listed_docs(&every_row(&docs_definition(), "docs"));
     if docs.is_empty() {
         out.push_str("The documentation has not been imported yet.\n\n");
     }
-    for (title, url) in &docs {
+    for (title, url) in docs {
         let slug = url.rsplit('/').next().unwrap_or_default();
         out.push_str(&format!(
             "- [{}]({}): markdown at {}\n",
             title,
-            absolute(&base, url),
-            absolute(&base, &format!("/learn/raw/{slug}")),
+            absolute(base, url),
+            absolute(base, &format!("/learn/raw/{slug}")),
         ));
     }
 
@@ -954,7 +1043,7 @@ pub fn llms_txt() -> String {
         out.push_str(&format!(
             "- [{}]({}): {}\n",
             path,
-            absolute(&base, path),
+            absolute(base, path),
             description
         ));
     }
@@ -1500,7 +1589,7 @@ mod tests {
         // No database in a unit test, so this is the route half of the document:
         // the declaration, the namespace, and every listing route as an absolute
         // URL. The item half is covered by the crawl in scripts/crawl.mjs.
-        let xml = sitemap();
+        let xml = sitemap().expect("the native query stub answers");
         assert!(xml.starts_with("<?xml version=\"1.0\" encoding=\"UTF-8\"?>"));
         assert!(xml.contains("xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\""));
         assert!(xml.trim_end().ends_with("</urlset>"));
@@ -1516,7 +1605,7 @@ mod tests {
         // The kernel's own sitemap emits `<loc>/news</loc>`, which the sitemap
         // protocol does not permit. That defect is the reason this one exists,
         // so it is the one thing worth asserting outright.
-        for line in sitemap().lines() {
+        for line in sitemap().expect("the native query stub answers").lines() {
             if let Some(rest) = line.trim().strip_prefix("<loc>") {
                 assert!(
                     rest.starts_with("https://") || rest.starts_with("http://"),
@@ -1524,6 +1613,142 @@ mod tests {
                 );
             }
         }
+    }
+
+    fn rows(first: u32, count: u32) -> Vec<serde_json::Value> {
+        (first..first + count)
+            .map(|n| serde_json::json!({ "n": n }))
+            .collect()
+    }
+
+    fn query_page(
+        items: Vec<serde_json::Value>,
+        has_next: bool,
+    ) -> trovato_sdk::types::QueryResult {
+        trovato_sdk::types::QueryResult {
+            items,
+            has_next,
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn every_page_reads_until_there_is_no_next_page() {
+        let read = every_page(|page| Ok(query_page(rows(page * 10, 2), page < 3)));
+        assert_eq!(read.unwrap().len(), 6);
+    }
+
+    #[test]
+    fn a_failed_later_page_fails_the_whole_read() {
+        // Rows from page one and an error from page two are not a result: a
+        // sitemap built from them would leave out every row after page one.
+        let read = every_page(|page| {
+            if page == 1 {
+                Ok(query_page(rows(0, 100), true))
+            } else {
+                Err(-1)
+            }
+        });
+        assert_eq!(read, Err(-1));
+    }
+
+    #[test]
+    fn a_failed_read_is_a_503_not_a_short_document() {
+        let failed = generated(Err(-10), "application/xml; charset=utf-8");
+        assert_eq!(failed.status, 503);
+
+        let served = generated(
+            Ok("<urlset/>".to_string()),
+            "application/xml; charset=utf-8",
+        );
+        assert_eq!(served.status, 200);
+        assert_eq!(served.body, "<urlset/>");
+        assert!(served.content_type.starts_with("application/xml"));
+    }
+
+    #[test]
+    fn a_missing_document_is_a_404_and_a_failed_read_a_503() {
+        assert_eq!(document_response(Ok(None)).status, 404);
+        assert_eq!(document_response(Err(-10)).status, 503);
+
+        let found = document_response(Ok(Some("# Title".to_string())));
+        assert_eq!(found.status, 200);
+        assert!(found.content_type.starts_with("text/markdown"));
+    }
+
+    #[test]
+    fn the_sitemap_lists_the_rows_it_was_given() {
+        let row = serde_json::json!({
+            "id": "0193b000-0002-7000-8000-000000000001",
+            "type": "blog",
+            "url": "/blog/twenty-fields-one-row",
+            "title": "Twenty fields, one row",
+            "created": 1_700_000_000,
+            "changed": 1_700_000_000,
+        });
+        let xml = sitemap_from(DEFAULT_BASE_URL, &[row]);
+        assert!(xml.contains(&format!(
+            "<loc>{DEFAULT_BASE_URL}/blog/twenty-fields-one-row</loc>"
+        )));
+    }
+
+    /// `count` items, as `fetch(limit, offset)` would page through them, with
+    /// any window wider than one item that covers a `bad` offset failing, and
+    /// the `bad` items failing on their own too.
+    fn listing(
+        count: usize,
+        bad: &'static [usize],
+    ) -> impl FnMut(usize, usize) -> Result<Vec<String>, i32> {
+        move |limit, offset| {
+            let end = (offset + limit).min(count);
+            let window = offset.min(end)..end;
+            if window.clone().any(|at| bad.contains(&at)) {
+                return Err(-1);
+            }
+            Ok(window.map(|at| format!("id-{at}")).collect())
+        }
+    }
+
+    #[test]
+    fn item_ids_reads_every_window() {
+        let (ids, complete) = item_ids(listing(45, &[]));
+        assert_eq!(ids.len(), 45);
+        assert!(complete);
+
+        let (ids, complete) = item_ids(listing(ID_PAGE * 2, &[]));
+        assert_eq!(ids.len(), ID_PAGE * 2);
+        assert!(complete);
+    }
+
+    #[test]
+    fn one_unreadable_item_costs_only_its_own_id() {
+        // An item too large for the output buffer fails its whole window. The
+        // other items in that window, and every later window, are still read.
+        let (ids, complete) = item_ids(listing(50, &[23]));
+        assert_eq!(ids.len(), 49);
+        assert!(!ids.contains(&"id-23".to_string()));
+        assert!(ids.contains(&"id-24".to_string()));
+        assert!(ids.contains(&"id-49".to_string()));
+        assert!(!complete);
+    }
+
+    #[test]
+    fn a_window_failing_item_by_item_ends_the_read() {
+        let mut calls = 0;
+        let (ids, complete) = item_ids(|_, _| {
+            calls += 1;
+            Err(-10)
+        });
+        assert!(ids.is_empty());
+        assert!(!complete);
+        assert_eq!(calls, 1 + ID_PAGE);
+    }
+
+    #[test]
+    fn item_ids_says_when_it_stopped_at_the_cap() {
+        let (ids, complete) = item_ids(listing(MAX_ID_ITEMS + 1, &[]));
+        assert_eq!(ids.len(), MAX_ID_ITEMS);
+        assert!(!complete);
     }
 
     #[test]
