@@ -1,11 +1,13 @@
 # The front page.
 #
 # `body` and `proof` are bare strings, not `{value, format}` field objects, and
-# that is deliberate. The front-page handler renders a field only when it carries
-# a `value` key, so a bare string is passed through to the template untouched and
-# the template places it where it belongs. That is what lets the page read hero,
-# calls to action, claims, gallery, listing: the tap that renders the listing
-# appends after everything else and could not sit in the middle of that.
+# that is deliberate. The template, elements/item--front_page.html, places them
+# itself from `item.fields`, where it wants them, and prints the plugin's
+# listing from `plugin_output`. That is what lets the page read hero, calls to
+# action, claims, gallery, listing. On the pinned kernel `/` is served by the
+# ordinary item route, which also renders every field into `children` as
+# labelled, escaped text; the template does not print `children`, for exactly
+# that reason.
 #
 # `body` is the hero's lede and one supporting line. `proof` is everything below
 # the hero: a grid of eight short claims, each a headline, one sentence and an

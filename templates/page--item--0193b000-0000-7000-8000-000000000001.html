@@ -1,0 +1,33 @@
+{# The front page.
+
+   The name is the front page item's id. On the pinned kernel `/` is served by
+   the ordinary item route, which renders the page through the first of
+   `page--item--<id>` and `page` that exists. Until 0.105.0 a separate front
+   page handler rendered it as `page--front`, so this file was called
+   `page--front.html`; on 0.105.0 nothing asks for that name any more, the
+   page fell through to page.html, and page.html printed a breadcrumb
+   ("Home > Front Page > trovato") above the hero.
+
+   The heading, the hero and every section live in the front page item's
+   element template and its config item: this page-level override only clears
+   the stage. It overrides the `content` block so that page.html's breadcrumb
+   is not printed: the front page is the root of the site, and a trail back to
+   it from itself says nothing. The h1 is in elements/item--front_page.html so
+   the hero can place the wordmark and the copy in one grid column with the
+   illustration beside them. A heading emitted here would sit above the grid,
+   and the hero would open under an empty band.
+
+   This overrides `content`, which base.html defines, rather than a block
+   nested inside it. A first version defined `{% raw %}{% block main %}{% endraw %}` inside
+   page.html's `content` block and overrode that from here; the front page
+   then rendered with an empty `<header>` while every other page kept its
+   own. Tera resolves a nested block overridden from a grandchild by dropping
+   its siblings in the parent, and the failure is silent. One level of
+   inheritance per block, and the problem does not arise. #}
+{% extends "page.html" %}
+
+{% block content %}
+<div class="front">
+    {{ content | safe }} {# SAFE: kernel render pipeline output plus tap_item_view output, both sanitized upstream #}
+</div>
+{% endblock %}

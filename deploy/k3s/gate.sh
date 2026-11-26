@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # The repository's gates, against the review site in k3s.
 #
-#   deploy/k3s/gate.sh                     all five
+#   deploy/k3s/gate.sh                     all six
 #   deploy/k3s/gate.sh crawl roundtrip     just those
 #
-# Gates: crawl, a11y, shoot (the browser gates, npm scripts, pointed at the LAN
+# Gates: crawl, front, a11y, shoot (the browser gates, npm scripts, pointed at the LAN
 # address through SITE_BASE), roundtrip (check-roundtrip.sh, via kubectl) and
 # moderation (check-moderation.sh, against a throwaway second site that is
 # deleted afterwards). Every gate runs even when an earlier one fails; the exit
@@ -22,7 +22,7 @@ export SITE_BASE="${SITE_BASE:-http://${LB_IP}.nip.io}"
 export KUBECONFIG="${KUBECONFIG:-$HOME/.kube/ks1.yaml}"
 
 gates=("$@")
-[ ${#gates[@]} -gt 0 ] || gates=(crawl a11y shoot roundtrip moderation)
+[ ${#gates[@]} -gt 0 ] || gates=(crawl front a11y shoot roundtrip moderation)
 
 out="$(mktemp -d "${TMPDIR:-/tmp}/trovato-gates.XXXXXX")"
 failed=0
@@ -56,7 +56,7 @@ fi
 echo "SITE_BASE=${SITE_BASE}"
 for gate in "${gates[@]}"; do
     case "$gate" in
-        crawl|a11y|shoot) run_gate "$gate" browser_gate "$gate" ;;
+        crawl|front|a11y|shoot) run_gate "$gate" browser_gate "$gate" ;;
         roundtrip) run_gate roundtrip "$here/check-roundtrip.sh" ;;
         moderation) run_gate moderation "$here/check-moderation.sh" ;;
         *) echo "unknown gate: $gate" >&2; failed=$((failed + 1)) ;;

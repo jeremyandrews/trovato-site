@@ -29,10 +29,9 @@
 #
 # Its two fields are bare strings rather than `{value, format}` objects, because
 # that is the shape the front-page item itself carries and the shape
-# `elements/item--front_page.html` places: the front-page handler renders a field
-# only when it carries a `value` key, and these two are meant to arrive
-# untouched. A translation has to match the item it overlays, not the convention
-# the other nine entries here follow.
+# `elements/item--front_page.html` places from `item.fields`, as HTML. A
+# translation has to match the item it overlays, not the convention the other
+# nine entries here follow.
 key: plugin.trovato_site.site_translations
 value: {
     "0193b000-0003-7000-8000-000000000001": {

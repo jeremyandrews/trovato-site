@@ -24,8 +24,8 @@
 //! # Why the listing is a tap
 //!
 //! A `gather_query` tile renders an empty `<div>` that nothing hydrates, and a
-//! template cannot run a query. `tap_item_view` can: the front page handler
-//! appends its output to the rendered item.
+//! template cannot run a query. `tap_item_view` can: the item route that serves
+//! `/` hands its output to the front page template as `plugin_output`.
 
 use trovato_sdk::host;
 use trovato_sdk::prelude::*;
