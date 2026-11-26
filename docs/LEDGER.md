@@ -1343,3 +1343,29 @@ and write in `trovato_site` off `raw_sql` onto the kernel's `query` and
   (rollback is now the previous release on the newer schema), `/rust`'s sqlx 0.8
   and wasmtime 47 (0.9 and 49), and `/community`'s email reporting channel
   (`SECURITY.md` now names GitHub private vulnerability reporting).
+
+### On the review site
+
+- **Two 0.105.0 changes reached `deploy/k3s`.** The session cookie is always
+  `Secure` unless `COOKIE_SECURE=never`, so no browser could sign in to the
+  plain HTTP review site (on 0.102.0 it could not either; 0.105.0 adds the
+  setting for exactly this case and refuses it with an https `SITE_URL`).
+  `site.yaml` now sets it. And on SIGTERM the kernel keeps serving for
+  `SHUTDOWN_DRAIN_SECS` (5 under Kubernetes), so `check-moderation.sh`'s
+  restart polled `/health` on the old process and ran config import against a
+  kernel that had not loaded the plugins (`item_type_fkey` on the front page).
+  The restart now waits for the container's restart count to move.
+- **The review site moved under this run.** Run C10 (PR #21) moved it to
+  `kw3.pozza`, amd64, and recreated it from `main`; the first C6 apply, from
+  `main`'s manifests, left every pod Pending. It was redeployed from this
+  branch with C10's `deploy/k3s` in a scratch copy (plus `main`'s ks1 push
+  relay, which C10's script drops), so it runs this branch on kw3.
+- Upgrade in place from 0.102.0: the first cron wrote the 3 changed Italian
+  translations and left 7 unchanged; every published item stayed published.
+- `deploy/k3s/gate.sh`: crawl, a11y, shoot, roundtrip and moderation PASS.
+- A draft of `/comment-policy`: the anonymous page kept the published text,
+  `/item/{id}/latest` showed the draft, `/admin/content/moderated` listed it,
+  and after publishing the anonymous page showed it. The page was then
+  restored by `config import`.
+- The comment form posts (`POST /api/item/{id}/comments`, 303) and the comment shows.
+- Screenshots: `docs/screenshots/c6-*.png`.
