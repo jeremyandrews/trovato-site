@@ -24,7 +24,7 @@ fields:
       <h2>Built in on purpose</h2>
 
       <ul>
-      <li>Every navigation region has its own label, which is how a screen reader tells them apart. The two search forms on the search page are labelled separately for the same reason.</li>
+      <li>Every navigation region has its own label, which is how a screen reader tells them apart. The two search forms on the search page are labelled separately for the same reason. With JavaScript on, the in-browser search takes the place of the second form, and its search box is named only by its placeholder text.</li>
       <li>The current page is marked with <code>aria-current="page"</code>, so a screen reader announces which page you&#8217;re on.</li>
       <li>The narrow-screen menu is a native disclosure element. It opens by click or keyboard, announces whether it&#8217;s open, and works without JavaScript.</li>
       <li>Search works with JavaScript on or off. With it off, the search form sends your search to the server, which returns a page of results.</li>

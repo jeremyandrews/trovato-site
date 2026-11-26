@@ -1059,6 +1059,55 @@ button.site-nav__logout {
     min-width: 0;
 }
 
+/* The in-browser results. Below 700px the kernel's stylesheet gives its grid a
+   single `1fr` column, which grows to fit the longest unbroken word, and an
+   excerpt can quote a whole URL. At 390px wide that pushed the page to 614px.
+   A column that may shrink, and words that may break, keep it in the page.
+   Scoped under .search-page so these win over scolta.css, which loads later. */
+.search-page .scolta-layout > * {
+    min-width: 0;
+}
+
+@media (max-width: 700px) {
+    .search-page .scolta-layout {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+.search-page .scolta-result-card {
+    overflow-wrap: anywhere;
+}
+
+/* The kernel's stylesheet writes some text colours as literals, and uses its
+   button colour for text too. Each one is put on a token whose contrast
+   cargo test checks (static/css/tokens.css), in both schemes. Only the parts
+   this page renders are covered: every AI stage is off, so the summary and
+   follow up styles never apply. */
+.search-page .scolta-search-btn {
+    color: var(--on-accent);
+}
+
+.search-page .scolta-result-title,
+.search-page .scolta-type-badge,
+.search-page .scolta-filters h3,
+.search-page .scolta-filter-item.active,
+.search-page .scolta-load-more {
+    color: var(--link);
+}
+
+.search-page .scolta-result-excerpt,
+.search-page .scolta-result-url,
+.search-page .scolta-weak-match,
+.search-page .scolta-filter-count,
+.search-page .scolta-search-clear {
+    color: var(--text-muted);
+}
+
+.search-page .scolta-search-clear:hover {
+    color: var(--text);
+    background: var(--surface-sunken);
+}
+
 .search-explainer {
     margin-top: var(--space-10);
     padding-top: var(--space-6);
@@ -1356,7 +1405,7 @@ select {
     --scolta-text-muted: var(--text-muted);
     --scolta-text-light: var(--text-muted);
     --scolta-border: var(--border);
-    --scolta-highlight: var(--brand-peach);
+    --scolta-highlight: var(--highlight);
     --scolta-summary-bg-start: var(--surface-sunken);
     --scolta-summary-bg-mid: var(--surface-sunken);
     --scolta-summary-border: var(--border);

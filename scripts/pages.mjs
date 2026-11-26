@@ -11,7 +11,10 @@ export const PAGES = [
   { path: "/news",     name: "news",     family: "gather/query--*" },
   { path: "/blog",     name: "blog",     family: "gather/query--blog_listing" },
   { path: "/contact",  name: "contact",  family: "plugin page + form" },
-  { path: "/search",   name: "search",   family: "search.html" },
+  // With a query, so the in-browser results render and every check covers
+  // them: an excerpt quoting a long URL once pushed this page to 614px at a
+  // 390px viewport, and the page without a query showed no results to catch it.
+  { path: "/search?q=Drupal", name: "search", family: "search.html" },
   { path: "/user/login", name: "login",  family: "user/*" },
   { path: "/learn",    name: "learn",    family: "gather/query--trovato_site.docs_index" },
   { path: "/learn/tutorial-01-hello-trovato", name: "docs", family: "elements/item--docs" },
